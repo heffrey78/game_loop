@@ -1,0 +1,274 @@
+flowchart TD
+    Start([Game Start]) --> InitializeGame
+    InitializeGame[Initialize Game] --> LoadGameState
+    LoadGameState[Load Game State] --> DisplayLocationDesc
+    DisplayLocationDesc[Display Location Description] --> PromptPlayerInput
+    
+    PromptPlayerInput[Prompt for Player Input] --> PlayerInput
+    PlayerInput[Player Input] --> ProcessPlayerAction
+    
+    %% Process Player Action Section - Enhanced
+    subgraph ProcessPlayerAction[Process Player Action]
+        direction TB
+        ParseInput[Parse User Input] --> ValidInput
+        ValidInput{Valid Input?} --> |Yes| NLPProcessing
+        ValidInput --> |No| ErrorHandling[Error Handling]
+        NLPProcessing[NLP Processing] --> ExtractIntent
+        ExtractIntent[Extract User Intent] --> CreateActionDict
+        CreateActionDict[Create Actions/Objects Dictionary] --> CreateQueriesList
+        CreateQueriesList[Create Queries/Conversation List] --> SemanticSearch
+        
+        subgraph SemanticSearch[Semantic Search Against Game State]
+            direction TB
+            QueryPlayerState[Query Player State] --> QueryLocationDesc
+            QueryLocationDesc[Query Location Description] --> QueryLocationDetails
+            QueryLocationDetails[Query Discovered Location Details] --> ValidateObjects
+            ValidateObjects[Validate Objects Existence] --> QueryObjectProps
+            QueryObjectProps[Query Object Properties] --> QueryObjectInteractions
+            QueryObjectInteractions[Query Object Interactions] --> QueryWorldRules
+            QueryWorldRules[Query World Rules] --> QueryPlayerHistory[Query Player History]
+            QueryPlayerHistory --> CollectSearchResults[Collect Search Results]
+        end
+    end
+    
+    ProcessPlayerAction --> DetermineActionType
+    ErrorHandling --> GenerateErrorMsg[Generate Error Message] --> DisplayOutput
+    
+    %% Decision point for action type - Extended with more detailed types
+    DetermineActionType{Action Type?} --> |Physical Action| UpdateGameStateAction
+    DetermineActionType --> |Object Interaction| ProcessObjectInteraction
+    DetermineActionType --> |Quest Interaction| ProcessQuestInteraction
+    DetermineActionType --> |Query/Conversation| UpdateGameStateQuery
+    DetermineActionType --> |Help/Tutorial| ShowHelpSystem
+    DetermineActionType --> |Save Game| SaveGameCommand
+    DetermineActionType --> |World Discovery| DynamicWorldGeneration
+    
+    %% Object Interaction Processing - New
+    subgraph ProcessObjectInteraction[Process Object Interaction]
+        direction TB
+        RetrieveObjectData[Retrieve Object Data] --> LookupInteractions[Lookup Defined Interactions]
+        LookupInteractions --> InteractionExists{Defined Interaction?}
+        InteractionExists --> |Yes| ApplyDefinedInteraction[Apply Defined Interaction]
+        InteractionExists --> |No| GenerateDynamicInteraction[Generate Dynamic Interaction]
+        ApplyDefinedInteraction --> UpdateObjectState1[Update Object State]
+        GenerateDynamicInteraction --> UpdateObjectState1
+        UpdateObjectState1 --> CreateInteractionOutcome[Create Interaction Outcome]
+    end
+    
+    %% Quest Interaction Processing - New
+    subgraph ProcessQuestInteraction[Process Quest Interaction]
+        direction TB
+        RetrieveQuestData[Retrieve Quest Data] --> RetrievePlayerProgress[Retrieve Player Progress]
+        RetrievePlayerProgress --> DetermineQuestStep[Determine Current Quest Step]
+        DetermineQuestStep --> ActionMatchesRequirement{Action Matches Requirement?}
+        ActionMatchesRequirement --> |Yes| AdvanceQuest[Advance Quest Progress]
+        ActionMatchesRequirement --> |No| GenerateQuestHint[Generate Quest Hint]
+        AdvanceQuest --> UpdateQuestProgress[Update Quest Progress]
+        UpdateQuestProgress --> CheckQuestCompletion{Quest Complete?}
+        CheckQuestCompletion --> |Yes| TriggerQuestReward[Trigger Quest Reward]
+        CheckQuestCompletion --> |No| GenerateQuestUpdate[Generate Quest Update]
+        TriggerQuestReward --> GenerateQuestUpdate
+    end
+    
+    ShowHelpSystem[Show Help/Tutorial] --> GenerateHelpContent[Generate Help Content] --> DisplayOutput
+    SaveGameCommand[Save Game Command] --> SaveGameState
+    
+    %% Dynamic World Generation Section - New
+    subgraph DynamicWorldGeneration[Dynamic World Generation]
+        direction TB
+        CheckWorldBoundaries[Check World Boundaries] --> LocationExists{Location Exists?}
+        LocationExists --> |Yes| LoadExistingLocation[Load Existing Location]
+        LocationExists --> |No| GenerateNewLocation[Generate New Location]
+        GenerateNewLocation --> ContextualizeLocation[Apply Player Context & History]
+        ContextualizeLocation --> StoreNewLocation[Store in World Model]
+        StoreNewLocation --> GenerateEmbeddings[Generate Location Embeddings]
+        GenerateEmbeddings --> ConnectToWorld[Connect to Existing World]
+        LoadExistingLocation --> UpdatePlayerLocation[Update Player Location]
+        ConnectToWorld --> UpdatePlayerLocation
+    end
+    
+    %% Update Game State Section - Enhanced with two paths
+    subgraph UpdateGameStateAction[Update Game State - Actions]
+        direction TB
+        ValidateActionFeasibility[Validate Action Feasibility] --> ActionValid{Action Valid?}
+        ActionValid --> |Yes| ProcessActionEffects
+        ActionValid --> |No| GenerateFailMessage[Generate Failure Message]
+        ProcessActionEffects[Process Action Effects] --> UpdateObjectState
+        UpdateObjectState[Update Object State] --> UpdateLocationState
+        UpdateLocationState[Update Location State] --> UpdatePlayerStateA[Update Player State]
+        UpdateLocationState --> QueueEvolutionEvent[Queue Evolution Event]
+    end
+    
+    subgraph UpdateGameStateQuery[Update Game State - Queries]
+        direction TB
+        GenerateResponse[Generate LLM Response] --> EnrichWithContext
+        EnrichWithContext[Enrich With Game Context] --> UpdatePlayerStateQ[Update Player State]
+        UpdatePlayerStateQ --> UpdatePlayerKnowledge[Update Player Knowledge]
+        UpdatePlayerKnowledge --> StoreKnowledgeEmbedding[Store Knowledge Embedding]
+    end
+    
+    %% World Evolution Process - New
+    subgraph WorldEvolution[World Evolution Process]
+        direction TB
+        TimePassage[Time Passage Trigger] --> ProcessEvolutionQueue[Process Evolution Queue]
+        ProcessEvolutionQueue --> ApplyEvolutionRules[Apply Evolution Rules]
+        ApplyEvolutionRules --> UpdateAffectedLocations[Update Affected Locations]
+        UpdateAffectedLocations --> UpdateRelatedNPCs[Update Related NPCs]
+        UpdateRelatedNPCs --> CreateNewOpportunities[Create New Opportunities]
+    end
+    
+    %% Game Session Management - New
+    subgraph GameSessionManagement[Game Session Management]
+        direction TB
+        StartSession[Start Game Session] --> RecordSessionStart[Record Session Start]
+        RecordSessionStart --> TrackGameTime[Track Game Time]
+        SaveGame[Save Game] --> UpdateSessionData[Update Session Data]
+        ExitGame[Exit Game] --> FinalizeSession[Finalize Session]
+        FinalizeSession --> GenerateSessionSummary[Generate Session Summary]
+    end
+    
+    DynamicWorldGeneration --> GenerateOutput
+    UpdateGameStateAction --> GenerateOutput
+    UpdateGameStateQuery --> GenerateOutput
+    ProcessObjectInteraction --> GenerateOutput
+    ProcessQuestInteraction --> GenerateOutput
+    GenerateFailMessage --> GenerateOutput
+    GenerateQuestHint --> GenerateOutput
+    GenerateQuestUpdate --> GenerateOutput
+    
+    GenerateOutput[Generate Output Response] --> DisplayOutput
+    DisplayOutput[Display Output to Player] --> PromptPlayerInput
+    
+    %% Exit path
+    PlayerInput -- Exit Command --> SaveGameState
+    SaveGameState[Save Game State] --> FinalizeSession
+    FinalizeSession --> ExitConfirmation{Confirm Exit?}
+    ExitConfirmation --> |Yes| EndGame([End Game])
+    ExitConfirmation --> |No| PromptPlayerInput
+    
+    %% Database connections
+    PostgresDB[(PostgreSQL<br>Vector + Graph DB)] -.- SemanticSearch
+    PostgresDB -.- UpdateGameStateAction
+    PostgresDB -.- UpdateGameStateQuery
+    PostgresDB -.- SaveGameState
+    PostgresDB -.- WorldStateTracker
+    PostgresDB -.- DynamicWorldGeneration
+    PostgresDB -.- WorldEvolution
+    PostgresDB -.- LookupInteractions
+    PostgresDB -.- RetrieveQuestData
+    PostgresDB -.- UpdateQuestProgress
+    PostgresDB -.- StoreKnowledgeEmbedding
+    PostgresDB -.- GenerateEmbeddings
+    PostgresDB -.- GameSessionManagement
+    
+    %% Enhanced LLM Integration with Configuration Support
+    subgraph LLMConfiguration[LLM Configuration]
+        direction TB
+        ConfigSource{Config Source} --> |CLI| CLIConfig
+        ConfigSource --> |File| FileConfig
+        
+        subgraph CLIConfig[CLI Configuration]
+            CLIModelID[Model ID]
+            CLIURL[Ollama URL]
+            CLIContextLength[Context Length]
+            CLITemperature[Temperature]
+        end
+        
+        subgraph FileConfig[File Configuration]
+            ConfigFile[Config File] --> ParseConfig
+            ParseConfig[Parse Config] --> FileModelID
+            ParseConfig --> FileURL
+            ParseConfig --> FileContextLength
+            ParseConfig --> FileTemperature
+            FileModelID[Model ID]
+            FileURL[Ollama URL]
+            FileContextLength[Context Length]
+            FileTemperature[Temperature]
+        end
+        
+        CLIConfig --> MergeConfig
+        FileConfig --> MergeConfig
+        MergeConfig[Merge & Apply Config] --> FinalLLMConfig
+        FinalLLMConfig[Final LLM Settings]
+    end
+    
+    %% New Game Rules Configuration with Custom Rules Toggle
+    subgraph GameRulesConfiguration[Game Rules Configuration]
+        direction TB
+        RulesConfigSource{Config Source} --> |CLI| CLIRulesConfig
+        RulesConfigSource --> |File| FileRulesConfig
+        
+        subgraph CLIRulesConfig[CLI Rules Configuration]
+            CLIRulesFilePath[Rules File Path]
+            CLICustomRulesToggle[Custom Rules Toggle]
+        end
+        
+        subgraph FileRulesConfig[File Rules Configuration]
+            RulesConfigFile[Rules Config File] --> ParseRulesConfig
+            ParseRulesConfig[Parse Config] --> FileRulesSettings
+            FileRulesSettings[Rules Settings] --> FileCustomRulesToggle
+            FileCustomRulesToggle[Custom Rules Toggle]
+        end
+        
+        CLIRulesConfig --> MergeRulesConfig
+        FileRulesConfig --> MergeRulesConfig
+        MergeRulesConfig[Merge & Apply Rules Config] --> FinalRulesConfig
+        FinalRulesConfig[Final Rules Settings] --> CustomRulesEnabled{Custom Rules Enabled?}
+        
+        CustomRulesEnabled --> |Yes| EnableDynamicRules
+        CustomRulesEnabled --> |No| UseStaticRules
+        EnableDynamicRules[Enable Dynamic Rules System]
+        UseStaticRules[Use Static Rules Only]
+    end
+    
+    %% Clear connections from configurations to systems
+    FinalLLMConfig --> OllamaLLM
+    FinalRulesConfig --> GameRulesEngine
+    
+    OllamaLLM[(Ollama LLM)] -.- NLPProcessing
+    OllamaLLM -.- GenerateResponse
+    OllamaLLM -.- EnableDynamicRules
+    OllamaLLM -.- GenerateHelpContent
+    OllamaLLM -.- GenerateErrorMsg
+    OllamaLLM -.- GenerateNewLocation
+    OllamaLLM -.- ContextualizeLocation
+    OllamaLLM -.- WorldEvolution
+    OllamaLLM -.- GenerateDynamicInteraction
+    OllamaLLM -.- GenerateQuestHint
+    OllamaLLM -.- GenerateQuestUpdate
+    OllamaLLM -.- GenerateSessionSummary
+    
+    %% Additional components
+    GameRulesEngine[Game Rules Engine] -.- ValidateActionFeasibility
+    WorldStateTracker[World State Tracker] -.- UpdateObjectState
+    WorldStateTracker -.- UpdateLocationState
+    WorldStateTracker -.- QueueEvolutionEvent
+    WorldStateTracker -.- WorldEvolution
+    CollectSearchResults -.- ValidateActionFeasibility
+    CollectSearchResults -.- GenerateResponse
+    
+    %% Enhanced rules integration
+    subgraph DynamicRulesSystem[Dynamic Rules System]
+        direction TB
+        RuleCreationReq[Rule Creation Request] --> ValidateRuleConsistency
+        ValidateRuleConsistency[Validate Rule Consistency] --> RuleValid{Rule Valid?}
+        RuleValid --> |Yes| StoreNewRule
+        RuleValid --> |No| GenerateRuleError[Generate Rule Error]
+        StoreNewRule[Store New Rule] --> UpdateWorldModel
+        UpdateWorldModel[Update World Model] --> GenerateRuleEmbedding[Generate Rule Embedding]
+    end
+    
+    EnableDynamicRules -.- DynamicRulesSystem
+    DynamicRulesSystem -.- GameRulesEngine
+    DynamicRulesSystem -.- PostgresDB
+    
+    PlayerInput -- Create Rule --> RuleCreationReq
+    GenerateRuleError --> GenerateOutput
+    
+    %% Configuration initialization paths
+    InitializeGame --> LLMConfiguration
+    InitializeGame --> GameRulesConfiguration
+    InitializeGame --> StartSession
+    
+    %% Time-based triggers
+    TimeTrigger([Time-based Trigger]) --> TimePassage

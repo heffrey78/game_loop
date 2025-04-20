@@ -1,0 +1,154 @@
+flowchart TD
+    %% Main Components
+    User[User] <--> UI[CLI/Interface]
+    UI <--> GameLoop[Game Loop]
+    
+    %% Core System Components
+    subgraph CoreSystems["Core Systems"]
+        GameLoop --> InputProcessor[Input Processor]
+        GameLoop --> OutputGenerator[Output Generator]
+        GameLoop --> GameStateManager[Game State Manager]
+        
+        InputProcessor --> NLPEngine[NLP Engine]
+        NLPEngine --> IntentRecognition[Intent Recognition System]
+        
+        GameStateManager --> WorldStateTracker[World State Tracker]
+        GameStateManager --> PlayerStateTracker[Player State Tracker]
+        GameStateManager --> EvolutionQueue[Evolution Queue]
+        GameStateManager --> SessionManager[Session Manager]
+    end
+    
+    %% AI Components
+    subgraph AIComponents["AI Components"]
+        LLMService[Ollama LLM Service]
+        VectorSearch[Vector Search Engine]
+        RulesEngine[Game Rules Engine]
+        DynamicRulesSystem[Dynamic Rules System]
+        DynamicWorldGenerator[Dynamic World Generator]
+        ContextualContentAdapter[Contextual Content Adapter]
+        EmbeddingPipeline[Embedding Pipeline]
+        ObjectInteractionProcessor[Object Interaction Processor]
+        QuestProgressionSystem[Quest Progression System]
+    end
+    
+    %% Data Layer
+    subgraph DataLayer["Data Layer"]
+        DB[(PostgreSQL)]
+        subgraph StorageTypes["Storage Types"]
+            VectorStore[Vector Store]
+            GraphDB[Graph Database]
+            RelationalStore[Relational Store]
+        end
+        subgraph DataModels["Key Data Models"]
+            WorldModel[World Model]
+            PlayerModel[Player Model]
+            PlayerHistoryModel[Player History]
+            LocationsModel[Locations]
+            ObjectsModel[Objects]
+            NPCsModel[NPCs]
+            QuestsModel[Quests]
+            SessionsModel[Game Sessions]
+            RulesModel[World Rules]
+        end
+        DB --- StorageTypes
+        DB --- DataModels
+    end
+    
+    %% Configuration System
+    subgraph ConfigSystem["Configuration"]
+        ConfigManager[Configuration Manager]
+        ConfigFiles[Configuration Files]
+        CLIParams[CLI Parameters]
+        ConfigManager --> LLMConfig[LLM Settings]
+        ConfigManager --> GameRulesConfig[Game Rules Settings]
+        ConfigManager --> WorldGenConfig[World Generation Settings]
+        ConfigManager --> EmbeddingConfig[Embedding Settings]
+    end
+    
+    %% Enhanced Embedding Pipeline
+    subgraph EmbeddingSystem["Embedding System"]
+        EmbeddingService[Embedding Service]
+        EntityEmbeddingGenerator[Entity Embedding Generator]
+        EmbeddingManager[Embedding Manager]
+        
+        EmbeddingService --> |Generate Vectors| EntityEmbeddingGenerator
+        EntityEmbeddingGenerator --> |Store Embeddings| EmbeddingManager
+        EmbeddingManager --> |Update DB| VectorStore
+    end
+    
+    %% Processing Flow Connections
+    InputProcessor --> LLMService
+    IntentRecognition --> VectorSearch
+    VectorSearch --> DB
+    
+    GameStateManager --> DB
+    GameLoop --> DynamicWorldGenerator
+    DynamicWorldGenerator --> DB
+    DynamicWorldGenerator --> ContextualContentAdapter
+    DynamicWorldGenerator --> EmbeddingSystem
+    ContextualContentAdapter --> PlayerHistoryModel
+    
+    GameLoop --> RulesEngine
+    RulesEngine --> DynamicRulesSystem
+    DynamicRulesSystem --> DB
+    DynamicRulesSystem --> EmbeddingSystem
+    
+    %% New Connections for Object Interactions and Quests
+    GameLoop --> ObjectInteractionProcessor
+    ObjectInteractionProcessor --> ObjectsModel
+    ObjectInteractionProcessor --> LLMService
+    
+    GameLoop --> QuestProgressionSystem
+    QuestProgressionSystem --> QuestsModel
+    QuestProgressionSystem --> PlayerModel
+    QuestProgressionSystem --> LLMService
+    
+    %% Session Management
+    GameLoop --> SessionManager
+    SessionManager --> SessionsModel
+    SessionManager --> LLMService
+    
+    %% World Evolution System
+    subgraph WorldEvolution["World Evolution System"]
+        TimeManager[Time Manager]
+        EvolutionProcessor[Evolution Processor]
+        NPCBehaviorEngine[NPC Behavior Engine]
+        QuestGenerator[Quest Generator]
+    end
+    
+    TimeManager --> EvolutionProcessor
+    EvolutionProcessor --> DB
+    EvolutionQueue --> EvolutionProcessor
+    EvolutionProcessor --> NPCBehaviorEngine
+    EvolutionProcessor --> QuestGenerator
+    QuestGenerator --> EmbeddingSystem
+    
+    OutputGenerator --> LLMService
+    
+    %% Config Connections
+    ConfigFiles --> ConfigManager
+    CLIParams --> ConfigManager
+    LLMConfig --> LLMService
+    GameRulesConfig --> RulesEngine
+    WorldGenConfig --> DynamicWorldGenerator
+    EmbeddingConfig --> EmbeddingService
+    
+    %% Embedding Pipeline Connections
+    EmbeddingPipeline --> EmbeddingSystem
+    PlayerStateTracker --> EmbeddingPipeline
+    WorldStateTracker --> EmbeddingPipeline
+    DynamicWorldGenerator --> EmbeddingPipeline
+    OutputGenerator --> EmbeddingPipeline
+    
+    %% Main Data Flows
+    classDef dataFlow stroke:#3366FF,stroke-width:2px
+    classDef userFlow stroke:#FF6633,stroke-width:2px
+    classDef configFlow stroke:#33CC33,stroke-width:2px
+    classDef worldGenFlow stroke:#9966CC,stroke-width:2px
+    classDef embeddingFlow stroke:#FF9900,stroke-width:2px
+    
+    class User,UI userFlow
+    class ConfigFiles,CLIParams,ConfigManager,LLMConfig,GameRulesConfig,WorldGenConfig,EmbeddingConfig configFlow
+    class DB,VectorStore,GraphDB,RelationalStore,WorldModel,PlayerModel,LocationsModel,ObjectsModel,NPCsModel,PlayerHistoryModel,QuestsModel,SessionsModel,RulesModel dataFlow
+    class DynamicWorldGenerator,ContextualContentAdapter,TimeManager,EvolutionProcessor,NPCBehaviorEngine,QuestGenerator,WorldEvolution worldGenFlow
+    class EmbeddingService,EntityEmbeddingGenerator,EmbeddingManager,EmbeddingSystem,EmbeddingPipeline embeddingFlow
