@@ -21,12 +21,12 @@ This document outlines the implementation strategy for the Game Loop text advent
 - **Verification**: Run linting tools to confirm they work, test pre-commit hooks with a sample change, verify pytest runs successfully with initial tests
 
 ### Commit 3: Database Infrastructure Setup
-- Create Podman configuration for PostgreSQL
+- Create Docker configuration for PostgreSQL
 - Write initial SQL schema creation scripts
 - Configure pgvector extension installation
 - Implement database initialization and migration scripts
 - Add database connection utility functions
-- **Verification**: Start PostgreSQL container with Podman, confirm pgvector extension is available, test database connection and execution of schema scripts
+- **Verification**: Start PostgreSQL container with Docker, confirm pgvector extension is available, test database connection and execution of schema scripts
 
 ### Commit 4: Ollama Integration Foundation
 - Implement OllamaClient class for API communication

@@ -1,0 +1,28 @@
+# Dockerfile for PostgreSQL with pgvector extension
+# Use with: docker build -t postgres-pgvector:16 -f Containerfile.postgres .
+FROM docker.io/postgres:16
+
+# Install build dependencies for pgvector
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    postgresql-server-dev-16 \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone and build pgvector
+RUN git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git \
+    && cd pgvector \
+    && make \
+    && make install \
+    && cd .. \
+    && rm -rf pgvector
+
+# Default to UTF8 encoding and en_US.UTF-8 locale
+RUN localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+ENV LANG en_US.utf8
+
+# Set up PostgreSQL to use pgvector
+RUN echo "shared_preload_libraries = 'pgvector'" >> /usr/share/postgresql/postgresql.conf.sample
+
+# Expose the PostgreSQL port
+EXPOSE 5432

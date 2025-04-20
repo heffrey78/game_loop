@@ -22,7 +22,7 @@ Game Loop is an interactive text adventure system that uses natural language pro
 
 - Python 3.10+
 - Poetry
-- Podman (for running PostgreSQL with pgvector)
+- Docker (for running PostgreSQL with pgvector)
 - Ollama with appropriate models
 
 ### Installation

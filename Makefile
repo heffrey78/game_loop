@@ -1,4 +1,4 @@
-.PHONY: install clean lint format test coverage pre-commit
+.PHONY: install clean lint format test coverage pre-commit docker-start docker-stop docker-init docker-setup
 
 # Default Python interpreter
 PYTHON := python
@@ -44,3 +44,20 @@ coverage:
 pre-commit:
 	poetry run pre-commit install
 	poetry run pre-commit run --all-files
+
+# Docker management commands
+docker-start:
+	./scripts/manage_docker.py start
+
+docker-stop:
+	./scripts/manage_docker.py stop
+
+docker-init:
+	./scripts/manage_docker.py init
+
+docker-verify:
+	./scripts/manage_docker.py verify
+
+# Complete Docker setup (start, init, verify)
+docker-setup:
+	./scripts/manage_docker.py setup

@@ -18,7 +18,7 @@ This document outlines the technology stack used in the Game Loop project, a tex
 
 ### Database
 - **Primary Database**: PostgreSQL
-  - **Always Containerized**: PostgreSQL runs in a dedicated Podman container
+  - **Always Containerized**: PostgreSQL runs in a dedicated Docker container
   - **Vector Storage**: pgvector extension for embedding storage and similarity search
   - **Graph Database**: Integration for relationship modeling between game entities
   - **Relational Storage**: Traditional tables for structured data
@@ -111,9 +111,8 @@ This document outlines the technology stack used in the Game Loop project, a tex
 
 ## Deployment
 - **Local Deployment**: Stand-alone application
-- **Container Platform**: Podman (daemonless container engine)
-  - Multi-container deployment with Podman Compose
-  - Rootless container execution
+- **Container Platform**: Docker
+  - Multi-container deployment with Docker Compose
   - OCI-compliant image support
   - Volume mapping for model storage
 - **Containerized Services**:
