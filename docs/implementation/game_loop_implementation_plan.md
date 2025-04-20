@@ -29,6 +29,7 @@ This document outlines the implementation strategy for the Game Loop text advent
 - **Verification**: Start PostgreSQL container with Docker, confirm pgvector extension is available, test database connection and execution of schema scripts
 
 ### Commit 4: Ollama Integration Foundation
+- Note: all code is subject to black, ruff, and mypy linting
 - Implement OllamaClient class for API communication
 - Create configuration system for LLM parameters
 - Add model availability checking
@@ -37,11 +38,14 @@ This document outlines the implementation strategy for the Game Loop text advent
 - **Verification**: Connect to Ollama API, verify model availability check works, generate a test embedding, load sample prompt templates
 
 ### Commit 5: Basic Configuration System
+- Note: all code is subject to black, ruff, and mypy linting
+- Note: use poetry
 - Implement configuration manager using Pydantic
 - Add YAML configuration file support
 - Create CLI parameter parsing
 - Implement configuration merging logic
 - Add environment variable support
+- Add pytests
 - **Verification**: Load configuration from YAML file, override with CLI parameter, verify environment variable takes precedence, confirm configuration validation works
 
 ## Phase 2: Core Game Loop Components (Commits 6-12)

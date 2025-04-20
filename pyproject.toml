@@ -27,6 +27,8 @@ ruff = "^0.11.6"
 mypy = "^1.15.0"
 pre-commit = "^4.2.0"
 pytest-cov = "^4.1.0"
+pytest-asyncio = "^0.26.0"
+types-pyyaml = "^6.0.12.20250402"
 
 # Define the entry point for the game_loop command
 [tool.poetry.scripts]
@@ -50,3 +52,10 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests",
+    "asyncio: marks tests as async tests that require pytest-asyncio"
+]

@@ -1,0 +1,5 @@
+Generate a semantic embedding for the following text. The embedding should represent the core meaning and semantic content of the text.
+
+Text: {text}
+
+Generate an embedding that captures the key concepts, entities, relationships, and semantic meaning of this text.

@@ -1,181 +1,117 @@
 """
-Embedding service for the Game Loop application.
-
-This module implements the vector embedding generation capabilities
-as specified in the embedding_pipeline.md document. It provides services
-for converting text descriptions into vector embeddings that can be stored
-in the PostgreSQL database (using pgvector) for semantic search operations.
-
-The embedding service utilizes the Ollama API as described in the tech stack
-for generating embeddings, which are then used throughout the game loop system.
+Service for generating and managing embeddings using the OllamaClient.
 """
 
+import asyncio
 import logging
-import re
 
-import httpx
+from ..llm.config import ConfigManager
+from ..llm.ollama.client import OllamaClient, OllamaEmbeddingConfig
 
 logger = logging.getLogger(__name__)
 
 
 class EmbeddingError(Exception):
-    """Exception raised when embedding generation fails."""
+    """Exception raised for errors in embedding generation or processing."""
 
     pass
 
 
 class EmbeddingService:
-    """
-    Service for generating vector embeddings from text.
+    """Service for generating and managing embeddings."""
 
-    This service connects to the Ollama API to generate embeddings
-    as specified in the tech stack document. These embeddings are used
-    for semantic search operations throughout the game loop system.
-    """
+    def __init__(self, config_manager: ConfigManager | None = None):
+        """Initialize the embedding service."""
+        self.config = config_manager or ConfigManager()
+        self.client: OllamaClient | None = None
+        self._embedding_cache: dict[str, list[float]] = {}
 
-    def __init__(
-        self,
-        ollama_url: str = "http://localhost:11434",
-        model: str = "nomic-embed-text",
-    ):
-        """
-        Initialize the embedding service.
-
-        Args:
-            ollama_url: URL of the Ollama API service
-            model: Name of the embedding model to use
-        """
-        self.ollama_url = ollama_url
-        self.model = model
-        logger.info(f"Initialized embedding service with model {model} at {ollama_url}")
-
-    async def generate_embedding(self, text: str) -> list[float]:
-        """
-        Generate a vector embedding for the given text.
-
-        This method sends the text to the Ollama API and retrieves
-        a vector embedding that represents the semantic meaning of the text.
-
-        Args:
-            text: Text to generate embedding for
-
-        Returns:
-            Vector embedding as a list of floats (384-dimensional vector)
-
-        Raises:
-            EmbeddingError: If embedding generation fails
-        """
-        url = f"{self.ollama_url}/api/embeddings"
-
-        # Clean and prepare text as per embedding_pipeline.md
-        prepared_text = self._preprocess_text(text)
-
-        try:
-            # Request embedding from Ollama as specified in tech stack
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    url,
-                    json={"model": self.model, "prompt": prepared_text},
-                    timeout=30.0,
-                )
-
-            if response.status_code != 200:
-                raise EmbeddingError(f"Failed to generate embedding: {response.text}")
-
-            data = response.json()
-
-            # Validate the embedding
-            embedding = data.get("embedding")
-            if not embedding or not isinstance(embedding, list):
-                raise EmbeddingError(f"Invalid embedding response: {data}")
-
-            # Ensure we got the expected dimension (384 as per embedding_pipeline.md)
-            if len(embedding) != 384:
-                logger.warning(
-                    f"Unexpected embedding dimension: {len(embedding)} (expected 384)"
-                )
-
-            return [float(val) for val in embedding]  # Ensure all values are floats
-
-        except httpx.RequestError as e:
-            raise EmbeddingError(f"Request to Ollama API failed: {e}") from e
-        except Exception as e:
-            raise EmbeddingError(f"Unexpected error generating embedding: {e}") from e
-
-    def _preprocess_text(self, text: str) -> str:
-        """
-        Preprocess text for embedding generation.
-
-        This method cleans and prepares the text for optimal embedding generation
-        as specified in the embedding_pipeline.md document.
-
-        Args:
-            text: Raw text to preprocess
-
-        Returns:
-            Preprocessed text ready for embedding generation
-        """
-        if not text:
-            return ""
-
-        # Remove excessive whitespace
-        text = re.sub(r"\s+", " ", text.strip())
-
-        # Truncate if necessary (model has context limits)
-        # As specified in embedding_pipeline.md
-        if len(text) > 8192:
-            text = text[:8192]
-
-        return text
-
-    async def check_connectivity(self) -> bool:
-        """
-        Check if the Ollama service is available and the model is ready.
-
-        Returns:
-            True if service is available, False otherwise
-        """
-        try:
-            # Make a minimal request to check connectivity
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{self.ollama_url}/api/version", timeout=5.0
-                )
-
-            if response.status_code == 200:
-                logger.info("Ollama service is available")
-                return True
-
-            logger.error(
-                f"Ollama service check failed with status {response.status_code}"
+    async def _get_client(self) -> OllamaClient:
+        """Get or create an Ollama client."""
+        if self.client is None:
+            self.client = OllamaClient(
+                base_url=self.config.llm_config.base_url,
+                timeout=self.config.llm_config.timeout,
             )
-            return False
+        return self.client
 
-        except Exception as e:
-            logger.error(f"Ollama service connectivity check failed: {e}")
-            return False
-
-    async def batch_generate_embeddings(self, texts: list[str]) -> list[list[float]]:
+    async def generate_embedding(
+        self, text: str, model: str | None = None, use_cache: bool = True
+    ) -> list[float]:
         """
-        Generate embeddings for multiple texts in batch.
-
-        This can be more efficient for processing multiple items
-        as described in the Performance Considerations section
-        of embedding_pipeline.md.
+        Generate an embedding for the given text.
 
         Args:
-            texts: List of texts to generate embeddings for
+            text: The text to embed
+            model: The model to use (defaults to config)
+            use_cache: Whether to use cached embeddings
 
         Returns:
-            List of vector embeddings
-
-        Raises:
-            EmbeddingError: If batch embedding generation fails
+            List of embedding values
         """
-        embeddings = []
+        # Check cache first if enabled
+        cache_key = f"{model or self.config.llm_config.embedding_model}:{text}"
+        if use_cache and cache_key in self._embedding_cache:
+            return self._embedding_cache[cache_key]
 
-        for text in texts:
-            embedding = await self.generate_embedding(text)
-            embeddings.append(embedding)
+        # Create embedding config
+        embedding_config = OllamaEmbeddingConfig(
+            model=model or self.config.llm_config.embedding_model,
+            dimensions=self.config.llm_config.embedding_dimensions,
+        )
 
-        return embeddings
+        # Get client and generate embedding
+        client = await self._get_client()
+        try:
+            embedding = await client.generate_embeddings(text, embedding_config)
+
+            # Cache the result if caching is enabled
+            if use_cache:
+                self._embedding_cache[cache_key] = embedding
+
+            return embedding
+        except Exception as e:
+            logger.error(f"Failed to generate embedding: {e}")
+            raise
+
+    async def generate_batch_embeddings(
+        self, texts: list[str], model: str | None = None, use_cache: bool = True
+    ) -> list[list[float]]:
+        """
+        Generate embeddings for multiple texts.
+
+        Args:
+            texts: List of texts to embed
+            model: The model to use (defaults to config)
+            use_cache: Whether to use cached embeddings
+
+        Returns:
+            List of embedding vectors
+        """
+        # Process embeddings concurrently
+        tasks = [self.generate_embedding(text, model, use_cache) for text in texts]
+        return await asyncio.gather(*tasks)
+
+    async def close(self) -> None:
+        """Close the client connection."""
+        if self.client is not None:
+            await self.client.close()
+            self.client = None
+
+    async def clear_cache(self) -> None:
+        """Clear the embedding cache."""
+        self._embedding_cache.clear()
+
+    async def check_model_availability(self, model: str | None = None) -> bool:
+        """
+        Check if the specified model is available.
+
+        Args:
+            model: The model to check (defaults to config)
+
+        Returns:
+            True if the model is available
+        """
+        model_name = model or self.config.llm_config.embedding_model
+        client = await self._get_client()
+        return await client.check_model_availability(model_name)
