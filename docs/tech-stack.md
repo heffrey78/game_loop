@@ -29,7 +29,7 @@ This document outlines the technology stack used in the Game Loop project, a tex
     - Health checks and automatic recovery
 
 ### AI & NLP Components (Local-First)
-- **LLM Service**: 
+- **LLM Service**:
   - **Ollama**: Primary language understanding engine
     - Handles text parsing, intent recognition, and response generation
     - Configurable model selection (Mistral, Llama, etc.)
@@ -55,10 +55,10 @@ This document outlines the technology stack used in the Game Loop project, a tex
 
 ### Game Engine Components
 - **Input Processor**: Parses and validates user text input
-- **Game State Manager**: 
+- **Game State Manager**:
   - World State Tracker
   - Player State Tracker
-- **Rules Engine**: 
+- **Rules Engine**:
   - Static rule definitions
   - Dynamic rule generation system
 - **Output Generator**: Creates narrative responses using LLM
@@ -84,20 +84,20 @@ This document outlines the technology stack used in the Game Loop project, a tex
 
 ## Development Tools
 - **Version Control**: Git
-- **Documentation**: 
+- **Documentation**:
   - Markdown for documentation
   - Mermaid for diagrams
   - MkDocs with Material theme for documentation site
-- **Testing Framework**: 
+- **Testing Framework**:
   - Pytest for unit and integration testing
   - Hypothesis for property-based testing
   - pytest-cov for coverage reporting
-- **Linting & Formatting**: 
+- **Linting & Formatting**:
   - Black for code formatting
   - Ruff for fast linting (replacing Flake8)
   - mypy for static type checking
   - pre-commit hooks for automated checks
-- **CI/CD**: 
+- **CI/CD**:
   - GitHub Actions for automated testing
   - Automated dependency updates (Dependabot)
 
@@ -123,7 +123,7 @@ This document outlines the technology stack used in the Game Loop project, a tex
     - Configured with optimized settings for vector operations
   - **Ollama LLM service**: Optionally containerized
   - Additional service containers as needed
-- **Dependencies**: 
+- **Dependencies**:
   - Python environment
   - Optional GPU support for acceleration
 

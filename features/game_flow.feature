@@ -74,8 +74,8 @@ Feature: Game Loop Main Flow
     When the player types "ask about the ancient artifact"
     Then the game should retrieve relevant information about "ancient artifact"
     And the game should display the NPC's response based on their knowledge
-    And the game should update the player's knowledge state  
-    
+    And the game should update the player's knowledge state
+
   Scenario: Player asks NPC about a new topic
     Given the player is in conversation with "Old Librarian"
     When the player types "ask about the ancient artifact"
@@ -218,7 +218,7 @@ Feature: Game Loop Main Flow
   Scenario Outline: Player performs different actions with an object
     Given the current location contains an object "<object>"
     When the player types "<action> <object>"
-    Then the game should process the command 
+    Then the game should process the command
     And the game should respond with appropriate feedback for "<action>" on "<object>"
 
     Examples:
@@ -245,40 +245,40 @@ Feature: Game Loop Main Flow
   Scenario: Complete quest sequence
     Given the player has accepted the quest "Forbidden Knowledge"
     And the quest requires finding "Ancient Manuscript" in the "Hidden Archives"
-    
+
     # First part - finding the location
     When the player types "ask librarian about hidden archives"
     Then the game should update the player's knowledge with location of "Hidden Archives"
-    
+
     When the player types "go to eastern corridor"
     Then the player's location should change to "Eastern Corridor"
-    
+
     When the player types "search for hidden door"
     Then the game should reveal "Concealed Entrance"
-    
+
     When the player types "use concealed entrance"
     Then the player's location should change to "Hidden Archives"
-    
+
     # Second part - puzzle solving to get the item
     When the player types "examine locked cabinet"
     Then the game should describe "An ornate cabinet with a complex mechanical lock"
-    
+
     When the player types "examine mechanical lock"
     Then the game should describe "The lock has three rotating rings with symbols"
-    
+
     When the player types "rotate rings to match the constellation pattern"
     Then the game should update the cabinet state to "unlocked"
-    
+
     When the player types "open cabinet"
     Then the game should reveal "Ancient Manuscript"
-    
+
     When the player types "take ancient manuscript"
     Then the game should add "Ancient Manuscript" to player's inventory
-    
+
     # Third part - returning and completing the quest
     When the player types "return to forgotten library"
     Then the player's location should change to "Forgotten Library"
-    
+
     When the player types "give manuscript to librarian"
     Then the game should remove "Ancient Manuscript" from inventory
     And the game should mark quest "Forbidden Knowledge" as completed
@@ -292,7 +292,7 @@ Feature: Game Loop Main Flow
     Then the game should validate rule consistency
     And the game should add the new rule to the world model
     And the game should confirm the rule creation
-    
+
     When the player later types "use crystal orb to light the dark room"
     And the "crystal orb" has the property "glowing"
     Then the game should apply the custom rule

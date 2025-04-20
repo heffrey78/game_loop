@@ -3,10 +3,10 @@ flowchart TD
     InitializeGame[Initialize Game] --> LoadGameState
     LoadGameState[Load Game State] --> DisplayLocationDesc
     DisplayLocationDesc[Display Location Description] --> PromptPlayerInput
-    
+
     PromptPlayerInput[Prompt for Player Input] --> PlayerInput
     PlayerInput[Player Input] --> ProcessPlayerAction
-    
+
     %% Process Player Action Section - Enhanced
     subgraph ProcessPlayerAction[Process Player Action]
         direction TB
@@ -17,7 +17,7 @@ flowchart TD
         ExtractIntent[Extract User Intent] --> CreateActionDict
         CreateActionDict[Create Actions/Objects Dictionary] --> CreateQueriesList
         CreateQueriesList[Create Queries/Conversation List] --> SemanticSearch
-        
+
         subgraph SemanticSearch[Semantic Search Against Game State]
             direction TB
             QueryPlayerState[Query Player State] --> QueryLocationDesc
@@ -30,10 +30,10 @@ flowchart TD
             QueryPlayerHistory --> CollectSearchResults[Collect Search Results]
         end
     end
-    
+
     ProcessPlayerAction --> DetermineActionType
     ErrorHandling --> GenerateErrorMsg[Generate Error Message] --> DisplayOutput
-    
+
     %% Decision point for action type - Extended with more detailed types
     DetermineActionType{Action Type?} --> |Physical Action| UpdateGameStateAction
     DetermineActionType --> |Object Interaction| ProcessObjectInteraction
@@ -42,7 +42,7 @@ flowchart TD
     DetermineActionType --> |Help/Tutorial| ShowHelpSystem
     DetermineActionType --> |Save Game| SaveGameCommand
     DetermineActionType --> |World Discovery| DynamicWorldGeneration
-    
+
     %% Object Interaction Processing - New
     subgraph ProcessObjectInteraction[Process Object Interaction]
         direction TB
@@ -54,7 +54,7 @@ flowchart TD
         GenerateDynamicInteraction --> UpdateObjectState1
         UpdateObjectState1 --> CreateInteractionOutcome[Create Interaction Outcome]
     end
-    
+
     %% Quest Interaction Processing - New
     subgraph ProcessQuestInteraction[Process Quest Interaction]
         direction TB
@@ -69,10 +69,10 @@ flowchart TD
         CheckQuestCompletion --> |No| GenerateQuestUpdate[Generate Quest Update]
         TriggerQuestReward --> GenerateQuestUpdate
     end
-    
+
     ShowHelpSystem[Show Help/Tutorial] --> GenerateHelpContent[Generate Help Content] --> DisplayOutput
     SaveGameCommand[Save Game Command] --> SaveGameState
-    
+
     %% Dynamic World Generation Section - New
     subgraph DynamicWorldGeneration[Dynamic World Generation]
         direction TB
@@ -86,7 +86,7 @@ flowchart TD
         LoadExistingLocation --> UpdatePlayerLocation[Update Player Location]
         ConnectToWorld --> UpdatePlayerLocation
     end
-    
+
     %% Update Game State Section - Enhanced with two paths
     subgraph UpdateGameStateAction[Update Game State - Actions]
         direction TB
@@ -98,7 +98,7 @@ flowchart TD
         UpdateLocationState[Update Location State] --> UpdatePlayerStateA[Update Player State]
         UpdateLocationState --> QueueEvolutionEvent[Queue Evolution Event]
     end
-    
+
     subgraph UpdateGameStateQuery[Update Game State - Queries]
         direction TB
         GenerateResponse[Generate LLM Response] --> EnrichWithContext
@@ -106,7 +106,7 @@ flowchart TD
         UpdatePlayerStateQ --> UpdatePlayerKnowledge[Update Player Knowledge]
         UpdatePlayerKnowledge --> StoreKnowledgeEmbedding[Store Knowledge Embedding]
     end
-    
+
     %% World Evolution Process - New
     subgraph WorldEvolution[World Evolution Process]
         direction TB
@@ -116,7 +116,7 @@ flowchart TD
         UpdateAffectedLocations --> UpdateRelatedNPCs[Update Related NPCs]
         UpdateRelatedNPCs --> CreateNewOpportunities[Create New Opportunities]
     end
-    
+
     %% Game Session Management - New
     subgraph GameSessionManagement[Game Session Management]
         direction TB
@@ -126,7 +126,7 @@ flowchart TD
         ExitGame[Exit Game] --> FinalizeSession[Finalize Session]
         FinalizeSession --> GenerateSessionSummary[Generate Session Summary]
     end
-    
+
     DynamicWorldGeneration --> GenerateOutput
     UpdateGameStateAction --> GenerateOutput
     UpdateGameStateQuery --> GenerateOutput
@@ -135,17 +135,17 @@ flowchart TD
     GenerateFailMessage --> GenerateOutput
     GenerateQuestHint --> GenerateOutput
     GenerateQuestUpdate --> GenerateOutput
-    
+
     GenerateOutput[Generate Output Response] --> DisplayOutput
     DisplayOutput[Display Output to Player] --> PromptPlayerInput
-    
+
     %% Exit path
     PlayerInput -- Exit Command --> SaveGameState
     SaveGameState[Save Game State] --> FinalizeSession
     FinalizeSession --> ExitConfirmation{Confirm Exit?}
     ExitConfirmation --> |Yes| EndGame([End Game])
     ExitConfirmation --> |No| PromptPlayerInput
-    
+
     %% Database connections
     PostgresDB[(PostgreSQL<br>Vector + Graph DB)] -.- SemanticSearch
     PostgresDB -.- UpdateGameStateAction
@@ -160,20 +160,20 @@ flowchart TD
     PostgresDB -.- StoreKnowledgeEmbedding
     PostgresDB -.- GenerateEmbeddings
     PostgresDB -.- GameSessionManagement
-    
+
     %% Enhanced LLM Integration with Configuration Support
     subgraph LLMConfiguration[LLM Configuration]
         direction TB
         ConfigSource{Config Source} --> |CLI| CLIConfig
         ConfigSource --> |File| FileConfig
-        
+
         subgraph CLIConfig[CLI Configuration]
             CLIModelID[Model ID]
             CLIURL[Ollama URL]
             CLIContextLength[Context Length]
             CLITemperature[Temperature]
         end
-        
+
         subgraph FileConfig[File Configuration]
             ConfigFile[Config File] --> ParseConfig
             ParseConfig[Parse Config] --> FileModelID
@@ -185,46 +185,46 @@ flowchart TD
             FileContextLength[Context Length]
             FileTemperature[Temperature]
         end
-        
+
         CLIConfig --> MergeConfig
         FileConfig --> MergeConfig
         MergeConfig[Merge & Apply Config] --> FinalLLMConfig
         FinalLLMConfig[Final LLM Settings]
     end
-    
+
     %% New Game Rules Configuration with Custom Rules Toggle
     subgraph GameRulesConfiguration[Game Rules Configuration]
         direction TB
         RulesConfigSource{Config Source} --> |CLI| CLIRulesConfig
         RulesConfigSource --> |File| FileRulesConfig
-        
+
         subgraph CLIRulesConfig[CLI Rules Configuration]
             CLIRulesFilePath[Rules File Path]
             CLICustomRulesToggle[Custom Rules Toggle]
         end
-        
+
         subgraph FileRulesConfig[File Rules Configuration]
             RulesConfigFile[Rules Config File] --> ParseRulesConfig
             ParseRulesConfig[Parse Config] --> FileRulesSettings
             FileRulesSettings[Rules Settings] --> FileCustomRulesToggle
             FileCustomRulesToggle[Custom Rules Toggle]
         end
-        
+
         CLIRulesConfig --> MergeRulesConfig
         FileRulesConfig --> MergeRulesConfig
         MergeRulesConfig[Merge & Apply Rules Config] --> FinalRulesConfig
         FinalRulesConfig[Final Rules Settings] --> CustomRulesEnabled{Custom Rules Enabled?}
-        
+
         CustomRulesEnabled --> |Yes| EnableDynamicRules
         CustomRulesEnabled --> |No| UseStaticRules
         EnableDynamicRules[Enable Dynamic Rules System]
         UseStaticRules[Use Static Rules Only]
     end
-    
+
     %% Clear connections from configurations to systems
     FinalLLMConfig --> OllamaLLM
     FinalRulesConfig --> GameRulesEngine
-    
+
     OllamaLLM[(Ollama LLM)] -.- NLPProcessing
     OllamaLLM -.- GenerateResponse
     OllamaLLM -.- EnableDynamicRules
@@ -237,7 +237,7 @@ flowchart TD
     OllamaLLM -.- GenerateQuestHint
     OllamaLLM -.- GenerateQuestUpdate
     OllamaLLM -.- GenerateSessionSummary
-    
+
     %% Additional components
     GameRulesEngine[Game Rules Engine] -.- ValidateActionFeasibility
     WorldStateTracker[World State Tracker] -.- UpdateObjectState
@@ -246,7 +246,7 @@ flowchart TD
     WorldStateTracker -.- WorldEvolution
     CollectSearchResults -.- ValidateActionFeasibility
     CollectSearchResults -.- GenerateResponse
-    
+
     %% Enhanced rules integration
     subgraph DynamicRulesSystem[Dynamic Rules System]
         direction TB
@@ -257,18 +257,18 @@ flowchart TD
         StoreNewRule[Store New Rule] --> UpdateWorldModel
         UpdateWorldModel[Update World Model] --> GenerateRuleEmbedding[Generate Rule Embedding]
     end
-    
+
     EnableDynamicRules -.- DynamicRulesSystem
     DynamicRulesSystem -.- GameRulesEngine
     DynamicRulesSystem -.- PostgresDB
-    
+
     PlayerInput -- Create Rule --> RuleCreationReq
     GenerateRuleError --> GenerateOutput
-    
+
     %% Configuration initialization paths
     InitializeGame --> LLMConfiguration
     InitializeGame --> GameRulesConfiguration
     InitializeGame --> StartSession
-    
+
     %% Time-based triggers
     TimeTrigger([Time-based Trigger]) --> TimePassage

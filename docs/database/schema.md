@@ -207,19 +207,19 @@ Semantic searches can be performed using vector similarity operations:
 
 ```sql
 -- Example: Find similar locations based on description
-SELECT 
-  id, 
-  name, 
+SELECT
+  id,
+  name,
   short_desc,
   location_embedding <-> query_embedding AS distance
-FROM 
+FROM
   locations
-ORDER BY 
+ORDER BY
   distance
 LIMIT 5;
 
 -- Example: Find knowledge related to a concept
-SELECT 
+SELECT
   knowledge_key,
   knowledge_value,
   knowledge_embedding <-> query_embedding AS relevance
@@ -393,7 +393,7 @@ CREATE INDEX ON npcs USING ivfflat (npc_embedding vector_cosine_ops);
 -- Indexes for frequent lookups
 CREATE INDEX ON player_inventory (player_id);
 CREATE INDEX ON npcs (location_id);
-CREATE INDEX ON objects (location_id); 
+CREATE INDEX ON objects (location_id);
 CREATE INDEX ON locations (region_id);
 ```
 

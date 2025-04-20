@@ -21,30 +21,30 @@ class EmbeddingService:
     def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "nomic-embed-text"):
         self.ollama_url = ollama_url
         self.model = model
-        
+
     async def generate_embedding(self, text: str) -> list[float]:
         """Generate a vector embedding for the given text."""
         url = f"{self.ollama_url}/api/embeddings"
-        
+
         # Clean and prepare text
         prepared_text = self._preprocess_text(text)
-        
+
         # Request embedding from Ollama
         response = await httpx.post(
-            url, 
+            url,
             json={
                 "model": self.model,
                 "prompt": prepared_text
             },
             timeout=30.0
         )
-        
+
         if response.status_code != 200:
             raise EmbeddingError(f"Failed to generate embedding: {response.text}")
-            
+
         data = response.json()
         return data["embedding"]
-    
+
     def _preprocess_text(self, text: str) -> str:
         """Preprocess text for embedding generation."""
         # Remove excessive whitespace
@@ -63,20 +63,20 @@ This component handles the embedding generation for specific entity types:
 class EntityEmbeddingGenerator:
     def __init__(self, embedding_service: EmbeddingService):
         self.embedding_service = embedding_service
-        
+
     async def generate_location_embedding(self, location: dict) -> list[float]:
         """Generate embedding for a location."""
         # Combine relevant fields for richer context
         text = f"{location['name']}. {location['short_desc']} {location['full_desc']}"
         if location.get('region_name'):
             text += f" This location is in the {location['region_name']} region."
-        
+
         return await self.embedding_service.generate_embedding(text)
 
     async def generate_object_embedding(self, object: dict) -> list[float]:
         """Generate embedding for an object."""
         text = f"{object['name']}. {object['short_desc']} {object['full_desc']}"
-        
+
         return await self.embedding_service.generate_embedding(text)
 
     # Similar methods for other entity types...
@@ -89,29 +89,29 @@ The Embedding Manager coordinates embedding generation and database storage:
 ```python
 class EmbeddingManager:
     def __init__(
-        self, 
+        self,
         db_session: AsyncSession,
         embedding_generator: EntityEmbeddingGenerator
     ):
         self.db_session = db_session
         self.embedding_generator = embedding_generator
-        
+
     async def create_or_update_location_embedding(self, location_id: UUID) -> None:
         """Create or update the embedding for a location."""
         # Fetch the location data
         location = await self.db_session.get(Location, location_id)
         if not location:
             raise ValueError(f"Location {location_id} not found")
-            
+
         # Generate embedding
         embedding = await self.embedding_generator.generate_location_embedding(location.to_dict())
-        
+
         # Update the location with the new embedding
         location.location_embedding = embedding
         await self.db_session.commit()
-        
+
     # Similar methods for other entity types...
-    
+
     async def batch_process_embeddings(self, entity_type: str, batch_size: int = 50) -> None:
         """Batch process embeddings for an entity type."""
         # Implementation for batch processing...
@@ -139,10 +139,10 @@ async def create_new_location(self, location_data: dict) -> Location:
     location = Location(**location_data)
     self.db_session.add(location)
     await self.db_session.flush()
-    
+
     # Generate and store embedding
     await self.embedding_manager.create_or_update_location_embedding(location.id)
-    
+
     return location
 ```
 
@@ -155,7 +155,7 @@ For initial data loading or migrations, batch processing is used:
 async def migrate_embeddings():
     """Update all embeddings in the database."""
     embedding_manager = get_embedding_manager()
-    
+
     # Process in batches
     await embedding_manager.batch_process_embeddings("locations")
     await embedding_manager.batch_process_embeddings("objects")
@@ -172,12 +172,12 @@ async def search_similar_locations(query_text: str, limit: int = 5) -> list[Loca
     """Find locations similar to the query."""
     # Generate query embedding
     query_embedding = await embedding_service.generate_embedding(query_text)
-    
+
     # Perform vector similarity search
     stmt = select(Location).order_by(
         Location.location_embedding.cosine_distance(query_embedding)
     ).limit(limit)
-    
+
     result = await db_session.execute(stmt)
     return result.scalars().all()
 ```
