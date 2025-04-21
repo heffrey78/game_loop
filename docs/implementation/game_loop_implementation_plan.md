@@ -40,22 +40,31 @@ This document outlines the implementation strategy for the Game Loop text advent
 ### Commit 5: Basic Configuration System
 - Note: all code is subject to black, ruff, and mypy linting
 - Note: use poetry
+- Rudimentary llm configuration exists here: /home/jeffwikstrom/Projects/devbox/game_loop/src/game_loop/llm/config.py
+- Review /home/jeffwikstrom/Projects/devbox/game_loop/features
 - Implement configuration manager using Pydantic
 - Add YAML configuration file support
 - Create CLI parameter parsing
 - Implement configuration merging logic
 - Add environment variable support
 - Add pytests
+- Update README.md
+- Verify against /home/jeffwikstrom/Projects/devbox/game_loop/docs
 - **Verification**: Load configuration from YAML file, override with CLI parameter, verify environment variable takes precedence, confirm configuration validation works
 
 ## Phase 2: Core Game Loop Components (Commits 6-12)
 
 ### Commit 6: Core Game Loop Structure
+- Note: all code is subject to black, ruff, and mypy linting
+- Note: use poetry
 - Implement main GameLoop class
 - Create game initialization sequence
 - Add basic game state loading
 - Implement simple location display
 - Set up initial prompt-response loop
+- Add pytests
+- Update README.md
+- Verify against /home/jeffwikstrom/Projects/devbox/game_loop/docs
 - **Verification**: Run the game loop with a basic test scene, confirm initialization sequence completes, verify location display works, test the prompt-response loop
 
 ### Commit 7: Input Processing System
