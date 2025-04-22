@@ -6,6 +6,7 @@ Handles the main game loop, input processing, and output generation.
 from rich.console import Console
 
 from game_loop.config.models import GameConfig
+from game_loop.core.input_processor import CommandType, InputProcessor, ParsedCommand
 from game_loop.core.location import LocationDisplay, create_demo_location
 from game_loop.core.state import GameState, Location, WorldState
 
@@ -26,6 +27,7 @@ class GameLoop:
         self.location_display = LocationDisplay(self.console)
         self.game_state = GameState()
         self.running = False
+        self.input_processor = InputProcessor(self.console)
 
     def initialize(self) -> None:
         """Initialize the game environment and load initial state."""
@@ -143,34 +145,75 @@ class GameLoop:
     def _process_input(self) -> None:
         """Process player input and execute appropriate actions."""
         self.console.print("\n[bold cyan]What would you like to do?[/bold cyan]")
-        user_input = input("> ").strip().lower()
+        user_input = input("> ").strip()
 
-        # Process quit command
-        if user_input in ["quit", "exit", "q"]:
-            self.stop()
+        if not user_input:
+            self.console.print("[yellow]Please enter a command.[/yellow]")
             return
 
-        # Process movement commands
-        if user_input in ["north", "south", "east", "west", "n", "s", "e", "w"]:
-            self._handle_movement(user_input)
-            return
+        # Process the input through the input processor
+        command = self.input_processor.process_input(user_input)
+        self._execute_command(command)
 
-        # Process look command
-        if user_input in ["look", "l"]:
+    def _execute_command(self, command: ParsedCommand) -> None:
+        """
+        Execute a processed command.
+
+        Args:
+            command: The parsed command to execute
+        """
+        if command.command_type == CommandType.MOVEMENT:
+            if command.subject:
+                self._handle_movement(command.subject)
+            else:
+                self.console.print("[yellow]No direction specified.[/yellow]")
+
+        elif command.command_type == CommandType.LOOK:
             self._display_current_location()
-            return
 
-        # Process help command
-        if user_input in ["help", "h", "?"]:
+        elif command.command_type == CommandType.INVENTORY:
+            self._display_inventory()
+
+        elif command.command_type == CommandType.TAKE:
+            if command.subject:
+                self._handle_take(command.subject)
+            else:
+                self.console.print("[yellow]What do you want to take?[/yellow]")
+
+        elif command.command_type == CommandType.DROP:
+            if command.subject:
+                self._handle_drop(command.subject)
+            else:
+                self.console.print("[yellow]What do you want to drop?[/yellow]")
+
+        elif command.command_type == CommandType.USE:
+            if command.subject:
+                self._handle_use(command.subject, command.target)
+            else:
+                self.console.print("[yellow]What do you want to use?[/yellow]")
+
+        elif command.command_type == CommandType.EXAMINE:
+            if command.subject:
+                self._handle_examine(command.subject)
+            else:
+                self.console.print("[yellow]What do you want to examine?[/yellow]")
+
+        elif command.command_type == CommandType.TALK:
+            if command.subject:
+                self._handle_talk(command.subject)
+            else:
+                self.console.print("[yellow]Who do you want to talk to?[/yellow]")
+
+        elif command.command_type == CommandType.HELP:
             self._display_help()
-            return
 
-        # Default response for unrecognized commands
-        # In a full implementation, this would use NLP to understand the intent
-        self.console.print(
-            "[yellow]I'm not sure what you mean. Type 'help' for a list of "
-            "commands.[/yellow]"
-        )
+        elif command.command_type == CommandType.QUIT:
+            self.stop()
+
+        else:
+            # Unknown command
+            error_message = self.input_processor.format_error_message(command)
+            self.console.print(f"[yellow]{error_message}[/yellow]")
 
     def _handle_movement(self, direction: str) -> None:
         """Handle movement in a given direction."""
@@ -207,13 +250,135 @@ class GameLoop:
         # Display new location
         self._display_current_location()
 
+    def _display_inventory(self) -> None:
+        """Display the player's inventory."""
+        if not self.game_state.player:
+            self.console.print(
+                "[bold red]Error: Player state not initialized.[/bold red]"
+            )
+            return
+
+        inventory = self.game_state.player.inventory
+
+        self.console.print("[bold]Inventory:[/bold]")
+        if not inventory:
+            self.console.print("Your inventory is empty.")
+            return
+
+        for item in inventory:
+            self.console.print(f"- {item}")
+
+    def _handle_take(self, item_name: str) -> None:
+        """
+        Handle taking an item from the current location.
+
+        Args:
+            item_name: The name of the item to take
+        """
+        # In a full implementation, this would:
+        # 1. Check if the item exists in the current location
+        # 2. Check if the item can be taken
+        # 3. Add the item to the player's inventory
+        # 4. Remove the item from the location
+
+        # For now, just show a placeholder message
+        self.console.print(
+            f"[yellow]Taking the {item_name} is not implemented yet.[/yellow]"
+        )
+
+    def _handle_drop(self, item_name: str) -> None:
+        """
+        Handle dropping an item from inventory to the current location.
+
+        Args:
+            item_name: The name of the item to drop
+        """
+        # In a full implementation, this would:
+        # 1. Check if the item exists in the player's inventory
+        # 2. Remove the item from the player's inventory
+        # 3. Add the item to the current location
+
+        # For now, just show a placeholder message
+        self.console.print(
+            f"[yellow]Dropping the {item_name} is not implemented yet.[/yellow]"
+        )
+
+    def _handle_use(self, item_name: str, target_name: str | None) -> None:
+        """
+        Handle using an item, possibly on a target.
+
+        Args:
+            item_name: The name of the item to use
+            target_name: The name of the target to use the item on (if any)
+        """
+        # In a full implementation, this would:
+        # 1. Check if the item exists in the player's inventory
+        # 2. Check if the target exists (if provided)
+        # 3. Determine the effect of using the item (possibly on the target)
+        # 4. Apply the effect
+
+        # For now, just show a placeholder message
+        if target_name:
+            self.console.print(
+                f"[yellow]Using the {item_name} on the {target_name} "
+                f"is not implemented yet.[/yellow]"
+            )
+        else:
+            self.console.print(
+                f"[yellow]Using the {item_name} is not implemented yet.[/yellow]"
+            )
+
+    def _handle_examine(self, object_name: str) -> None:
+        """
+        Handle examining an object in the current location or inventory.
+
+        Args:
+            object_name: The name of the object to examine
+        """
+        # In a full implementation, this would:
+        # 1. Check if the object exists in the current location or inventory
+        # 2. Provide a detailed description of the object
+
+        # For now, just show a placeholder message
+        self.console.print(
+            f"[yellow]Examining the {object_name} is not implemented yet.[/yellow]"
+        )
+
+    def _handle_talk(self, character_name: str) -> None:
+        """
+        Handle talking to a character in the current location.
+
+        Args:
+            character_name: The name of the character to talk to
+        """
+        # In a full implementation, this would:
+        # 1. Check if the character exists in the current location
+        # 2. Generate dialogue based on the character's knowledge and state
+        # 3. Possibly update the game state based on the conversation
+
+        # For now, just show a placeholder message
+        self.console.print(
+            f"[yellow]Talking to {character_name} is not implemented yet.[/yellow]"
+        )
+
     def _display_help(self) -> None:
         """Display help information to the player."""
         self.console.print("[bold]Available Commands:[/bold]")
-        self.console.print("- [bold]north, n[/bold]: Move north")
-        self.console.print("- [bold]south, s[/bold]: Move south")
-        self.console.print("- [bold]east, e[/bold]: Move east")
-        self.console.print("- [bold]west, w[/bold]: Move west")
+        self.console.print("- [bold]north, n, go north[/bold]: Move north")
+        self.console.print("- [bold]south, s, go south[/bold]: Move south")
+        self.console.print("- [bold]east, e, go east[/bold]: Move east")
+        self.console.print("- [bold]west, w, go west[/bold]: Move west")
         self.console.print("- [bold]look, l[/bold]: Look around")
+        self.console.print("- [bold]inventory, i[/bold]: Check your inventory")
+        self.console.print("- [bold]take [object][/bold]: Pick up an object")
+        self.console.print(
+            "- [bold]drop [object][/bold]: Drop an object from your inventory"
+        )
+        self.console.print("- [bold]use [object][/bold]: Use an object")
+        self.console.print(
+            "- [bold]use [object] on [target][/bold]: Use an object on a target"
+        )
+        self.console.print("- [bold]examine [object][/bold]: Examine an object closely")
+        self.console.print("- [bold]talk to [character][/bold]: Talk to a character")
         self.console.print("- [bold]help, h, ?[/bold]: Display this help message")
         self.console.print("- [bold]quit, exit, q[/bold]: Quit the game")
