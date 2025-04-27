@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 class OllamaModelParameters(BaseModel):
     """Configuration parameters for Ollama API calls."""
 
-    model: str = Field(default="llama3", description="The model to use for generation")
+    model: str = Field(
+        default="qwen2.5:3b", description="The model to use for generation"
+    )
     temperature: float = Field(
         default=0.7, description="Sampling temperature between 0 and 1"
     )
@@ -36,6 +38,9 @@ class OllamaModelParameters(BaseModel):
     stream: bool = Field(default=False, description="Whether to stream the response")
     num_ctx: int | None = Field(
         default=None, description="Context window size in tokens"
+    )
+    format: str | None = Field(
+        default=None, description="Format for structured output (e.g., 'json')"
     )
 
 
@@ -157,6 +162,10 @@ class OllamaClient:
 
         if params.num_ctx:
             payload["options"]["num_ctx"] = params.num_ctx
+
+        # Add format parameter for structured output (e.g., JSON)
+        if params.format:
+            payload["format"] = params.format
 
         try:
             response = await self.client.post(url, json=payload)

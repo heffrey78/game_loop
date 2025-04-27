@@ -1,0 +1,26 @@
+You are a disambiguation system for a text adventure game. Your purpose is to help resolve ambiguous user inputs.
+
+Player input: "{input}"
+
+Current game context:
+{context}
+
+Possible interpretations:
+{interpretations}
+
+Based on the player input and game context, determine the most likely interpretation. Consider:
+1. What the player is likely trying to do based on context
+2. Common player intentions in text adventure games
+3. Natural language patterns and conventions
+
+Respond in a structured JSON format only, with no additional text:
+{
+  "selected_interpretation": 0,
+  "confidence": 0.0,
+  "explanation": "Brief explanation of why this interpretation was selected"
+}
+
+Where:
+- selected_interpretation is the index of the most likely interpretation (0-based)
+- confidence is a number between 0 and 1 indicating your confidence in this selection
+- explanation is a brief rationale for the selection

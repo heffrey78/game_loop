@@ -81,6 +81,9 @@ This document outlines the implementation strategy for the Game Loop text advent
 - Add basic action and object extraction
 - Create query generation for semantic search
 - Implement preliminary conversation handling
+- Integrate NLP to Input Processing for natural game play input
+- Add pytests
+- Update README.md
 - **Verification**: Test intent recognition with sample inputs, confirm action and object extraction works, verify query generation produces relevant search terms
 
 ### Commit 9: Basic Game State Management

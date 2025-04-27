@@ -2,6 +2,7 @@
 Unit tests for the core game loop implementation.
 """
 
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,27 +16,27 @@ class TestGameLoop:
     """Test cases for the GameLoop class."""
 
     @pytest.fixture
-    def mock_console(self):
+    def mock_console(self) -> MagicMock:
         """Create a mock console for testing."""
         return MagicMock(spec=Console)
 
     @pytest.fixture
-    def game_config(self):
+    def game_config(self) -> GameConfig:
         """Create a test game configuration."""
         return GameConfig()
 
     @pytest.fixture
-    def game_loop(self, game_config, mock_console):
+    def game_loop(self, game_config: GameConfig, mock_console: MagicMock) -> GameLoop:
         """Create a test game loop instance."""
         return GameLoop(game_config, mock_console)
 
-    def test_initialization(self, game_loop):
+    def test_initialization(self, game_loop: GameLoop) -> None:
         """Test that the game loop initializes correctly."""
         # Check initial state
         assert not game_loop.running
         assert game_loop.game_state is not None
 
-    def test_create_demo_world(self, game_loop):
+    def test_create_demo_world(self, game_loop: GameLoop) -> None:
         """Test demo world creation."""
         game_loop._create_demo_world()
 
@@ -52,16 +53,17 @@ class TestGameLoop:
         assert forest_clearing.connections["north"] == "dark_forest"
 
     @patch("builtins.input", return_value="TestPlayer")
-    def test_get_player_name(self, mock_input, game_loop):
+    def test_get_player_name(self, mock_input: MagicMock, game_loop: GameLoop) -> None:
         """Test getting the player name."""
         name = game_loop._get_player_name()
         assert name == "TestPlayer"
 
         # Check that console output was generated
-        game_loop.console.print.assert_called_once()
+        # Use cast to tell mypy that console.print is a mock with assert methods
+        cast(MagicMock, game_loop.console.print).assert_called_once()
 
     @patch("builtins.input", return_value="TestPlayer")
-    def test_initialize_game(self, mock_input, game_loop):
+    def test_initialize_game(self, mock_input: MagicMock, game_loop: GameLoop) -> None:
         """Test game initialization."""
         game_loop.initialize()
 
@@ -70,7 +72,7 @@ class TestGameLoop:
         assert game_loop.game_state.player.name == "TestPlayer"
         assert game_loop.game_state.player.current_location_id == "forest_clearing"
 
-    def test_display_current_location(self, game_loop):
+    def test_display_current_location(self, game_loop: GameLoop) -> None:
         """Test displaying the current location."""
         # Set up a test location and game state
         game_loop._create_demo_world()
@@ -80,10 +82,13 @@ class TestGameLoop:
         game_loop._display_current_location()
 
         # Verify the location display was called
-        assert game_loop.console.print.called
+        assert cast(MagicMock, game_loop.console.print).called
 
+    @pytest.mark.asyncio
     @patch("builtins.input", side_effect=["look", "quit"])
-    def test_process_input_look(self, mock_input, game_loop):
+    async def test_process_input_look(
+        self, mock_input: MagicMock, game_loop: GameLoop
+    ) -> None:
         """Test processing the 'look' command."""
         # Set up game state
         game_loop._create_demo_world()
@@ -91,17 +96,20 @@ class TestGameLoop:
         game_loop.running = True
 
         # Process the look command
-        game_loop._process_input()
+        await game_loop._process_input_async()
 
         # Verify console output
-        assert game_loop.console.print.called
+        assert cast(MagicMock, game_loop.console.print).called
 
         # Process the quit command to avoid infinite loop
-        game_loop._process_input()
+        await game_loop._process_input_async()
         assert not game_loop.running
 
+    @pytest.mark.asyncio
     @patch("builtins.input", side_effect=["north", "quit"])
-    def test_process_input_movement(self, mock_input, game_loop):
+    async def test_process_input_movement(
+        self, mock_input: MagicMock, game_loop: GameLoop
+    ) -> None:
         """Test processing movement commands."""
         # Set up game state
         game_loop._create_demo_world()
@@ -109,19 +117,21 @@ class TestGameLoop:
         game_loop.running = True
 
         # Initial location should be forest_clearing
+        assert game_loop.game_state.player is not None
         assert game_loop.game_state.player.current_location_id == "forest_clearing"
 
         # Process the north command
-        game_loop._process_input()
+        await game_loop._process_input_async()
 
         # Verify location changed to dark_forest
+        assert game_loop.game_state.player is not None
         assert game_loop.game_state.player.current_location_id == "dark_forest"
 
         # Process the quit command to avoid infinite loop
-        game_loop._process_input()
+        await game_loop._process_input_async()
         assert not game_loop.running
 
-    def test_handle_movement_invalid_direction(self, game_loop):
+    def test_handle_movement_invalid_direction(self, game_loop: GameLoop) -> None:
         """Test handling movement in an invalid direction."""
         # Set up game state
         game_loop._create_demo_world()
@@ -131,9 +141,10 @@ class TestGameLoop:
         game_loop._handle_movement("up")
 
         # Verify location did not change
+        assert game_loop.game_state.player is not None
         assert game_loop.game_state.player.current_location_id == "forest_clearing"
 
         # Verify error message was displayed
-        game_loop.console.print.assert_called_with(
+        cast(MagicMock, game_loop.console.print).assert_called_with(
             "[yellow]You cannot go up from here.[/yellow]"
         )

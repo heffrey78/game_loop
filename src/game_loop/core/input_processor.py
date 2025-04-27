@@ -31,10 +31,10 @@ class ParsedCommand:
     """Represents a parsed command from user input."""
 
     command_type: CommandType
-    action: str  # The primary verb
-    subject: str | None = None  # Primary object of the action
-    target: str | None = None  # Secondary object (e.g., "use key on door")
-    parameters: dict[str, Any] = field(default_factory=dict)  # Additional parameters
+    action: str
+    subject: str | None = None
+    target: str | None = None
+    parameters: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.parameters is None:
@@ -87,17 +87,26 @@ class InputProcessor:
 
         # Action command prefixes
         self.take_prefixes = ["take", "get", "pick up", "grab"]
-        self.drop_prefixes = ["drop", "put down", "discard", "throw"]
+        self.drop_prefixes = ["drop", "discard", "throw"]
         self.use_prefixes = ["use", "apply", "activate"]
         self.examine_prefixes = ["examine", "inspect", "look at", "check"]
         self.talk_prefixes = ["talk", "speak", "chat", "converse"]
 
-    def process_input(self, user_input: str) -> ParsedCommand:
+        # Complex action prefixes (for multi-object interactions)
+        self.put_prefixes = ["put", "place", "insert", "stick", "store"]
+
+    def process_input(
+        self, user_input: str, game_context: dict[str, Any] | None = None
+    ) -> ParsedCommand:
         """
         Process user input and return a structured command.
 
+        This is a synchronous wrapper around the async version for
+        compatibility with existing tests.
+
         Args:
             user_input: The raw user input string
+            game_context: Optional context information from the game
 
         Returns:
             A ParsedCommand object representing the processed input
@@ -111,6 +120,24 @@ class InputProcessor:
 
         # Try to match to known command patterns
         return self._match_command_pattern(normalized_input)
+
+    # Keep the async version with a different name for future use
+    async def process_input_async(
+        self, user_input: str, game_context: dict[str, Any] | None = None
+    ) -> ParsedCommand:
+        """
+        Process user input and return a structured command asynchronously.
+
+        Args:
+            user_input: The raw user input string
+            game_context: Optional context information from the game
+
+        Returns:
+            A ParsedCommand object representing the processed input
+        """
+        # Simply delegate to the synchronous version for now
+        # In the future, this could be enhanced with async-specific logic
+        return self.process_input(user_input, game_context)
 
     def _normalize_input(self, user_input: str) -> str:
         """
@@ -208,6 +235,16 @@ class InputProcessor:
                 command_type=CommandType.DROP, action="drop", subject=drop_command
             )
 
+        # Check for put commands (e.g., "put sword in pouch")
+        put_command, put_target = self._check_put_command(input_text)
+        if put_command and put_target:
+            return ParsedCommand(
+                command_type=CommandType.USE,
+                action="put",
+                subject=put_command,
+                target=put_target,
+            )
+
         # Check for use commands
         use_command, target = self._check_use_command(input_text)
         if use_command:
@@ -287,6 +324,46 @@ class InputProcessor:
 
         return None, None
 
+    def _check_put_command(self, input_text: str) -> tuple[str | None, str | None]:
+        """
+        Check for put commands which may include a target (e.g., "put sword in pouch").
+
+        Args:
+            input_text: The normalized input text
+
+        Returns:
+            A tuple of (object_to_put, target_object) or (None, None) if not a put
+            command
+        """
+        for prefix in self.put_prefixes:
+            if input_text.startswith(prefix + " "):
+                remaining = input_text[len(prefix) + 1 :].strip()
+
+                # Check for "put X in Y" pattern
+                parts = remaining.split(" in ")
+                if len(parts) == 2:
+                    return parts[0].strip(), parts[1].strip()
+
+                # Check for "put X into Y" pattern
+                parts = remaining.split(" into ")
+                if len(parts) == 2:
+                    return parts[0].strip(), parts[1].strip()
+
+                # Check for "put X on Y" pattern
+                parts = remaining.split(" on ")
+                if len(parts) == 2:
+                    return parts[0].strip(), parts[1].strip()
+
+                # Check for "put X onto Y" pattern
+                parts = remaining.split(" onto ")
+                if len(parts) == 2:
+                    return parts[0].strip(), parts[1].strip()
+
+                # Simple "put X" pattern (incomplete command)
+                return remaining, None
+
+        return None, None
+
     def generate_command_suggestions(self, partial_input: str) -> list[str]:
         """
         Generate command suggestions based on partial input.
@@ -320,6 +397,10 @@ class InputProcessor:
             all_commands.append(f"{prefix} [object]")
         for prefix in self.talk_prefixes:
             all_commands.append(f"{prefix} [character]")
+        # Add complex command patterns
+        for prefix in self.put_prefixes:
+            all_commands.append(f"{prefix} [object] in [container]")
+            all_commands.append(f"{prefix} [object] on [surface]")
 
         # Filter commands that start with the partial input
         return [cmd for cmd in all_commands if cmd.startswith(normalized)]
@@ -336,7 +417,7 @@ class InputProcessor:
         """
         if parsed_command.command_type == CommandType.UNKNOWN:
             return (
-                f"I don't understand '{parsed_command.subject}'. "
-                "Type 'help' for a list of commands."
+                f"I don't understand '{parsed_command.subject}'.\n"
+                "            Type 'help' for a list of commands."
             )
         return "I'm not sure what you mean. Type 'help' for a list of commands."

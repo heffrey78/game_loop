@@ -49,7 +49,7 @@ class TestOllamaClient:
     async def test_check_model_availability(self, client):
         """Test checking model availability."""
         # Test with a model that should exist
-        model_name = os.getenv("TEST_OLLAMA_MODEL", "llama3")
+        model_name = os.getenv("TEST_OLLAMA_MODEL", "qwen2.5:3b")
         is_available = await client.check_model_availability(model_name)
 
         # If the model isn't available, print a message but don't fail the test
@@ -67,7 +67,7 @@ class TestOllamaClient:
     async def test_generate_completion(self, client):
         """Test generating completions."""
         # Skip if no model is available
-        model_name = os.getenv("TEST_OLLAMA_MODEL", "llama3")
+        model_name = os.getenv("TEST_OLLAMA_MODEL", "qwen2.5:3b")
         if not await client.check_model_availability(model_name):
             pytest.skip(f"Model {model_name} is not available. Test skipped.")
 
@@ -86,7 +86,7 @@ class TestOllamaClient:
     async def test_generate_embeddings(self, client):
         """Test generating embeddings."""
         # Skip if no model is available
-        model_name = os.getenv("TEST_OLLAMA_MODEL", "llama3")
+        model_name = os.getenv("TEST_OLLAMA_MODEL", "qwen2.5:3b")
         if not await client.check_model_availability(model_name):
             pytest.skip(f"Model {model_name} is not available. Test skipped.")
 

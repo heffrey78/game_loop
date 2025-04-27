@@ -16,7 +16,7 @@ class DatabaseConfig(BaseModel):
     username: str = Field(default="postgres", description="Database username")
     password: str = Field(default="postgres", description="Database password")
     database: str = Field(default="game_loop", description="Database name")
-    schema: str = Field(default="public", description="Database schema")
+    db_schema: str = Field(default="public", description="Database schema")
     pool_size: int = Field(default=5, description="Connection pool size")
     max_overflow: int = Field(default=10, description="Maximum connection overflow")
     pool_timeout: int = Field(default=30, description="Connection pool timeout")
@@ -36,7 +36,7 @@ class LLMConfig(BaseModel):
     )
     timeout: float = Field(default=60.0, description="API timeout in seconds")
     default_model: str = Field(
-        default="llama3", description="Default model for completions"
+        default="qwen2.5:3b", description="Default model for completions"
     )
     embedding_model: str = Field(
         default="nomic-embed-text", description="Default model for embeddings"
@@ -126,6 +126,23 @@ class LoggingConfig(BaseModel):
     enable_console: bool = Field(default=True, description="Enable console logging")
 
 
+class FeaturesConfig(BaseModel):
+    """Configuration for game features."""
+
+    use_nlp: bool = Field(
+        default=True, description="Use Natural Language Processing for input"
+    )
+    use_embedding_search: bool = Field(
+        default=False, description="Use embedding-based semantic search"
+    )
+    enable_conversation_memory: bool = Field(
+        default=True, description="Enable conversation history tracking"
+    )
+    max_conversation_history: int = Field(
+        default=5, description="Maximum conversation exchanges to remember"
+    )
+
+
 class GameConfig(BaseModel):
     """Main configuration container for the Game Loop application."""
 
@@ -148,6 +165,9 @@ class GameConfig(BaseModel):
     )
     logging: LoggingConfig = Field(
         default_factory=LoggingConfig, description="Logging configuration"
+    )
+    features: FeaturesConfig = Field(
+        default_factory=FeaturesConfig, description="Feature flags configuration"
     )
 
     def sync_embedding_dimensions(self) -> "GameConfig":

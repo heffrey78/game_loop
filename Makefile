@@ -1,4 +1,4 @@
-.PHONY: install clean lint format test coverage pre-commit docker-start docker-stop docker-init docker-setup
+.PHONY: install clean lint format test coverage pre-commit docker-start docker-stop docker-init docker-setup run
 
 # Default Python interpreter
 PYTHON := python
@@ -6,6 +6,7 @@ PYTHON := python
 # Install the package in development mode
 install:
 	poetry install
+	poetry install --with dev
 
 # Clean Python cache files
 clean:
@@ -39,6 +40,10 @@ test:
 # Run tests with coverage report
 coverage:
 	poetry run pytest --cov=src tests/ --cov-report=html
+
+# Run the game
+run:
+	poetry run python -m game_loop.main
 
 # Setup pre-commit hooks
 pre-commit:

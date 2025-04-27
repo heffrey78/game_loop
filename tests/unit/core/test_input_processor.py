@@ -13,12 +13,12 @@ class TestInputProcessor:
     """Test cases for the InputProcessor class."""
 
     @pytest.fixture
-    def input_processor(self):
+    def input_processor(self) -> InputProcessor:
         """Create an InputProcessor instance for testing."""
         console_mock = Mock()
         return InputProcessor(console=console_mock)
 
-    def test_normalize_input(self, input_processor):
+    def test_normalize_input(self, input_processor: InputProcessor) -> None:
         """Test that input normalization works correctly."""
         # Test basic normalization
         assert input_processor._normalize_input("LOOK") == "look"
@@ -30,208 +30,220 @@ class TestInputProcessor:
         assert input_processor._normalize_input("") == ""
         assert input_processor._normalize_input("   ") == ""
 
-    def test_movement_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_movement_commands(self, input_processor: InputProcessor) -> None:
         """Test that movement commands are parsed correctly."""
         # Test cardinal directions
-        north_cmd = input_processor.process_input("north")
+        north_cmd = await input_processor.process_input_async("north")
         assert north_cmd.command_type == CommandType.MOVEMENT
         assert north_cmd.action == "go"
         assert north_cmd.subject == "north"
 
         # Test abbreviated directions
-        south_cmd = input_processor.process_input("s")
+        south_cmd = await input_processor.process_input_async("s")
         assert south_cmd.command_type == CommandType.MOVEMENT
         assert south_cmd.action == "go"
         assert south_cmd.subject == "south"
 
         # Test with "go" prefix
-        east_cmd = input_processor.process_input("go east")
+        east_cmd = await input_processor.process_input_async("go east")
         assert east_cmd.command_type == CommandType.MOVEMENT
         assert east_cmd.action == "go"
         assert east_cmd.subject == "east"
 
         # Test case insensitivity
-        west_cmd = input_processor.process_input("WEST")
+        west_cmd = await input_processor.process_input_async("WEST")
         assert west_cmd.command_type == CommandType.MOVEMENT
         assert west_cmd.action == "go"
         assert west_cmd.subject == "west"
 
-    def test_look_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_look_commands(self, input_processor: InputProcessor) -> None:
         """Test that look commands are parsed correctly."""
         # Test basic look command
-        look_cmd = input_processor.process_input("look")
+        look_cmd = await input_processor.process_input_async("look")
         assert look_cmd.command_type == CommandType.LOOK
         assert look_cmd.action == "look"
 
         # Test abbreviated look command
-        l_cmd = input_processor.process_input("l")
+        l_cmd = await input_processor.process_input_async("l")
         assert l_cmd.command_type == CommandType.LOOK
         assert l_cmd.action == "look"
 
         # Test with variation
-        look_cmd = input_processor.process_input("look around")
+        look_cmd = await input_processor.process_input_async("look around")
         assert look_cmd.command_type == CommandType.LOOK
         assert look_cmd.action == "look"
 
-    def test_inventory_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_inventory_commands(self, input_processor: InputProcessor) -> None:
         """Test that inventory commands are parsed correctly."""
         # Test basic inventory command
-        inv_cmd = input_processor.process_input("inventory")
+        inv_cmd = await input_processor.process_input_async("inventory")
         assert inv_cmd.command_type == CommandType.INVENTORY
         assert inv_cmd.action == "inventory"
 
         # Test abbreviated inventory command
-        i_cmd = input_processor.process_input("i")
+        i_cmd = await input_processor.process_input_async("i")
         assert i_cmd.command_type == CommandType.INVENTORY
         assert i_cmd.action == "inventory"
 
-    def test_help_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_help_commands(self, input_processor: InputProcessor) -> None:
         """Test that help commands are parsed correctly."""
         # Test basic help command
-        help_cmd = input_processor.process_input("help")
+        help_cmd = await input_processor.process_input_async("help")
         assert help_cmd.command_type == CommandType.HELP
         assert help_cmd.action == "help"
 
         # Test abbreviated help command
-        h_cmd = input_processor.process_input("h")
+        h_cmd = await input_processor.process_input_async("h")
         assert h_cmd.command_type == CommandType.HELP
         assert h_cmd.action == "help"
 
         # Test question mark
-        q_cmd = input_processor.process_input("?")
+        q_cmd = await input_processor.process_input_async("?")
         assert q_cmd.command_type == CommandType.HELP
         assert q_cmd.action == "help"
 
-    def test_quit_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_quit_commands(self, input_processor: InputProcessor) -> None:
         """Test that quit commands are parsed correctly."""
         # Test basic quit command
-        quit_cmd = input_processor.process_input("quit")
+        quit_cmd = await input_processor.process_input_async("quit")
         assert quit_cmd.command_type == CommandType.QUIT
         assert quit_cmd.action == "quit"
 
         # Test exit command
-        exit_cmd = input_processor.process_input("exit")
+        exit_cmd = await input_processor.process_input_async("exit")
         assert exit_cmd.command_type == CommandType.QUIT
         assert exit_cmd.action == "quit"
 
         # Test abbreviated quit command
-        q_cmd = input_processor.process_input("q")
+        q_cmd = await input_processor.process_input_async("q")
         assert q_cmd.command_type == CommandType.QUIT
         assert q_cmd.action == "quit"
 
-    def test_take_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_take_commands(self, input_processor: InputProcessor) -> None:
         """Test that take commands are parsed correctly."""
         # Test basic take command
-        take_cmd = input_processor.process_input("take key")
+        take_cmd = await input_processor.process_input_async("take key")
         assert take_cmd.command_type == CommandType.TAKE
         assert take_cmd.action == "take"
         assert take_cmd.subject == "key"
 
         # Test with synonym
-        get_cmd = input_processor.process_input("get book")
+        get_cmd = await input_processor.process_input_async("get book")
         assert get_cmd.command_type == CommandType.TAKE
         assert get_cmd.action == "take"
         assert get_cmd.subject == "book"
 
         # Test with multi-word object
-        take_multi_cmd = input_processor.process_input("take rusty sword")
+        take_multi_cmd = await input_processor.process_input_async("take rusty sword")
         assert take_multi_cmd.command_type == CommandType.TAKE
         assert take_multi_cmd.action == "take"
         assert take_multi_cmd.subject == "rusty sword"
 
-    def test_drop_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_drop_commands(self, input_processor: InputProcessor) -> None:
         """Test that drop commands are parsed correctly."""
         # Test basic drop command
-        drop_cmd = input_processor.process_input("drop key")
+        drop_cmd = await input_processor.process_input_async("drop key")
         assert drop_cmd.command_type == CommandType.DROP
         assert drop_cmd.action == "drop"
         assert drop_cmd.subject == "key"
 
         # Test with synonym
-        discard_cmd = input_processor.process_input("discard map")
+        discard_cmd = await input_processor.process_input_async("discard map")
         assert discard_cmd.command_type == CommandType.DROP
         assert discard_cmd.action == "drop"
         assert discard_cmd.subject == "map"
 
-    def test_use_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_use_commands(self, input_processor: InputProcessor) -> None:
         """Test that use commands are parsed correctly."""
         # Test basic use command
-        use_cmd = input_processor.process_input("use key")
+        use_cmd = await input_processor.process_input_async("use key")
         assert use_cmd.command_type == CommandType.USE
         assert use_cmd.action == "use"
         assert use_cmd.subject == "key"
         assert use_cmd.target is None
 
         # Test use with target (on)
-        use_on_cmd = input_processor.process_input("use key on door")
+        use_on_cmd = await input_processor.process_input_async("use key on door")
         assert use_on_cmd.command_type == CommandType.USE
         assert use_on_cmd.action == "use"
         assert use_on_cmd.subject == "key"
         assert use_on_cmd.target == "door"
 
         # Test use with target (with)
-        use_with_cmd = input_processor.process_input("use hammer with nail")
+        use_with_cmd = await input_processor.process_input_async("use hammer with nail")
         assert use_with_cmd.command_type == CommandType.USE
         assert use_with_cmd.action == "use"
         assert use_with_cmd.subject == "hammer"
         assert use_with_cmd.target == "nail"
 
-    def test_examine_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_examine_commands(self, input_processor: InputProcessor) -> None:
         """Test that examine commands are parsed correctly."""
         # Test basic examine command
-        examine_cmd = input_processor.process_input("examine painting")
+        examine_cmd = await input_processor.process_input_async("examine painting")
         assert examine_cmd.command_type == CommandType.EXAMINE
         assert examine_cmd.action == "examine"
         assert examine_cmd.subject == "painting"
 
         # Test with synonym
-        inspect_cmd = input_processor.process_input("inspect statue")
+        inspect_cmd = await input_processor.process_input_async("inspect statue")
         assert inspect_cmd.command_type == CommandType.EXAMINE
         assert inspect_cmd.action == "examine"
         assert inspect_cmd.subject == "statue"
 
         # Test with "look at" variation
-        look_at_cmd = input_processor.process_input("look at inscription")
+        look_at_cmd = await input_processor.process_input_async("look at inscription")
         assert look_at_cmd.command_type == CommandType.EXAMINE
         assert look_at_cmd.action == "examine"
         assert look_at_cmd.subject == "inscription"
 
-    def test_talk_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_talk_commands(self, input_processor: InputProcessor) -> None:
         """Test that talk commands are parsed correctly."""
         # Test basic talk command
-        talk_cmd = input_processor.process_input("talk to innkeeper")
+        talk_cmd = await input_processor.process_input_async("talk to innkeeper")
         assert talk_cmd.command_type == CommandType.TALK
         assert talk_cmd.action == "talk"
         assert talk_cmd.subject == "to innkeeper"
 
         # Test with synonym
-        speak_cmd = input_processor.process_input("speak with wizard")
+        speak_cmd = await input_processor.process_input_async("speak with wizard")
         assert speak_cmd.command_type == CommandType.TALK
         assert speak_cmd.action == "talk"
         assert speak_cmd.subject == "with wizard"
 
-    def test_unknown_commands(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_unknown_commands(self, input_processor: InputProcessor) -> None:
         """Test that unknown commands are handled correctly."""
         # Test completely unknown command
-        unknown_cmd = input_processor.process_input("dance")
+        unknown_cmd = await input_processor.process_input_async("dance")
         assert unknown_cmd.command_type == CommandType.UNKNOWN
         assert unknown_cmd.action == "unknown"
         assert unknown_cmd.subject == "dance"
 
         # Test command that looks like known pattern but isn't
-        not_take_cmd = input_processor.process_input("taken aback")
+        not_take_cmd = await input_processor.process_input_async("taken aback")
         assert not_take_cmd.command_type == CommandType.UNKNOWN
         assert not_take_cmd.action == "unknown"
         assert not_take_cmd.subject == "taken aback"
 
-    def test_empty_input(self, input_processor):
+    @pytest.mark.asyncio
+    async def test_empty_input(self, input_processor: InputProcessor) -> None:
         """Test handling of empty input."""
-        empty_cmd = input_processor.process_input("")
+        empty_cmd = await input_processor.process_input_async("")
         assert empty_cmd.command_type == CommandType.UNKNOWN
         assert empty_cmd.action == "unknown"
         assert empty_cmd.subject is None
 
-    def test_command_suggestions(self, input_processor):
+    def test_command_suggestions(self, input_processor: InputProcessor) -> None:
         """Test that command suggestions work correctly."""
         # Test partial direction
         north_suggestions = input_processor.generate_command_suggestions("no")
@@ -246,7 +258,7 @@ class TestInputProcessor:
         empty_suggestions = input_processor.generate_command_suggestions("")
         assert len(empty_suggestions) == 0
 
-    def test_error_message_formatting(self, input_processor):
+    def test_error_message_formatting(self, input_processor: InputProcessor) -> None:
         """Test that error messages are formatted correctly."""
         # Test unknown command
         unknown_cmd = ParsedCommand(

@@ -3,9 +3,9 @@ Configuration package for the Game Loop application.
 Provides a centralized way to manage configuration from various sources.
 """
 
-from game_loop.config.cli import ConfigCLI, get_config_manager
-from game_loop.config.manager import ConfigManager
-from game_loop.config.models import (
+from .cli import ConfigCLI, get_config_manager
+from .manager import ConfigManager
+from .models import (
     DatabaseConfig,
     GameConfig,
     GameFlowConfig,

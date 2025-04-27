@@ -4,6 +4,7 @@ Game Loop - Text adventure with natural language processing capabilities.
 Main entry point for the application.
 """
 
+import asyncio
 import sys
 
 from rich.console import Console
@@ -12,8 +13,8 @@ from game_loop.config.models import GameConfig
 from game_loop.core.game_loop import GameLoop
 
 
-def main() -> int:
-    """Main entry point for the Game Loop application."""
+async def _main_async() -> int:
+    """Async implementation of the main entry point for the Game Loop application."""
     console = Console()
 
     try:
@@ -30,7 +31,7 @@ def main() -> int:
         game.initialize()
 
         # Start the game loop
-        game.start()
+        await game.start()
 
     except KeyboardInterrupt:
         console.print("\n[bold]Game interrupted. Farewell![/bold]")
@@ -41,6 +42,14 @@ def main() -> int:
         return 1
 
     return 0
+
+
+def main() -> int:
+    """
+    Entry point for the Game Loop application.
+    This non-async wrapper ensures the async code is properly executed.
+    """
+    return asyncio.run(_main_async())
 
 
 if __name__ == "__main__":

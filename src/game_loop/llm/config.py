@@ -20,7 +20,7 @@ class LLMConfig(BaseModel):
     )
     timeout: float = Field(default=60.0, description="API timeout in seconds")
     default_model: str = Field(
-        default="llama3", description="Default model for completions"
+        default="qwen2.5:3b", description="Default model for completions"
     )
     embedding_model: str = Field(
         default="nomic-embed-text", description="Default model for embeddings"
@@ -187,8 +187,15 @@ class ConfigManager:
         Returns:
             Formatted prompt text
         """
-        template = self.get_prompt_template(template_name)
-        return template.format(**kwargs)
+        try:
+            template = self.get_prompt_template(template_name)
+            return template.format(**kwargs)
+        except KeyError as e:
+            raise ValueError(
+                f"Missing required variable in template '{template_name}': {e}"
+            ) from e
+        except Exception as e:
+            raise ValueError(f"Error formatting template '{template_name}': {e}") from e
 
     def merge_with_env(self) -> None:
         """
