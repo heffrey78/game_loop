@@ -221,6 +221,14 @@ class InputProcessor:
         Returns:
             A ParsedCommand object if a complex command is recognized, None otherwise
         """
+        # Special case for "pick up" command pattern
+        if input_text.startswith("pick up "):
+            # Extract the object (everything after "pick up ")
+            object_name = input_text[len("pick up ") :].strip()
+            return ParsedCommand(
+                command_type=CommandType.TAKE, action="take", subject=object_name
+            )
+
         # Check for take commands
         take_command = self._check_action_with_object(input_text, self.take_prefixes)
         if take_command:

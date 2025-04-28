@@ -265,6 +265,21 @@ class EnhancedInputProcessor(InputProcessor):
         """
         import re
 
+        # Check for "pick up X" pattern - add this before other patterns
+        pick_up_match = re.search(
+            r"pick\s+up\s+(?:the\s+)?([a-zA-Z0-9_\s]+)",
+            normalized_input,
+        )
+        if pick_up_match:
+            subject = pick_up_match.group(1).strip()
+            return ParsedCommand(
+                command_type=CommandType.TAKE,
+                action="take",
+                subject=subject,
+                target=None,
+                parameters={"confidence": 0.95},
+            )
+
         # Check for "put X in/into Y" pattern
         put_in_match = re.search(
             r"put\s+(?:the\s+)?([a-zA-Z0-9_\s]+)\s+(?:in|into)\s+(?:the\s+)?([a-zA-Z0-9_\s]+)",

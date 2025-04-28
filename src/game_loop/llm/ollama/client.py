@@ -39,8 +39,10 @@ class OllamaModelParameters(BaseModel):
     num_ctx: int | None = Field(
         default=None, description="Context window size in tokens"
     )
-    format: str | None = Field(
-        default=None, description="Format for structured output (e.g., 'json')"
+    format: dict[str, Any] | str | None = Field(
+        default=None,
+        description="Can be a string like 'json' or a "
+        "JSON schema from model_class.model_json_schema()",
     )
 
 
