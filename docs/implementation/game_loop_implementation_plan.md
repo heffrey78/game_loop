@@ -87,12 +87,16 @@ This document outlines the implementation strategy for the Game Loop text advent
 - **Verification**: Test intent recognition with sample inputs, confirm action and object extraction works, verify query generation produces relevant search terms
 
 ### Commit 9: Basic Game State Management
-- Implement GameStateManager class
-- Create PlayerStateTracker
-- Add WorldStateTracker with basic functionality
-- Implement SessionManager for game sessions
-- Create state serialization/deserialization
-- **Verification**: Create and modify game state, verify state changes are tracked correctly, test serialization and deserialization for persistence
+- Create State Structure: Implement Pydantic models (PlayerState, WorldState, GameSession, ActionResult, etc.) in src/game_loop/state/models.py.
+- Implement Player State: Create PlayerStateTracker (state/player_state.py) to manage player data, updates via ActionResult, and DB interaction.
+- Implement World State: Create WorldStateTracker (state/world_state.py) to manage world data, location descriptions, updates via ActionResult, evolution queue, and DB interaction.
+- Implement Session Handling: Create SessionManager (state/session_manager.py) for save/load operations, session metadata, serialization, and DB interaction.
+- Implement State Facade: Create GameStateManager (state/manager.py) to initialize and coordinate the other state components.
+- Add Database Schema: Define and apply DB migration for game_sessions, player_states, world_states tables.
+- Integrate Core Components: Modify main.py to initialize GameStateManager and handle new/load; Modify GameLoop to use GameStateManager for state operations, context passing, and meta-commands (save, look, etc.).
+- Integrate Input/Actions: Modify Input/NLP processors to accept context; Refactor action execution logic to query GameStateManager and return ActionResult objects.
+- Implement Tests: Add unit tests for state components and integration tests for persistence/updates.
+- **Verification**: Manually test creating, modifying, saving, and loading game state; Ensure automated tests verify state persistence and updates after actions.
 
 ### Commit 10: Database Models and ORM
 - Implement SQLAlchemy models for core entities

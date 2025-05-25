@@ -7,6 +7,8 @@ This script provides commands to:
 2. Initialize the database
 3. Verify the setup
 """
+from __future__ import annotations
+
 import argparse
 import logging
 import os

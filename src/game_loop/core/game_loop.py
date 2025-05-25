@@ -3,44 +3,61 @@ Core game loop implementation for Game Loop.
 Handles the main game loop, input processing, and output generation.
 """
 
+import logging
 from typing import Any
+from uuid import UUID
 
+import asyncpg
 from rich.console import Console
 
 from game_loop.config.models import GameConfig
+from game_loop.core.command_handlers.factory import CommandHandlerFactory
 from game_loop.core.enhanced_input_processor import EnhancedInputProcessor
 from game_loop.core.input_processor import CommandType, InputProcessor, ParsedCommand
-from game_loop.core.location import LocationDisplay, create_demo_location
-from game_loop.core.state import GameState, Location, WorldState
+from game_loop.core.location import LocationDisplay
 from game_loop.llm.config import ConfigManager
+from game_loop.state.manager import GameStateManager
+from game_loop.state.models import ActionResult, Location, PlayerState, WorldState
+
+logger = logging.getLogger(__name__)
 
 
 class GameLoop:
     """Main game loop implementation for the Game Loop text adventure."""
 
-    def __init__(self, config: GameConfig, console: Console | None = None):
+    def __init__(
+        self, config: GameConfig, db_pool: asyncpg.Pool, console: Console | None = None
+    ):
         """
-        Initialize the game loop with configuration.
+        Initialize the game loop with configuration and database pool.
 
         Args:
             config: Configuration for the game
+            db_pool: Database connection pool
             console: Rich console for output, creates new one if not provided
         """
         self.config = config
+        self.db_pool = db_pool
         self.console = console if console else Console()
         self.location_display = LocationDisplay(self.console)
-        self.game_state = GameState()
         self.running = False
 
         # Initialize config manager for LLM with correct prompt template directory
         from pathlib import Path
 
+        from game_loop.config.manager import ConfigManager as GameConfigManager
+
         self.config_manager = ConfigManager()
+        self.game_config_manager = GameConfigManager(config_file=None)
+        self.game_config_manager.config = config
 
         # Update the prompt template directory to point to our implementation
         project_root = Path(__file__).parent.parent.parent
         prompt_dir = project_root / "game_loop" / "llm" / "prompts"
         self.config_manager.prompt_config.template_dir = str(prompt_dir)
+
+        # Initialize GameStateManager with the correct config manager type
+        self.state_manager = GameStateManager(self.game_config_manager, self.db_pool)
 
         # Create enhanced input processor with NLP capabilities
         self.input_processor = EnhancedInputProcessor(
@@ -52,140 +69,132 @@ class GameLoop:
         # Fallback to basic input processor if needed
         self.basic_input_processor = InputProcessor(self.console)
 
-    def initialize(self) -> None:
-        """Initialize the game environment and load initial state."""
+        # Initialize the command handler factory
+        self.command_handler_factory = CommandHandlerFactory(
+            self.console, self.state_manager
+        )
+
+    async def initialize(self, session_id: UUID | None = None) -> None:
+        """Initialize the game environment, loading or creating game state."""
         self.console.print("[bold green]Initializing Game Loop...[/bold green]")
 
-        # In a full implementation, we would:
-        # 1. Load world data from database
-        # 2. Initialize any services needed (LLM, embedding, etc.)
-        # 3. Load saved games if applicable
+        try:
+            # Initialize the state manager, attempting to load if session_id provided
+            await self.state_manager.initialize(session_id)
 
-        # For this basic implementation, we'll create a demo world
-        self._create_demo_world()
+            player_state: PlayerState | None = None
+            world_state: WorldState | None = None
 
-        # Ask for player name
-        player_name = self._get_player_name()
+            if session_id:
+                # Attempt to load the game
+                player_state, world_state = await self.state_manager.load_game(
+                    session_id
+                )  # noqa: E501
+                if player_state and world_state:
+                    self.console.print(f"Loaded game session {session_id}.")
+                else:
+                    self.console.print(
+                        f"[bold red]Failed to load game session "
+                        f"{session_id}. Starting new game.[/bold red]"
+                    )
+                    session_id = None
 
-        # Initialize the game state with the player name and starting location
-        starting_location_id = (
-            "forest_clearing"  # In a full game, this might be configurable
-        )
-        self.game_state.initialize_new_game(player_name, starting_location_id)
+            if not session_id:
+                # Create a new game if no session ID or loading failed
+                player_name = self._get_player_name()
+                # TODO: Get save name, maybe from player input or default
+                save_name = f"{player_name}'s Game"
+                player_state, world_state = await self.state_manager.create_new_game(
+                    player_name, save_name
+                )
 
-        self.console.print(
-            f"\n[bold green]Welcome to the adventure, {player_name}![/bold green]\n"
-        )
+                if not player_state or not world_state:
+                    raise RuntimeError("Failed to create a new game.")
 
-    def _create_demo_world(self) -> None:
-        """Create a demo world for testing purposes."""
-        # Create the world state
-        world = WorldState()
+                self.console.print(
+                    f"\n[bold green]Welcome to the adventure, "
+                    f"{player_state.name}![/bold green]\n"
+                )
+            else:
+                # Welcome back message for loaded game
+                if player_state:
+                    self.console.print(
+                        f"\n[bold green]Welcome back, "
+                        f"{player_state.name}![/bold green]\n"
+                    )
 
-        # Create a demo location
-        forest_clearing = create_demo_location()
+        except Exception as e:
+            logger.exception(f"Error during game initialization: {e}")
+            self.console.print(
+                f"[bold red]Error initializing game: {e}. " f"Exiting.[/bold red]"
+            )
+            self.running = False
+            return
 
-        # Add some additional connected locations
-        dark_forest = Location(
-            id="dark_forest",
-            name="Dark Forest",
-            description=(
-                "Tall trees block out most of the sunlight, creating an eerie "
-                "atmosphere. The forest floor is covered in moss and fallen leaves."
-            ),
-        )
-        dark_forest.add_connection("south", "forest_clearing")
-
-        river_bank = Location(
-            id="river_bank",
-            name="River Bank",
-            description=(
-                "A clear river flows gently past. The water looks refreshing, and "
-                "you can see fish swimming beneath the surface."
-            ),
-        )
-        river_bank.add_connection("west", "forest_clearing")
-
-        forest_path = Location(
-            id="forest_path",
-            name="Forest Path",
-            description=(
-                "A narrow path winds through the forest. Bird songs fill the air, "
-                "and occasional sunbeams break through the canopy."
-            ),
-        )
-        forest_path.add_connection("north", "forest_clearing")
-
-        ancient_ruins = Location(
-            id="ancient_ruins",
-            name="Ancient Ruins",
-            description="Stone pillars and crumbling walls rise from the forest floor. "
-            "This place must have been magnificent centuries ago.",
-        )
-        ancient_ruins.add_connection("east", "forest_clearing")
-
-        # Create items
-        from game_loop.core.state import Item
-
-        # Create a rusty sword item
-        rusty_sword = Item(
-            id="rusty_sword",
-            name="Rusty Sword",
-            description="An old sword with a worn handle and a rusty blade. "
-            "Despite its condition, it still looks functional.",
-            is_container=False,
-        )
-        world.add_item(rusty_sword)
-
-        # Create a leather pouch (container)
-        leather_pouch = Item(
-            id="leather_pouch",
-            name="Leather Pouch",
-            description="A small leather pouch with a drawstring closure. "
-            "It could hold small items.",
-            is_container=True,
-        )
-        world.add_item(leather_pouch)
-
-        # Add items to the forest clearing location
-        forest_clearing.items = ["rusty_sword", "leather_pouch"]
-
-        # Add the locations to the world
-        world.add_location(forest_clearing)
-        world.add_location(dark_forest)
-        world.add_location(river_bank)
-        world.add_location(forest_path)
-        world.add_location(ancient_ruins)
-
-        # Set the world state
-        self.game_state.world = world
-
-    def _get_player_name(self) -> str:
-        """Get the player's name via console input."""
-        self.console.print("\n[bold]What is your name, adventurer?[/bold]")
-        return input("> ").strip() or "Adventurer"
-
-    async def start(self) -> None:
-        """Start the main game loop."""
-        self.running = True
-
-        # Display initial location
-        self._display_current_location()
-
-        # Main game loop
-        while self.running:
-            await self._process_input_async()
+        # Initial display depends on successful load/create
+        if self.state_manager.get_current_session_id():
+            await self._display_current_location()  # Use await
+        else:
+            self.console.print(
+                "[bold red]Failed to initialize or load game state.[/bold red]"
+            )  # noqa: E501
+            self.running = False
 
     def stop(self) -> None:
         """Stop the game loop."""
         self.console.print("[bold]Farewell, adventurer! Your journey ends here.[/bold]")
         self.running = False
 
-    def _display_current_location(self) -> None:
-        """Display the current location to the player."""
-        location = self.game_state.get_current_location()
+    def _get_player_name(self) -> str:
+        """Get a name for the player character."""
+        self.console.print("\n[bold]Enter your character name:[/bold]")
+        player_name = input("> ").strip()
+        return player_name if player_name else "Adventurer"
+
+    async def run(self) -> None:
+        """Run the main game loop."""
+        self.running = True
+
+        # Display the initial location
+        await self._display_current_location()
+
+        while self.running:
+            try:
+                await self._process_input_async()
+            except Exception as e:
+                logger.exception(f"Unexpected error in game loop: {e}")
+                self.console.print(f"[bold red]An error occurred: {e}[/bold red]")
+
+        # When the loop ends, consider saving the game state automatically
+        # await self._auto_save_game()
+
+    async def _display_current_location(self) -> None:
+        """Display the current location to the player using rich output."""
+        location = await self.state_manager.get_current_location_details()
         if location:
-            self.location_display.display_location(location)
+            from game_loop.core.location import Location as OldLocation
+
+            old_location = OldLocation(
+                id=str(location.location_id),
+                name=location.name,
+                description=location.description,
+            )
+
+            # Add connections
+            for direction, loc_id in location.connections.items():
+                old_location.add_connection(direction, str(loc_id))
+
+            # Add objects from the location
+            for _obj_id, obj in location.objects.items():
+                if not obj.is_hidden:
+                    old_location.add_item(obj.name.lower().replace(" ", "_"))
+
+            # Add NPCs as placeholder objects in the old format
+            for _npc_id, npc in location.npcs.items():
+                old_location.add_npc(npc.name.lower().replace(" ", "_"))
+
+            # Now display the converted location
+            self.location_display.display_location(old_location)
         else:
             self.console.print(
                 "[bold red]Error: Current location not found.[/bold red]"
@@ -199,65 +208,78 @@ class GameLoop:
             Dictionary containing game state context
         """
         context = {}
+        player_state = self.state_manager.player_tracker.get_state()
+        current_location_id = None
+        current_location = None
 
-        # Add current location information
-        location = self.game_state.get_current_location()
-        if location:
+        if player_state and player_state.current_location_id:
+            current_location_id = player_state.current_location_id
+            world_state = self.state_manager.world_tracker.get_state()
+            if world_state:
+                current_location = world_state.locations.get(current_location_id)
+
+        if current_location:
             context["current_location"] = {
-                "id": location.id,
-                "name": location.name,
-                "description": location.description,
+                "id": str(current_location.location_id),
+                "name": current_location.name,
+                "description": current_location.description,
             }
 
             # Add connections
-            connections = []
-            for direction, dest_id in location.connections.items():
-                if dest_location := self.game_state.world.get_location(dest_id):
-                    connections.append(
-                        {"direction": direction, "destination": dest_location.name}
-                    )
-            # Fix: Store the list of connections in the context dictionary
-            context["connections"] = {
-                f"connection_{i}": f"{conn['direction']} to {conn['destination']}"
-                for i, conn in enumerate(connections)
-            }
+            connections = {}
+            for direction, dest_id in current_location.connections.items():
+                if world_state:
+                    dest_location = world_state.locations.get(dest_id)
+                    if dest_location:
+                        connections[f"connection_{direction}"] = (
+                            f"{direction} to {dest_location.name}"
+                        )
+            context["connections"] = connections
 
-            # Add actual visible objects from the current location
-            visible_objects = []
-            if hasattr(location, "items") and location.items:
-                for item_id in location.items:
-                    visible_objects.append(
-                        {
-                            "name": item_id,
-                            "description": f"A {item_id.replace('_', ' ')}.",
-                        }
-                    )
-            # Store visible objects with just the name property
-            context["visible_objects"] = {
-                f"object_{i}": obj["name"] for i, obj in enumerate(visible_objects)
-            }
+            # Add visible objects from the current location
+            visible_objects = {}
+            for i, (_obj_id, obj) in enumerate(current_location.objects.items()):
+                if not obj.is_hidden:
+                    visible_objects[f"object_{i}"] = obj.name
+            context["visible_objects"] = visible_objects
 
-            # Add actual NPCs from the current location
-            npcs = []
-            if hasattr(location, "npcs") and location.npcs:
-                for npc_id in location.npcs:
-                    npcs.append(
-                        {
-                            "name": npc_id,
-                            "description": f"A {npc_id.replace('_', ' ')}.",
-                        }
-                    )
-            # Fix: Store NPCs using just the name property
-            context["npcs"] = {f"npc_{i}": npc["name"] for i, npc in enumerate(npcs)}
+            # Add NPCs from the current location
+            npcs = {}
+            for i, (_npc_id, npc) in enumerate(current_location.npcs.items()):
+                npcs[f"npc_{i}"] = npc.name
+            context["npcs"] = npcs
 
         # Add player information
-        if self.game_state.player:
+        if player_state:
             # Create player info with name
-            player_info = {"name": self.game_state.player.name}
-            if self.game_state.player.inventory:
-                player_info["inventory"] = ", ".join(self.game_state.player.inventory)
+            player_info = {"name": player_state.name}
+
+            # Add inventory
+            if player_state.inventory:
+                player_info["inventory"] = ", ".join(
+                    item.name for item in player_state.inventory
+                )
             else:
                 player_info["inventory"] = "empty"
+
+            # Add knowledge and stats if available
+            if player_state.knowledge:
+                player_info["knowledge"] = ", ".join(
+                    [k.content for k in player_state.knowledge]
+                )
+
+            if player_state.stats:
+                # Convert PlayerStats object to dictionary by extracting its attributes
+                stats_dict = {
+                    "health": player_state.stats.health,
+                    "max_health": player_state.stats.max_health,
+                    "mana": player_state.stats.mana,
+                    "max_mana": player_state.stats.max_mana,
+                    "strength": player_state.stats.strength,
+                    "dexterity": player_state.stats.dexterity,
+                    "intelligence": player_state.stats.intelligence,
+                }
+                player_info["stats"] = str(stats_dict)
 
             context["player"] = player_info
 
@@ -302,11 +324,8 @@ class GameLoop:
             await self.input_processor.update_conversation_context(user_input, response)
 
         except Exception:
-            # If NLP processing fails, fall back to basic pattern matching
             self.console.print("[yellow]Using simplified input processing...[/yellow]")
             try:
-                # Create a new basic input processor to avoid any state issues
-                # This ensures we don't have any lingering coroutines
                 basic_processor = InputProcessor(self.console)
                 command = await basic_processor.process_input_async(user_input)
             except Exception as inner_e:
@@ -315,114 +334,200 @@ class GameLoop:
                 )
                 return
 
-        # Execute the command if we got one
         if command:
-            self._execute_command(command)
+            await self._execute_command(command)
 
-    def _execute_command(self, command: ParsedCommand) -> None:
-        """
-        Execute a processed command.
+    async def _execute_command(self, command: ParsedCommand) -> ActionResult | None:
+        """Execute a processed command and return ActionResult."""
+        player_state = self.state_manager.player_tracker.get_state()
+        await self.state_manager.player_tracker.get_current_location_id()
+        current_location = await self.state_manager.get_current_location_details()
+        world_state = self.state_manager.world_tracker.get_state()
 
-        Args:
-            command: The parsed command to execute
-        """
-        if command.command_type == CommandType.MOVEMENT:
-            if command.subject:
-                self._handle_movement(command.subject)
+        # Verify required state exists before proceeding
+        if not player_state:
+            return ActionResult(
+                success=False, feedback_message="Error: Player state not initialized."
+            )
+
+        if not current_location:
+            return ActionResult(
+                success=False,
+                feedback_message="Error: Cannot determine current location.",
+            )
+
+        if not world_state:
+            return ActionResult(
+                success=False, feedback_message="Error: World state not initialized."
+            )
+
+        action_result = None
+        try:
+            if command.command_type == CommandType.MOVEMENT:
+                if command.subject:
+                    action_result = await self._handle_movement(
+                        command.subject, player_state, current_location
+                    )
+                else:
+                    action_result = ActionResult(
+                        success=False, feedback_message="No direction specified."
+                    )
+
+            elif command.command_type == CommandType.LOOK:
+                await self._display_current_location()
+                # No state change, just visual output
+                action_result = ActionResult(success=True, feedback_message="")
+
+            elif command.command_type == CommandType.INVENTORY:
+                await self._display_inventory(player_state)
+                # No state change, just visual output
+                action_result = ActionResult(success=True, feedback_message="")
+
+            elif command.command_type == CommandType.TAKE:
+                if command.subject:
+                    action_result = await self._handle_take(
+                        command.subject, player_state, current_location
+                    )
+                else:
+                    action_result = ActionResult(
+                        success=False, feedback_message="What do you want to take?"
+                    )
+
+            elif command.command_type == CommandType.DROP:
+                if command.subject:
+                    action_result = await self._handle_drop(
+                        command.subject, player_state, current_location
+                    )
+                else:
+                    action_result = ActionResult(
+                        success=False, feedback_message="What do you want to drop?"
+                    )
+
+            elif command.command_type == CommandType.USE:
+                # Use the command handler strategy pattern
+                handler = self.command_handler_factory.get_handler(CommandType.USE)
+                action_result = await handler.handle(command)
+
+            elif command.command_type == CommandType.EXAMINE:
+                if command.subject:
+                    action_result = await self._handle_examine(
+                        command.subject, player_state, current_location, world_state
+                    )
+                else:
+                    action_result = ActionResult(
+                        success=False, feedback_message="What do you want to examine?"
+                    )
+
+            elif command.command_type == CommandType.TALK:
+                if command.subject:
+                    action_result = await self._handle_talk(
+                        command.subject, player_state, current_location
+                    )
+                else:
+                    action_result = ActionResult(
+                        success=False, feedback_message="Who do you want to talk to?"
+                    )
+
+            elif command.command_type == CommandType.HELP:
+                self._display_help()
+                # No state change, just visual output
+                action_result = ActionResult(success=True, feedback_message="")
+
+            elif command.command_type == CommandType.QUIT:
+                # Possibly update state before shutting down
+                action_result = ActionResult(
+                    success=True,
+                    feedback_message="Farewell, adventurer! Your journey ends here.",
+                )
+                self.stop()
+
             else:
-                self.console.print("[yellow]No direction specified.[/yellow]")
+                # Unknown command
+                error_message = self.input_processor.format_error_message(command)
+                action_result = ActionResult(
+                    success=False, feedback_message=error_message
+                )
 
-        elif command.command_type == CommandType.LOOK:
-            self._display_current_location()
+        except Exception as e:
+            logger.exception(f"Error executing command: {e}")
+            action_result = ActionResult(
+                success=False, feedback_message=f"Error: {str(e)}"
+            )
 
-        elif command.command_type == CommandType.INVENTORY:
-            self._display_inventory()
-
-        elif command.command_type == CommandType.TAKE:
-            if command.subject:
-                self._handle_take(command.subject)
+        # If we have a result with a feedback message, display it
+        if action_result and action_result.feedback_message:
+            if action_result.success:
+                self.console.print(f"[green]{action_result.feedback_message}[/green]")
             else:
-                self.console.print("[yellow]What do you want to take?[/yellow]")
+                self.console.print(f"[yellow]{action_result.feedback_message}[/yellow]")
 
-        elif command.command_type == CommandType.DROP:
-            if command.subject:
-                self._handle_drop(command.subject)
-            else:
-                self.console.print("[yellow]What do you want to drop?[/yellow]")
+        # If the action was successful, update the game state
+        if (
+            action_result
+            and action_result.success
+            and (
+                action_result.location_change
+                or action_result.inventory_changes
+                or action_result.object_changes
+                or action_result.npc_changes
+                or action_result.location_state_changes
+                or action_result.knowledge_updates
+                or action_result.stat_changes
+                or action_result.progress_updates
+                or action_result.triggers_evolution
+            )
+        ):
+            await self.state_manager.update_after_action(action_result)
 
-        elif command.command_type == CommandType.USE:
-            if command.subject:
-                self._handle_use(command.subject, command.target)
-            else:
-                self.console.print("[yellow]What do you want to use?[/yellow]")
+            # If the location changed, display the new location
+            if action_result.location_change:
+                self.console.print("")  # Add a line break
+                await self._display_current_location()
 
-        elif command.command_type == CommandType.EXAMINE:
-            if command.subject:
-                self._handle_examine(command.subject)
-            else:
-                self.console.print("[yellow]What do you want to examine?[/yellow]")
+        return action_result
 
-        elif command.command_type == CommandType.TALK:
-            if command.subject:
-                self._handle_talk(command.subject)
-            else:
-                self.console.print("[yellow]Who do you want to talk to?[/yellow]")
+    async def _handle_movement(
+        self,
+        direction: str,
+        player_state: PlayerState,
+        current_location: Location | None,
+    ) -> ActionResult:
+        """Handle movement in a given direction, returning ActionResult."""
+        if not current_location:
+            return ActionResult(
+                success=False,
+                feedback_message="Error: Cannot determine current location.",
+            )
 
-        elif command.command_type == CommandType.HELP:
-            self._display_help()
-
-        elif command.command_type == CommandType.QUIT:
-            self.stop()
-
-        else:
-            # Unknown command
-            error_message = self.input_processor.format_error_message(command)
-            self.console.print(f"[yellow]{error_message}[/yellow]")
-
-    def _handle_movement(self, direction: str) -> None:
-        """Handle movement in a given direction."""
         # Normalize direction (e.g., "n" -> "north")
         direction_map = {"n": "north", "s": "south", "e": "east", "w": "west"}
-        direction = direction_map.get(direction, direction)
-
-        # Get current location
-        current_location = self.game_state.get_current_location()
-        if not current_location:
-            self.console.print(
-                "[bold red]Error: Current location not found.[/bold red]"
-            )
-            return
+        normalized_direction = direction_map.get(direction.lower(), direction.lower())
 
         # Check if movement is possible in the given direction
-        destination_id = current_location.get_connection(direction)
+        destination_id = current_location.connections.get(normalized_direction)
         if not destination_id:
-            self.console.print(f"[yellow]You cannot go {direction} from here.[/yellow]")
-            return
-
-        # Update player's location if player exists
-        if self.game_state.player is None:
-            self.console.print(
-                "[bold red]Error: Player state not initialized.[/bold red]"
+            return ActionResult(
+                success=False,
+                feedback_message=f"You cannot go {normalized_direction} from here.",
             )
-            return
 
-        self.game_state.player.update_location(destination_id)
+        # Create ActionResult with location change
+        return ActionResult(
+            success=True,
+            feedback_message=f"You go {normalized_direction}.",
+            location_change=True,
+            new_location_id=destination_id,
+        )
 
-        # Output movement result
-        self.console.print(f"[green]You go {direction}.[/green]\n")
-
-        # Display new location
-        self._display_current_location()
-
-    def _display_inventory(self) -> None:
+    async def _display_inventory(self, player_state: PlayerState) -> None:
         """Display the player's inventory."""
-        if not self.game_state.player:
+        if not player_state:
             self.console.print(
                 "[bold red]Error: Player state not initialized.[/bold red]"
             )
             return
 
-        inventory = self.game_state.player.inventory
+        inventory = player_state.inventory
 
         self.console.print("[bold]Inventory:[/bold]")
         if not inventory:
@@ -430,285 +535,347 @@ class GameLoop:
             return
 
         for item in inventory:
-            self.console.print(f"- {item}")
+            self.console.print(f"- {item.name} ({item.quantity})")
+            if item.description:
+                self.console.print(f"  {item.description}")
 
-    def _handle_take(self, item_name: str) -> None:
-        """
-        Handle taking an item from the current location.
-
-        Args:
-            item_name: The name of the item to take
-        """
-        # Normalize item name
-        item_name = item_name.replace("the ", "").strip()
-        item_id = item_name.lower().replace(" ", "_")
-
-        # Get current location
-        current_location = self.game_state.get_current_location()
+    async def _handle_take(
+        self,
+        item_name: str,
+        player_state: PlayerState,
+        current_location: Location | None,
+    ) -> ActionResult:
+        """Handle taking an item from the current location, returning ActionResult."""
         if not current_location:
-            self.console.print(
-                "[bold red]Error: Current location not found.[/bold red]"
+            return ActionResult(
+                success=False,
+                feedback_message="Error: Cannot determine current location.",
             )
-            return
 
-        # Check if item exists in current location
-        if item_id not in current_location.items:
-            # Check if the item is in a container in the current location
-            found = False
-            for loc_item_id in current_location.items:
-                container = self.game_state.world.get_item(loc_item_id)
-                if container and container.is_container and container.has_item(item_id):
-                    # Remove item from container
-                    container.remove_from_container(item_id)
-                    found = True
+        # Normalize item name
+        normalized_item_name = item_name.replace("the ", "").strip().lower()
+
+        # Find the item in the current location
+        item_to_take = None
+        item_id = None
+        for obj_id, obj in current_location.objects.items():
+            if obj.name.lower() == normalized_item_name and obj.is_takeable:
+                item_to_take = obj
+                item_id = obj_id
+                break
+
+        if not item_to_take:
+            return ActionResult(
+                success=False,
+                feedback_message=f"You don't see any takeable {item_name} here.",
+            )
+
+        # Create an inventory item from the world object
+        from game_loop.state.models import InventoryItem
+
+        inventory_item = InventoryItem(
+            name=item_to_take.name,
+            description=item_to_take.description,
+            attributes=item_to_take.state.get("attributes", {}),
+        )
+
+        # Define changes to be applied
+        inventory_add = {"action": "add", "item": inventory_item.model_dump()}
+        object_remove = {
+            "action": "remove",
+            "object_id": item_id,
+            "location_id": current_location.location_id,
+        }
+
+        return ActionResult(
+            success=True,
+            feedback_message=f"You take the {item_to_take.name}.",
+            inventory_changes=[inventory_add],
+            object_changes=[object_remove],
+        )
+
+    async def _handle_drop(
+        self,
+        item_name: str,
+        player_state: PlayerState,
+        current_location: Location | None,
+    ) -> ActionResult:
+        """Handle dropping an item, returning ActionResult."""
+        if not current_location:
+            return ActionResult(
+                success=False,
+                feedback_message="Error: Cannot determine current location.",
+            )
+
+        normalized_item_name = item_name.replace("the ", "").strip().lower()
+
+        # Find item in player's inventory
+        item_to_drop = None
+        for item in player_state.inventory:
+            if item.name.lower() == normalized_item_name:
+                item_to_drop = item
+                break
+
+        if not item_to_drop:
+            return ActionResult(
+                success=False, feedback_message=f"You don't have a {item_name}."
+            )
+
+        # Create a WorldObject representation of the dropped item
+        from game_loop.state.models import WorldObject
+
+        dropped_object = WorldObject(
+            name=item_to_drop.name,
+            description=item_to_drop.description,
+            is_takeable=True,
+            state={"attributes": item_to_drop.attributes},
+        )
+
+        # Define changes for ActionResult
+        inventory_remove = {"action": "remove", "item_id": item_to_drop.item_id}
+        object_add = {
+            "action": "add",
+            "location_id": current_location.location_id,
+            "object": dropped_object.model_dump(),
+        }
+
+        return ActionResult(
+            success=True,
+            feedback_message=f"You drop the {item_to_drop.name}.",
+            inventory_changes=[inventory_remove],
+            object_changes=[object_add],
+        )
+
+    async def _handle_examine(
+        self,
+        object_name: str,
+        player_state: PlayerState,
+        current_location: Location | None,
+        world_state: WorldState,
+    ) -> ActionResult:
+        """Handle examining an object, returning ActionResult."""
+        if not current_location:
+            return ActionResult(
+                success=False,
+                feedback_message="Error: Cannot determine current location.",
+            )
+
+        normalized_object_name = object_name.replace("the ", "").strip().lower()
+
+        # Handle "examine here" or "look"
+        if normalized_object_name == "here" or normalized_object_name == "around":
+            await self._display_current_location()
+            return ActionResult(success=True, feedback_message="")
+
+        # Handle "look in/inside X"
+        looking_inside = False
+        container_name = normalized_object_name
+        if normalized_object_name.startswith(
+            "in "
+        ) or normalized_object_name.startswith("inside "):
+            prefix = "in " if normalized_object_name.startswith("in ") else "inside "
+            container_name = normalized_object_name[len(prefix) :].strip()
+            looking_inside = True
+
+        target_object = None
+        target_location_type = None
+
+        # 1. Check player inventory
+        for item in player_state.inventory:
+            if item.name.lower() == container_name:
+                target_object = item
+                target_location_type = "inventory"
+                break
+
+        # 2. Check location objects if not found
+        if not target_object:
+            for _obj_id, obj in current_location.objects.items():
+                if obj.name.lower() == container_name:
+                    target_object = obj
+                    target_location_type = "location_object"
                     break
 
-            if not found:
-                self.console.print(f"[yellow]There is no {item_name} here.[/yellow]")
-                return
-        else:
-            # Remove the item from the location
-            current_location.remove_item(item_id)
+        # 3. Check location NPCs if not found
+        if not target_object:
+            for _npc_id, npc in current_location.npcs.items():
+                if npc.name.lower() == container_name:
+                    target_object = npc
+                    target_location_type = "location_npc"
+                    break
 
-        # Add the item to player's inventory
-        if self.game_state.player:
-            self.game_state.player.add_to_inventory(item_id)
-            self.console.print(f"[green]You take the {item_name}.[/green]")
-        else:
-            self.console.print(
-                "[bold red]Error: Player state not initialized.[/bold red]"
+        if not target_object:
+            return ActionResult(
+                success=False,
+                feedback_message=f"You don't see any '{object_name}' here.",
             )
 
-    def _handle_drop(self, item_name: str) -> None:
-        """
-        Handle dropping an item from inventory to the current location.
+        # --- Handle Looking Inside ---
+        if looking_inside:
+            is_container = False
+            contents = []
+            if target_location_type == "inventory":
+                is_container = target_object.attributes.get("is_container", False)
+                contents = target_object.attributes.get("contained_items", [])
+            elif target_location_type == "location_object":
+                is_container = target_object.is_container
+                contents = target_object.contained_items
 
-        Args:
-            item_name: The name of the item to drop
-        """
-        # Normalize item name
-        item_name = item_name.replace("the ", "").strip()
-        item_id = item_name.lower().replace(" ", "_")
-
-        # Check if item exists in player's inventory
-        if (
-            not self.game_state.player
-            or item_id not in self.game_state.player.inventory
-        ):
-            self.console.print(
-                f"[yellow]You don't have a {item_name} in your inventory.[/yellow]"
-            )
-            return
-
-        # Get current location
-        current_location = self.game_state.get_current_location()
-        if not current_location:
-            self.console.print(
-                "[bold red]Error: Current location not found.[/bold red]"
-            )
-            return
-
-        # Remove item from inventory and add to location
-        self.game_state.player.remove_from_inventory(item_id)
-        current_location.add_item(item_id)
-
-        self.console.print(f"[green]You drop the {item_name}.[/green]")
-
-    def _handle_use(self, item_name: str, target_name: str | None) -> None:
-        """
-        Handle using an item, possibly on a target.
-
-        Args:
-            item_name: The name of the item to use
-            target_name: The name of the target to use the item on (if any)
-        """
-        # Remove potential "the" prefixes from item and target names
-        item_name = item_name.replace("the ", "").strip()
-        item_id = item_name.lower().replace(" ", "_")
-
-        if target_name:
-            target_name = target_name.replace("the ", "").strip()
-            target_id = target_name.lower().replace(" ", "_")
-
-            # Special handling for "put X in Y" and similar patterns
-            if "in" in target_name:
-                # Extract the container name from "in container"
-                container_name = target_name.replace("in ", "").strip()
-                container_id = target_id
-
-                # Check if item exists in player inventory
-                if (
-                    not self.game_state.player
-                    or item_id not in self.game_state.player.inventory
-                ):
-                    self.console.print(
-                        f"[yellow]You don't have a {item_name} "
-                        f"in your inventory.[/yellow]"
-                    )
-                    return
-
-                # Find where the container is located
-                current_location = self.game_state.get_current_location()
-                container_location = self.game_state.find_item_location(container_id)
-
-                # Check if container exists and is accessible
-                if not container_location or (
-                    container_location != "player"
-                    and container_location
-                    != (current_location.id if current_location is not None else None)
-                ):
-                    self.console.print(
-                        f"[yellow]You don't see any {container_name} here.[/yellow]"
-                    )
-                    return
-
-                # Check if the container is actually a container
-                container = self.game_state.world.get_item(container_id)
-                if not container or not container.is_container:
-                    self.console.print(
-                        f"[yellow]You can't put anything in the "
-                        f"{container_name}.[/yellow]"
-                    )
-                    return
-
-                # Remove item from inventory and add to container
-                self.game_state.player.remove_from_inventory(item_id)
-                if self.game_state.world.put_item_in_container(item_id, container_id):
-                    self.console.print(
-                        f"[green]You put the {item_name} "
-                        f"in the {container_name}.[/green]"
-                    )
-                else:
-                    # If failed, return item to inventory
-                    self.game_state.player.add_to_inventory(item_id)
-                    self.console.print(
-                        f"[yellow]You couldn't put the {item_name} "
-                        f"in the {container_name}.[/yellow]"
-                    )
-                return
-            else:
-                self.console.print(
-                    f"[yellow]Using the {item_name} on the {target_name} "
-                    f"is not implemented yet.[/yellow]"
+            if not is_container:
+                return ActionResult(
+                    success=False,
+                    feedback_message=f"The {target_object.name} is not a container.",
                 )
-        else:
-            self.console.print(
-                f"[yellow]Using the {item_name} is not implemented yet.[/yellow]"
-            )
 
-    def _handle_examine(self, object_name: str) -> None:
-        """
-        Handle examining an object in the current location or inventory.
-
-        Args:
-            object_name: The name of the object to examine
-        """
-        # Normalize object name
-        object_name = object_name.replace("the ", "").strip().lower()
-        object_id = object_name.replace(" ", "_")
-
-        # Handle "look in" command variation
-        looking_inside = False
-        if object_name.startswith("in "):
-            looking_inside = True
-            object_name = object_name[3:].strip()
-            object_id = object_name.replace(" ", "_")
-
-        # Find where the object is located
-        current_location = self.game_state.get_current_location()
-        object_location = self.game_state.find_item_location(object_id)
-
-        # Check if object exists and is accessible
-        # Fix: Handle the potential None value by using empty string as default
-        player_location_id = ""
-        if current_location is not None:  # Fix for line 522 error
-            player_location_id = current_location.id
-
-        if not object_location or (
-            object_location != "player" and object_location != player_location_id
-        ):
-            self.console.print(
-                f"[yellow]You don't see any {object_name} here.[/yellow]"
-            )
-            return
-
-        # Get the object
-        object_item = self.game_state.world.get_item(object_id)
-        if not object_item:
-            self.console.print(
-                f"[yellow]You don't see any {object_name} here.[/yellow]"
-            )
-            return
-
-        # If explicitly looking inside or the object is a container
-        if looking_inside or object_item.is_container:
-            if not object_item.is_container:
-                self.console.print(
-                    f"[yellow]The {object_name} is not a container.[/yellow]"
-                )
-                return
-
-            # Display container contents
-            contents = self.game_state.world.get_container_contents(object_id)
             if not contents:
-                self.console.print(f"[green]The {object_name} is empty.[/green]")
-                return
+                return ActionResult(
+                    success=True, feedback_message=f"The {target_object.name} is empty."
+                )
+            else:
+                # For simplicity, just use UUIDs
+                contents_str = ", ".join(
+                    f"item {str(uuid)[:8]}..." for uuid in contents
+                )
+                return ActionResult(
+                    success=True,
+                    feedback_message=f"Inside the {target_object.name}"
+                    f", you find: {contents_str}",
+                )
 
-            self.console.print(f"[green]Inside the {object_name}, you find:[/green]")
-            for item_id in contents:
-                item = self.game_state.world.get_item(item_id)
-                if item:
-                    item_name = item.name
-                else:
-                    item_name = item_id.replace("_", " ")
-                self.console.print(f"- {item_name}")
-            return
+        # --- Handle Regular Examination ---
+        else:
+            description = target_object.description
 
-        # Regular examination of object
-        self.console.print(f"[green]{object_item.description}[/green]")
+            # Add more details for objects or NPCs with state
+            if hasattr(target_object, "state") and target_object.state:
+                state_desc = ", ".join(
+                    f"{k}: {v}"
+                    for k, v in target_object.state.items()
+                    if k != "attributes"
+                )
+                if state_desc:
+                    description += f" ({state_desc})"
 
-    def _handle_talk(self, character_name: str) -> None:
-        """
-        Handle talking to a character in the current location.
+            return ActionResult(success=True, feedback_message=description)
 
-        Args:
-            character_name: The name of the character to talk to
-        """
-        # In a full implementation, this would:
-        # 1. Check if the character exists in the current location
-        # 2. Generate dialogue based on the character's knowledge and state
-        # 3. Possibly update the game state based on the conversation
+    async def _handle_talk(
+        self,
+        character_name: str,
+        player_state: PlayerState,
+        current_location: Location | None,
+    ) -> ActionResult:
+        """Handle talking to an NPC, returning ActionResult."""
+        if not current_location:
+            return ActionResult(
+                success=False,
+                feedback_message="Error: Cannot determine current location.",
+            )
 
-        # For now, just show a placeholder message
-        self.console.print(
-            f"[yellow]Talking to {character_name} is not implemented yet.[/yellow]"
+        normalized_name = (
+            character_name.replace("to ", "").replace("with ", "").strip().lower()
+        )
+
+        # Check if the NPC exists in the current location
+        target_npc = None
+        npc_id = None
+        for n_id, npc in current_location.npcs.items():
+            if npc.name.lower() == normalized_name:
+                target_npc = npc
+                npc_id = n_id
+                break
+
+        if not target_npc:
+            return ActionResult(
+                success=False,
+                feedback_message=f"You don't see anyone called "
+                f"'{character_name}' here.",
+            )
+
+        # For now, just provide a simple response based on NPC state
+        dialogue_state = target_npc.dialogue_state
+        if dialogue_state == "friendly":
+            response = (
+                f"{target_npc.name} smiles at you warmly. "
+                f"'Hello there! How can I help you?'"
+            )
+        elif dialogue_state == "hostile":
+            response = (
+                f"{target_npc.name} glares at you suspiciously. 'What do you want?'"
+            )
+        else:  # neutral or default
+            response = f"{target_npc.name} nods politely. 'Greetings, traveler.'"
+
+        # In a full implementation, we'd use NLP to generate dialogue based on:
+        # - NPC's knowledge
+        # - Player's previous interactions
+        # - Current world state
+        # - NPC's personality
+
+        # We might also add knowledge gained from the conversation:
+        knowledge_gained = None
+        from game_loop.state.models import PlayerKnowledge
+
+        if hasattr(target_npc, "knowledge") and target_npc.knowledge:
+            if not target_npc.state.get("hostile", False):
+                # Give the player a random piece of knowledge the NPC has (simplified)
+                import random
+
+                if random.random() < 0.3:  # 30% chance
+                    knowledge_item = random.choice(target_npc.knowledge)
+                    # Create a new PlayerKnowledge object
+                    new_knowledge = PlayerKnowledge(
+                        content=knowledge_item.content,
+                        source=f"conversation with {target_npc.name}",
+                        topic=(
+                            knowledge_item.topic
+                            if hasattr(knowledge_item, "topic")
+                            else "general"
+                        ),
+                    )
+                    knowledge_gained = [new_knowledge]
+                    response += f" '{knowledge_item.content}'"
+
+        # Return ActionResult with conversation outcome
+        return ActionResult(
+            success=True,
+            feedback_message=response,
+            knowledge_updates=knowledge_gained,
+            npc_changes=(
+                [{"npc_id": npc_id, "update": {"state.talked_to": True}}]
+                if npc_id
+                else None
+            ),
         )
 
     def _display_help(self) -> None:
-        """Display help information to the player."""
-        self.console.print("[bold]Available Commands:[/bold]")
-        self.console.print("- [bold]north, n, go north[/bold]: Move north")
-        self.console.print("- [bold]south, s, go south[/bold]: Move south")
-        self.console.print("- [bold]east, e, go east[/bold]: Move east")
-        self.console.print("- [bold]west, w, go west[/bold]: Move west")
-        self.console.print("- [bold]look, l[/bold]: Look around")
-        self.console.print("- [bold]inventory, i[/bold]: Check your inventory")
-        self.console.print("- [bold]take [object][/bold]: Pick up an object")
+        """Display available commands."""
+        self.console.print("[bold]Available commands:[/bold]")
         self.console.print(
-            "- [bold]drop [object][/bold]: Drop an object from your inventory"
+            "- [bold]go/move[/bold] <direction>: "
+            "Move in a direction (north, south, east, west, etc.)"
         )
-        self.console.print("- [bold]use [object][/bold]: Use an object")
+        self.console.print("- [bold]look[/bold]: Look around the current location")
+        self.console.print("- [bold]examine[/bold] <object>: Look closely at an object")
+        self.console.print("- [bold]inventory/i[/bold]: Check your inventory")
+        self.console.print("- [bold]take/get[/bold] <item>: Pick up an item")
         self.console.print(
-            "- [bold]use [object] on [target][/bold]: Use an object on a target"
+            "- [bold]drop[/bold] <item>: Drop an item from your inventory"
         )
         self.console.print(
-            "- [bold]put [object] in [container][/bold]: "
-            "Put an object inside a container"
+            "- [bold]use[/bold] <item> [on <target>]: "
+            "Use an item, optionally on a target"
         )
-        self.console.print(
-            "- [bold]place [object] on [surface][/bold]: Place an object on a surface"
-        )
-        self.console.print("- [bold]examine [object][/bold]: Examine an object closely")
-        self.console.print("- [bold]talk to [character][/bold]: Talk to a character")
-        self.console.print("- [bold]help, h, ?[/bold]: Display this help message")
-        self.console.print("- [bold]quit, exit, q[/bold]: Quit the game")
+        self.console.print("- [bold]talk[/bold] to <character>: Talk to a character")
+        self.console.print("- [bold]save[/bold>: Save your game")
+        self.console.print("- [bold]load[/bold>: Load a saved game")
+        self.console.print("- [bold]help[/bold]: Show this help")
+        self.console.print("- [bold]quit/exit[/bold]: Quit the game")
+
+    async def _auto_save_game(self) -> None:
+        """Auto-save the current game state."""
+        if self.state_manager.get_current_session_id():
+            try:
+                await self.state_manager.save_game()
+                self.console.print("[dim]Game auto-saved.[/dim]")
+            except Exception as e:
+                logger.error(f"Auto-save failed: {e}")
+                # Don't show error to user as this is automatic

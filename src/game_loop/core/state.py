@@ -97,6 +97,11 @@ class Location:
         if item_id not in self.items:
             self.items.append(item_id)
 
+    def add_npc(self, npc_id: str) -> None:
+        """Add an NPC to the location."""
+        if npc_id not in self.npcs:
+            self.npcs.append(npc_id)
+
     def remove_item(self, item_id: str) -> bool:
         """Remove an item from the location."""
         if item_id in self.items:

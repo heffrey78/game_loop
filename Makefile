@@ -1,4 +1,4 @@
-.PHONY: install clean lint format test coverage pre-commit docker-start docker-stop docker-init docker-setup run
+.PHONY: install clean lint format test coverage pre-commit docker-start docker-stop docker-init docker-setup docker-check run db-reset
 
 # Default Python interpreter
 PYTHON := python
@@ -41,9 +41,26 @@ test:
 coverage:
 	poetry run pytest --cov=src tests/ --cov-report=html
 
-# Run the game
-run:
+# Check if docker container is running and start if needed
+docker-check:
+	@if ! docker ps --format '{{.Names}}' | grep -q "game-loop-postgres"; then \
+	    echo "PostgreSQL container not running. Starting it now..."; \
+	    docker compose up -d postgres; \
+	    echo "Waiting for PostgreSQL to initialize..."; \
+	    sleep 5; \
+	else \
+	    echo "PostgreSQL container is already running."; \
+	fi
+
+# Run the game (ensuring database is running and initialized)
+run: docker-check docker-init
 	poetry run python -m game_loop.main
+
+# Completely reset and recreate the database from migrations
+db-reset: docker-check
+	@echo "Dropping and recreating the database from scratch..."
+	DB_FRESH_START=true ./scripts/manage_docker.py init
+	@echo "Database reset complete."
 
 # Setup pre-commit hooks
 pre-commit:
