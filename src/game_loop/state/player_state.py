@@ -8,7 +8,13 @@ from uuid import UUID
 import asyncpg
 from pydantic import ValidationError
 
-from .models import ActionResult, InventoryItem, PlayerKnowledge, PlayerState
+from .models import (
+    ActionResult,
+    InventoryItem,
+    PlayerKnowledge,
+    PlayerState,
+    PlayerStats,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,19 +30,24 @@ class PlayerStateTracker:
     async def initialize(
         self, session_id: UUID, player_state_id: UUID | None = None
     ) -> None:
-        """Initialize the tracker for a session, with existing state if ID provided."""
+        """
+        Initialize the tracker for a session,
+        with existing state if ID provided.
+        """
         self._current_session_id = session_id
         if player_state_id:
             await self.load_state(player_state_id, session_id)
         else:
             logger.warning(
-                "PlayerStateTracker initialized without a player_state_id to load."
+                "PlayerStateTracker initialized without a player_state_id to " "load."
             )
             self._current_state = None
 
     async def create_new_player(
-        self, player_name: str = "Player", starting_location_id: UUID | None = None
-    ) -> PlayerState:
+        self,
+        player_name: str = "Player",
+        starting_location_id: UUID | None = None,
+    ) -> PlayerState:  # Ensure return type is met or exception raised
         """Creates a new player state in memory and database."""
         if not self._current_session_id:
             raise ValueError("Session ID must be set before creating a new player.")
@@ -52,7 +63,9 @@ class PlayerStateTracker:
                 try:
                     await conn.execute(
                         """
-                        INSERT INTO player_states (player_id, session_id, state_data)
+                        INSERT INTO player_states (
+                            player_id, session_id, state_data
+                        )
                         VALUES ($1, $2, $3)
                         """,
                         self._current_state.player_id,
@@ -60,14 +73,15 @@ class PlayerStateTracker:
                         self._current_state.model_dump_json(exclude_none=True),
                     )
                     logger.info(
-                        f"Created new player state {self._current_state.player_id} "
-                        f"for session {self._current_session_id}"
+                        f"Created new player state "
+                        f"{self._current_state.player_id} for session "
+                        f"{self._current_session_id}"
                     )
+                    return self._current_state
                 except Exception as e:
                     logger.error(f"Error creating new player state: {e}")
                     self._current_state = None  # Rollback in-memory state
                     raise
-        return self._current_state
 
     async def load_state(self, player_id: UUID, session_id: UUID) -> PlayerState | None:
         """Loads player state from the database."""
@@ -91,12 +105,12 @@ class PlayerStateTracker:
                         session_id  # Ensure session ID is updated on load
                     )
                     logger.info(
-                        f"Loaded player state {player_id} for session {session_id}"
+                        f"Loaded player state {player_id} for session " f"{session_id}"
                     )
                     return self._current_state
                 except (ValidationError, json.JSONDecodeError) as e:
                     logger.error(
-                        f"Error validating/parsing player state {player_id}: {e}"
+                        f"Error validating/parsing player state {player_id}: " f"{e}"
                     )
                     self._current_state = None
                     return None
@@ -112,7 +126,8 @@ class PlayerStateTracker:
         """Saves the current player state to the database."""
         if not self._current_state or not self._current_session_id:
             logger.warning(
-                "Attempted to save state, but no current state or session ID is loaded."
+                "Attempted to save state, but no current state or session ID "
+                "is loaded."
             )
             return
 
@@ -174,18 +189,30 @@ class PlayerStateTracker:
                         item = item_data
                     else:
                         logger.warning(
-                            f"Invalid item data format in inventory change: {item_data}"
+                            "Invalid item data format in inventory change: "
+                            f"{item_data}"
                         )
                         continue
                     await self.add_inventory_item(item)
                 elif action == "remove":
                     item_id = change.get("item_id")
+                    quantity = change.get("quantity", 1)
                     if item_id:
-                        await self.remove_inventory_item(item_id)
+                        # Convert string UUID to UUID object if needed
+                        if isinstance(item_id, str):
+                            from uuid import UUID
+
+                            item_id = UUID(item_id)
+                        await self.remove_inventory_item(item_id, quantity)
                 elif action == "update":
                     item_id = change.get("item_id")
                     updates = change.get("updates")
                     if item_id and updates:
+                        # Convert string UUID to UUID object if needed
+                        if isinstance(item_id, str):
+                            from uuid import UUID
+
+                            item_id = UUID(item_id)
                         await self.update_inventory_item(item_id, updates)
 
         # Update Knowledge
@@ -233,7 +260,8 @@ class PlayerStateTracker:
         """Adds an item to the player's inventory."""
         if not self._current_state:
             return
-        # Check if item already exists (by item_id or maybe name for stackable?)
+        # Check if item already exists
+        # (by item_id or maybe name for stackable?)
         existing_item = next(
             (i for i in self._current_state.inventory if i.item_id == item.item_id),
             None,
@@ -255,7 +283,8 @@ class PlayerStateTracker:
         if not self._current_state:
             return
         item_to_remove = next(
-            (i for i in self._current_state.inventory if i.item_id == item_id), None
+            (i for i in self._current_state.inventory if i.item_id == item_id),
+            None,
         )
         if item_to_remove:
             if item_to_remove.quantity > quantity:
@@ -267,7 +296,7 @@ class PlayerStateTracker:
             else:
                 self._current_state.inventory.remove(item_to_remove)
                 logger.debug(
-                    f"Removed item {item_to_remove.name} ({item_id}) from inventory"
+                    f"Removed item {item_to_remove.name} ({item_id}) " f"from inventory"
                 )
             # Consider saving state here or marking as dirty
         else:
@@ -282,20 +311,18 @@ class PlayerStateTracker:
         if not self._current_state:
             return
         item_to_update = next(
-            (i for i in self._current_state.inventory if i.item_id == item_id), None
+            (i for i in self._current_state.inventory if i.item_id == item_id),
+            None,
         )
         if item_to_update:
             for key, value in updates.items():
                 if hasattr(item_to_update, key):
                     setattr(item_to_update, key, value)
-                elif key in item_to_update.attributes:
-                    item_to_update.attributes[key] = value
                 else:
-                    logger.warning(
-                        f"Cannot update unknown attribute '{key}' for item {item_id}"
-                    )
+                    # Add or update custom attributes in the attributes dict
+                    item_to_update.attributes[key] = value
             logger.debug(
-                f"Updated item {item_to_update.name} ({item_id}) with: {updates}"
+                f"Updated item {item_to_update.name} ({item_id}) with: " f"{updates}"
             )
 
         else:
@@ -316,7 +343,10 @@ class PlayerStateTracker:
             logger.debug(f"Knowledge topic '{knowledge.topic}' already exists.")
 
     async def update_stats(self, stat_changes: dict[str, int | float]) -> None:
-        """Updates player stats, ensuring values stay within bounds (e.g., health)."""
+        """
+        Updates player stats, ensuring values stay within bounds
+        (e.g., health).
+        """
         if not self._current_state:
             return
         stats = self._current_state.stats
@@ -397,9 +427,9 @@ class PlayerStateTracker:
         """Returns the player's acquired knowledge."""
         return self._current_state.knowledge if self._current_state else []
 
-    async def get_stats(self) -> dict[str, Any] | None:
-        """Returns the player's current stats as a dictionary."""
-        return self._current_state.stats.model_dump() if self._current_state else None
+    async def get_stats(self) -> PlayerStats | None:
+        """Returns the player's current stats model."""
+        return self._current_state.stats if self._current_state else None
 
     async def shutdown(self) -> None:
         """Perform any cleanup, like ensuring the final state is saved."""

@@ -111,6 +111,18 @@ class Location(BaseModel):
     last_visited: datetime | None = None
 
 
+class EvolutionEvent(BaseModel):
+    """Represents an event in the world evolution queue."""
+
+    event_id: UUID = Field(default_factory=uuid4)
+    trigger: str  # e.g., "npc_spawn", "weather_change"
+    data: dict[str, Any] = Field(default_factory=dict)  # Specific data for the event
+    priority: int = 0  # Higher priority events are processed first
+    timestamp: datetime = Field(default_factory=datetime.utcnow)  # Timestamp of queuing
+    processed: bool = False
+    processed_at: datetime | None = None
+
+
 class WorldState(BaseModel):
     """Represents the entire state of the game world."""
 
@@ -118,7 +130,9 @@ class WorldState(BaseModel):
     locations: dict[UUID, Location] = Field(default_factory=dict)
     global_flags: dict[str, Any] = Field(default_factory=dict)
     current_time: datetime = Field(default_factory=datetime.now)
-    evolution_queue: list[dict[str, Any]] = Field(default_factory=list)
+    evolution_queue: list["EvolutionEvent"] = Field(
+        default_factory=list
+    )  # Changed to EvolutionEvent
     state_data_json: str | None = None
 
 
@@ -154,13 +168,18 @@ class ActionResult(BaseModel):
 
     object_changes: list[dict[str, Any]] | None = None
     npc_changes: list[dict[str, Any]] | None = None
-    location_state_changes: dict[str, Any] | None = None
+    location_state_changes: dict[str, Any] | None = None  # For current location
+    global_flag_changes: dict[str, Any] | None = None  # Added
 
     triggers_evolution: bool = False
-    evolution_trigger: str | None = None
-    evolution_data: dict[str, Any] | None = None
-    priority: int = 5
-    timestamp: datetime = Field(default_factory=datetime.now)
+    evolution_trigger: str | None = (
+        None  # Type of event, maps to EvolutionEvent.trigger
+    )
+    evolution_data: dict[str, Any] | None = None  # Data for the event
+    priority: int = 5  # Priority for the evolution event
+    timestamp: datetime = Field(
+        default_factory=datetime.now
+    )  # Timestamp for action result, can be used for event
 
     # Optionally add the originating command/intent
     command: str | None = None
