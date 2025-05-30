@@ -1,0 +1,20 @@
+{# Location Description Template - Rich Text Formatting #}
+{% if name -%}
+[bold blue]{{ name }}[/bold blue]
+
+{% endif -%}
+{% if description -%}
+{{ description | rich_markup }}
+
+{% endif -%}
+{% if exits -%}
+[dim]Exits:[/dim] {{ exits | join(", ") | rich_markup }}
+{% endif -%}
+{% if items -%}
+
+[dim]You see:[/dim] {{ items | join(", ") | rich_markup }}
+{% endif -%}
+{% if npcs -%}
+
+[dim]Present:[/dim] {{ npcs | join(", ") | rich_markup }}
+{% endif %}

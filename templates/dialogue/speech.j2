@@ -1,0 +1,6 @@
+{# Dialogue Template #}
+{% if npc_data and npc_data.name -%}
+[bold magenta]{{ npc_data.name }}:[/bold magenta] "{{ text | rich_markup }}"
+{%- else -%}
+[bold magenta]{{ speaker }}:[/bold magenta] "{{ text | rich_markup }}"
+{%- endif %}

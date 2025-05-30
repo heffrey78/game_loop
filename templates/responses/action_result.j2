@@ -1,0 +1,11 @@
+{# Action Result Template #}
+{% if success -%}
+[bold green]✓[/bold green] {{ feedback_message | rich_markup }}
+{%- else -%}
+[bold yellow]✗[/bold yellow] {{ feedback_message | rich_markup }}
+{%- endif -%}
+
+{% if location_changed and location_data -%}
+
+{% include 'locations/description.j2' %}
+{%- endif -%}

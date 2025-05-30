@@ -1,0 +1,10 @@
+[green]✓ {{ message or "Action completed successfully" }}[/green]
+{% if location_change %}
+[dim]Location changed[/dim]
+{% endif %}
+{% if inventory_changes %}
+[dim]Inventory updated[/dim]
+{% endif %}
+{% if stat_changes %}
+[dim]Stats modified[/dim]
+{% endif %}

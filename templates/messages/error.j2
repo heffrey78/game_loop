@@ -1,0 +1,10 @@
+{# Error Message Template #}
+{% if error_type == "error" -%}
+[bold red]Error:[/bold red] {{ error | rich_markup }}
+{%- elif error_type == "warning" -%}
+[bold yellow]Warning:[/bold yellow] {{ error | rich_markup }}
+{%- elif error_type == "info" -%}
+[bold blue]Info:[/bold blue] {{ error | rich_markup }}
+{%- else -%}
+{{ error | rich_markup }}
+{%- endif %}

@@ -1,0 +1,10 @@
+{# System Information Message Template #}
+{% if message_type == "info" -%}
+[bold cyan]ℹ[/bold cyan] {{ message | rich_markup }}
+{%- elif message_type == "warning" -%}
+[bold yellow]⚠[/bold yellow] {{ message | rich_markup }}
+{%- elif message_type == "success" -%}
+[bold green]✓[/bold green] {{ message | rich_markup }}
+{%- else -%}
+{{ message | rich_markup }}
+{%- endif %}
