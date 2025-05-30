@@ -1,6 +1,6 @@
 """Pydantic models for game state representation and persistence."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -118,7 +118,9 @@ class EvolutionEvent(BaseModel):
     trigger: str  # e.g., "npc_spawn", "weather_change"
     data: dict[str, Any] = Field(default_factory=dict)  # Specific data for the event
     priority: int = 0  # Higher priority events are processed first
-    timestamp: datetime = Field(default_factory=datetime.utcnow)  # Timestamp of queuing
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )  # Timestamp of queuing
     processed: bool = False
     processed_at: datetime | None = None
 
@@ -168,7 +170,7 @@ class ActionResult(BaseModel):
 
     object_changes: list[dict[str, Any]] | None = None
     npc_changes: list[dict[str, Any]] | None = None
-    location_state_changes: dict[str, Any] | None = None  # For current location
+    location_state_changes: dict[str, Any] | None = None
     global_flag_changes: dict[str, Any] | None = None  # Added
 
     triggers_evolution: bool = False

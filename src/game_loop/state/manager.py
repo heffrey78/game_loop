@@ -86,16 +86,20 @@ class GameStateManager:
                         short_desc,
                         full_desc,
                         location_type,
-                        created_by
+                        is_dynamic,
+                        created_by,
+                        state_json
                         )
-                    VALUES ($1, $2, $3, $4, $5, $6)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     """,
                     reception_id,
                     "Abandoned Reception Area",
                     "A dusty reception desk sits in this once-bustling office entrance.",  # noqa: E501
                     "Fluorescent lights flicker weakly overhead, casting eerie shadows across the reception area. A thick layer of dust covers the once-polished desk where visitors would check in. Torn posters about workplace productivity hang crooked on the walls. The faint sound of a phone ringing somewhere deep in the building sends chills down your spine, though the lines should be long dead. Paper name tags are scattered on the floor, remnants of employees who disappeared without warning when the company mysteriously shut down.",  # noqa: E501
                     "indoor",
+                    False,
                     "system",
+                    "{}",
                 )
                 logger.info(f"Created reception area {reception_id}")
 
@@ -104,15 +108,17 @@ class GameStateManager:
                 location_ids["north"] = north_id
                 await conn.execute(
                     """
-                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, created_by)
-                    VALUES ($1, $2, $3, $4, $5, $6)
+                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, is_dynamic, created_by, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     """,  # noqa: E501
                     north_id,
                     "Executive Suite",
                     "Luxurious but abandoned offices of former executives.",
                     "Unlike the rest of the office, these rooms once housed the company elites. Mahogany desks are now warped with moisture, and plush leather chairs are cracked and moldy. A large portrait of the CEO hangs on one wall, the eyes seemingly following you around the room. Someone has scratched out the face with what looks like fingernails. The calendar on the central desk is still open to the date of the 'incident.' Expensive pens have rolled into corners, and a half-empty bottle of whiskey sits on a credenza, its contents long evaporated. A newspaper clipping about 'experimental corporate wellness programs' lies partially burned in a wastepaper basket.",  # noqa: E501
                     "indoor",
+                    False,
                     "system",
+                    "{}",
                 )
                 logger.info(f"Created north location {north_id}")
 
@@ -121,15 +127,17 @@ class GameStateManager:
                 location_ids["east"] = east_id
                 await conn.execute(
                     """
-                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, created_by)
-                    VALUES ($1, $2, $3, $4, $5, $6)
+                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, is_dynamic, created_by, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     """,  # noqa: E501
                     east_id,
                     "Server Room",
                     "Rows of old servers hum ominously in this cold room.",
                     "The temperature drops noticeably as you enter the server room. Against all logic, some of the ancient servers are still running, blinking with cryptic patterns of lights. Thick cables snake across the floor like dormant serpents. The constant hum has an almost hypnotic quality, occasionally interrupted by clicks and whirs from machines that should have died years ago. A terminal screen flickers in the corner, displaying fragmented code and what might be employee records. One section of the wall has been torn open, revealing unusual modifications to the building's electrical system. Something about the arrangement of wires reminds you of a neural network, as if the building itself had been turned into some kind of crude brain.",  # noqa: E501
                     "indoor",
+                    False,
                     "system",
+                    "{}",
                 )
                 logger.info(f"Created east location {east_id}")
 
@@ -138,15 +146,17 @@ class GameStateManager:
                 location_ids["south"] = south_id
                 await conn.execute(
                     """
-                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, created_by)
-                    VALUES ($1, $2, $3, $4, $5, $6)
+                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, is_dynamic, created_by, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     """,  # noqa: E501
                     south_id,
                     "Abandoned Cafeteria",
                     "Once-bustling eating area now frozen in time.",
                     "The cafeteria looks as though everyone vanished mid-meal. Trays with half-eaten food remain on tables, now covered in a fuzzy layer of mold that has grown into unnatural colors. The serving counter still holds industrial-sized containers of unidentifiable substances. A motivational banner reading 'PRODUCTIVITY FEEDS THE SOUL' hangs askew above the food line. Several chairs are overturned, suggesting people left in a hurry. The vending machines stand dark, except for one that occasionally sputters to life, its internal mechanics grinding painfully. The wall clock is frozen at 2:37, though whether it's AM or PM is anyone's guess. A strange dark stain spreads from beneath the door to the kitchen.",  # noqa: E501
                     "indoor",
+                    False,
                     "system",
+                    "{}",
                 )
                 logger.info(f"Created south location {south_id}")
 
@@ -155,15 +165,17 @@ class GameStateManager:
                 location_ids["west"] = west_id
                 await conn.execute(
                     """
-                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, created_by)
-                    VALUES ($1, $2, $3, $4, $5, $6)
+                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, is_dynamic, created_by, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     """,  # noqa: E501
                     west_id,
                     "Cubicle Farm",
                     "Endless rows of gray partitions form a maze of abandoned workspaces.",  # noqa: E501
                     "Gray fabric partitions create a labyrinth of identical workspaces, stretching far beyond what the building's exterior would suggest possible. Personal items are still at each desk—family photos, coffee mugs with cheerful slogans, now a mockery in this desolate place. Some cubicles have been personalized with plants, now brown and desiccated, reaching out like withered claws. Computer monitors display error messages or peculiar screensavers of fractal patterns that never quite repeat. Motivational posters about teamwork and persistence take on a sinister tone in the eerie silence. Occasionally, the distant sound of typing can be heard, though the source is impossible to locate. Post-it notes with cryptic messages are stuck to monitors: 'IT'S IN THE WALLS' and 'DON'T STAY AFTER HOURS.' The air feels charged, as if the collective despair of a thousand meaningless workdays has become a tangible presence.",  # noqa: E501
                     "indoor",
+                    False,
                     "system",
+                    "{}",
                 )
                 logger.info(f"Created west location {west_id}")
 
@@ -187,8 +199,8 @@ class GameStateManager:
                 keycard_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     keycard_id,
                     "Keycard",
@@ -197,13 +209,15 @@ class GameStateManager:
                     "key",
                     True,
                     reception_id,
+                    "{}",
+                    "{}",
                 )
 
                 visitor_log_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     visitor_log_id,
                     "Visitor Log",
@@ -212,14 +226,16 @@ class GameStateManager:
                     "document",
                     True,
                     reception_id,
+                    "{}",
+                    "{}",
                 )
 
                 # Executive Suite items
                 letter_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     letter_id,
                     "Resignation Letter",
@@ -228,13 +244,15 @@ class GameStateManager:
                     "document",
                     True,
                     north_id,
+                    "{}",
+                    "{}",
                 )
 
                 executive_pen_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     executive_pen_id,
                     "Executive Pen",
@@ -243,14 +261,16 @@ class GameStateManager:
                     "tool",
                     True,
                     north_id,
+                    "{}",
+                    "{}",
                 )
 
                 # Server Room items
                 usb_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     usb_id,
                     "USB Drive",
@@ -259,13 +279,15 @@ class GameStateManager:
                     "electronic",
                     True,
                     east_id,
+                    "{}",
+                    "{}",
                 )
 
                 server_manual_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     server_manual_id,
                     "Server Manual",
@@ -274,14 +296,16 @@ class GameStateManager:
                     "document",
                     True,
                     east_id,
+                    "{}",
+                    "{}",
                 )
 
                 # Cafeteria items
                 energy_drink_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     energy_drink_id,
                     "Energy Drink",
@@ -290,13 +314,15 @@ class GameStateManager:
                     "consumable",
                     True,
                     south_id,
+                    "{}",
+                    "{}",
                 )
 
                 cafeteria_note_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     cafeteria_note_id,
                     "Cafeteria Note",
@@ -305,14 +331,16 @@ class GameStateManager:
                     "document",
                     True,
                     south_id,
+                    "{}",
+                    "{}",
                 )
 
                 # Cubicle Farm items
                 stapler_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     stapler_id,
                     "Red Stapler",
@@ -321,13 +349,15 @@ class GameStateManager:
                     "tool",
                     True,
                     west_id,
+                    "{}",
+                    "{}",
                 )
 
                 performance_review_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     performance_review_id,
                     "Performance Review",
@@ -336,14 +366,16 @@ class GameStateManager:
                     "document",
                     True,
                     west_id,
+                    "{}",
+                    "{}",
                 )
 
                 # Add NPCs to the world
                 security_guard_id = uuid4()
                 await conn.execute(
                     """
-                    INSERT INTO npcs (id, name, short_desc, full_desc, npc_type, personality_json, location_id, state_json)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    INSERT INTO npcs (id, name, short_desc, full_desc, npc_type, personality_json, knowledge_json, location_id, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,  # noqa: E501
                     security_guard_id,
                     "Security Guard",
@@ -351,6 +383,7 @@ class GameStateManager:
                     "The security guard sits unnaturally still, facing away from you. He wears a faded uniform with the Monolith Corp logo. When you approach, he slowly turns, revealing a gaunt face with deeply sunken eyes. His movements are jerky, almost mechanical. 'Employees... must... check in,' he mumbles in a monotone voice, though there's no sign of any check-in system still operating. His name tag reads 'Davis,' and his skin has a grayish tint.",  # noqa: E501
                     "humanoid",
                     '{"traits": {"suspicious": true, "helpful": false}, "dialogue_state": "neutral"}',  # noqa: E501
+                    "{}",
                     reception_id,
                     '{"dialogue_state": "neutral", "hostile": false}',
                 )
@@ -555,23 +588,29 @@ class GameStateManager:
         # Create forward connection
         await conn.execute(
             """
-            INSERT INTO location_connections (source_id, target_id, connection_type, direction)
-            VALUES ($1, $2, 'doorway', $3)
+            INSERT INTO location_connections (source_id, target_id, direction, is_bidirectional, is_hidden, requirements_json)
+            VALUES ($1, $2, $3, $4, $5, $6)
             """,  # noqa: E501
             source_id,
             target_id,
             direction,
+            True,
+            False,
+            "{}",
         )
 
         # Create return connection
         await conn.execute(
             """
-            INSERT INTO location_connections (source_id, target_id, connection_type, direction)
-            VALUES ($1, $2, 'doorway', $3)
+            INSERT INTO location_connections (source_id, target_id, direction, is_bidirectional, is_hidden, requirements_json)
+            VALUES ($1, $2, $3, $4, $5, $6)
             """,  # noqa: E501
             target_id,
             source_id,
             return_direction,
+            True,
+            False,
+            "{}",
         )
 
     async def load_game(

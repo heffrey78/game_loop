@@ -43,12 +43,13 @@ class SessionManager:
                 if not player_row:
                     player_id = await conn.fetchval(
                         """
-                        INSERT INTO players (username, created_at)
-                        VALUES ($1, CURRENT_TIMESTAMP) RETURNING id
+                        INSERT INTO players (username, created_at, settings_json)
+                        VALUES ($1, CURRENT_TIMESTAMP, $2) RETURNING id
                         """,
                         str(player_state_id)[
                             :50
                         ],  # Username has a 50-char limit in schema
+                        "{}",  # Default empty settings
                     )
                 else:
                     player_id = player_row["id"]
@@ -75,8 +76,9 @@ class SessionManager:
                         save_name,
                         created_at,
                         updated_at,
-                        game_version)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        game_version,
+                        game_time)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                         """,
                         new_session.session_id,
                         player_id,  # Use the player ID from players table
@@ -86,6 +88,7 @@ class SessionManager:
                         new_session.created_at,
                         new_session.updated_at,
                         new_session.game_version,
+                        0,  # Initial game time
                     )
                 else:
                     # Old schema with started_at field
@@ -97,8 +100,9 @@ class SessionManager:
                         world_state_id,
                         save_name,
                         started_at,
-                        game_version)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                        game_version,
+                        game_time)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                         """,
                         new_session.session_id,
                         player_id,  # Use the player ID from players table
@@ -107,6 +111,7 @@ class SessionManager:
                         new_session.save_name,
                         new_session.created_at,  # Use created_at for started_at
                         new_session.game_version,
+                        0,  # Initial game time
                     )
 
                 logger.info(
@@ -179,10 +184,11 @@ class SessionManager:
                     if not player_row:
                         player_id = await conn.fetchval(
                             """
-                            INSERT INTO players (username, created_at)
-                            VALUES ($1, CURRENT_TIMESTAMP) RETURNING id
+                            INSERT INTO players (username, created_at, settings_json)
+                            VALUES ($1, CURRENT_TIMESTAMP, $2) RETURNING id
                             """,
                             str(player_state.player_id)[:50],
+                            "{}",  # Default empty settings
                         )
                     else:
                         player_id = player_row["id"]

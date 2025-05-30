@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -545,7 +545,7 @@ class WorldStateTracker:
             trigger=trigger,
             data=data or {},
             priority=priority,
-            timestamp=timestamp or datetime.utcnow(),
+            timestamp=timestamp or datetime.now(timezone.utc),
         )
         self._current_state.evolution_queue.append(event)
         self._current_state.evolution_queue.sort(
