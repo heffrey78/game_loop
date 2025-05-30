@@ -64,10 +64,14 @@ class GameLoop:
             config_manager=self.config_manager,
             console=self.console,
             use_nlp=config.features.use_nlp,
+            game_state_manager=self.state_manager,
         )
 
         # Fallback to basic input processor if needed
-        self.basic_input_processor = InputProcessor(self.console)
+        self.basic_input_processor = InputProcessor(
+            self.console,
+            game_state_manager=self.state_manager,
+        )
 
         # Initialize the command handler factory
         self.command_handler_factory = CommandHandlerFactory(

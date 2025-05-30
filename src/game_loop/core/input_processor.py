@@ -5,9 +5,13 @@ Handles parsing and validation of player input commands.
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
+
+if TYPE_CHECKING:
+    from ..llm.nlp_processor import NLPProcessor
+    from ..state.manager import GameStateManager
 
 
 class CommandType(Enum):
@@ -44,16 +48,26 @@ class ParsedCommand:
 class InputProcessor:
     """
     Processes and validates user input, converting it into structured commands.
+    Enhanced with GameStateManager integration for context-aware processing.
     """
 
-    def __init__(self, console: Console | None = None):
+    def __init__(
+        self,
+        console: Console | None = None,
+        game_state_manager: "GameStateManager | None" = None,
+        nlp_processor: "NLPProcessor | None" = None,
+    ):
         """
         Initialize the input processor.
 
         Args:
             console: Console for output, will create a new one if not provided
+            game_state_manager: GameStateManager for retrieving game context
+            nlp_processor: NLPProcessor for enhanced natural language processing
         """
         self.console = console if console else Console()
+        self.game_state_manager = game_state_manager
+        self.nlp_processor = nlp_processor
         self._setup_command_patterns()
 
     def _setup_command_patterns(self) -> None:
@@ -121,12 +135,41 @@ class InputProcessor:
         # Try to match to known command patterns
         return self._match_command_pattern(normalized_input)
 
-    # Keep the async version with a different name for future use
+    async def process(
+        self, user_input: str, context: dict[str, Any] | None = None
+    ) -> ParsedCommand:
+        """
+        Enhanced process method with context-aware processing.
+
+        This is the main entry point for enhanced input processing that
+        integrates with GameStateManager and NLPProcessor.
+
+        Args:
+            user_input: The raw user input string
+            context: Optional external context (overrides auto-retrieved context)
+
+        Returns:
+            A ParsedCommand object representing the processed input
+        """
+        # Get current game context if not provided
+        if context is None:
+            context = await self._get_current_context()
+
+        # Use enhanced context-aware processing if available
+        if self.nlp_processor and context:
+            return await self._process_with_context(user_input, context)
+
+        # Fall back to standard processing for backward compatibility
+        return self.process_input(user_input, context)
+
     async def process_input_async(
         self, user_input: str, game_context: dict[str, Any] | None = None
     ) -> ParsedCommand:
         """
         Process user input and return a structured command asynchronously.
+
+        This method provides backward compatibility with existing tests
+        and simply delegates to the synchronous process_input method.
 
         Args:
             user_input: The raw user input string
@@ -135,9 +178,122 @@ class InputProcessor:
         Returns:
             A ParsedCommand object representing the processed input
         """
-        # Simply delegate to the synchronous version for now
-        # In the future, this could be enhanced with async-specific logic
         return self.process_input(user_input, game_context)
+
+    async def _get_current_context(self) -> dict[str, Any]:
+        """
+        Retrieve current game context from GameStateManager.
+
+        Returns:
+            Dictionary containing current game state context
+        """
+        context: dict[str, Any] = {}
+
+        if not self.game_state_manager:
+            return context
+
+        try:
+            # Get current location details
+            location_details = (
+                await self.game_state_manager.get_current_location_details()
+            )
+            if location_details:
+                context["current_location"] = {
+                    "id": str(location_details.location_id),
+                    "name": location_details.name,
+                    "description": location_details.description,
+                }
+
+                # Add connections if available
+                if (
+                    hasattr(location_details, "connections")
+                    and location_details.connections
+                ):
+                    context["connections"] = dict(location_details.connections)
+
+                # Add objects if available
+                if hasattr(location_details, "objects") and location_details.objects:
+                    context["visible_objects"] = [
+                        {"name": obj.name, "description": obj.description}
+                        for obj in location_details.objects.values()
+                    ]
+
+                # Add NPCs if available
+                if hasattr(location_details, "npcs") and location_details.npcs:
+                    context["npcs"] = [
+                        {"name": npc.name, "description": npc.description}
+                        for npc in location_details.npcs.values()
+                    ]
+
+            # Get player state
+            player_state, _ = self.game_state_manager.get_current_state()
+            if player_state:
+                context["player"] = {
+                    "name": player_state.name,
+                    "current_location_id": (
+                        str(player_state.current_location_id)
+                        if player_state.current_location_id
+                        else None
+                    ),
+                }
+
+                # Add inventory if available
+                if hasattr(player_state, "inventory") and player_state.inventory:
+                    # Handle both dict and list inventory formats
+                    if hasattr(player_state.inventory, "values"):
+                        inventory_items = player_state.inventory.values()
+                    else:
+                        inventory_items = player_state.inventory
+
+                    context["inventory"] = [
+                        {
+                            "name": item.name,
+                            "description": getattr(item, "description", ""),
+                        }
+                        for item in inventory_items
+                    ]
+
+        except Exception:
+            # Log error but don't fail processing
+            # Could use logger here if available
+            pass
+
+        return context
+
+    async def _process_with_context(
+        self, user_input: str, context: dict[str, Any]
+    ) -> ParsedCommand:
+        """
+        Process input using enhanced context and NLP processing.
+
+        Args:
+            user_input: The raw user input string
+            context: Game context for enhanced processing
+
+        Returns:
+            A ParsedCommand object representing the processed input
+        """
+        try:
+            # Use NLP processor for context-aware processing
+            if self.nlp_processor:
+                parsed_command = await self.nlp_processor.process_input(
+                    user_input, context
+                )
+
+                # Validate and enhance the result if needed
+                if (
+                    parsed_command
+                    and parsed_command.command_type != CommandType.UNKNOWN
+                ):
+                    return parsed_command
+
+        except Exception:
+            # Log error but don't fail processing
+            # Could use logger here if available
+            pass
+
+        # Fall back to pattern matching if NLP processing fails
+        return self.process_input(user_input, context)
 
     def _normalize_input(self, user_input: str) -> str:
         """

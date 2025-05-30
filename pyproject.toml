@@ -54,14 +54,22 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
+explicit_package_bases = true
+mypy_path = "src"
+namespace_packages = true
 
-# Ignore missing stubs for this specific module
+# Ignore missing stubs for external libraries
 [[tool.mypy.overrides]]
-module = "game_loop.config.models"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "asyncpg.*"
+module = [
+    "pydantic.*",
+    "rich.*",
+    "sqlalchemy.*",
+    "pgvector.*",
+    "httpx.*",
+    "ollama.*",
+    "jinja2.*",
+    "asyncpg.*"
+]
 ignore_missing_imports = true
 
 # Pytest configuration

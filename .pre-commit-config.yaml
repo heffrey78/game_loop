@@ -24,4 +24,6 @@ repos:
     hooks:
     -   id: mypy
         exclude: ^(docs/|tests/)
+        args: [--explicit-package-bases, --namespace-packages]
         additional_dependencies: [types-PyYAML]
+        files: ^src/

@@ -4,7 +4,7 @@ Combines pattern matching and NLP approaches for more natural language understan
 """
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 
@@ -13,6 +13,9 @@ from game_loop.core.input_processor import CommandType, InputProcessor, ParsedCo
 from game_loop.llm.config import ConfigManager
 from game_loop.llm.conversation_context import ConversationContext
 from game_loop.llm.nlp_processor import NLPProcessor
+
+if TYPE_CHECKING:
+    from game_loop.state.manager import GameStateManager
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,7 @@ class EnhancedInputProcessor(InputProcessor):
         config_manager: ConfigManager | None = None,
         console: Console | None = None,
         use_nlp: bool = True,
+        game_state_manager: "GameStateManager | None" = None,
     ):
         """
         Initialize with both pattern matching and NLP capabilities.
@@ -35,12 +39,20 @@ class EnhancedInputProcessor(InputProcessor):
         Args:
             config_manager: Configuration manager for LLM settings
             console: Console for output
-            use_nlp: Whether to use NLP processing (fall back to pattern matching)
+            use_nlp: Whether to use NLP processing (fall back to pattern)
+            game_state_manager: GameStateManager for context
         """
-        super().__init__(console=console)
         self.config_manager = config_manager or ConfigManager()
-        self.use_nlp = use_nlp
         self.nlp_processor = NLPProcessor(config_manager=self.config_manager)
+
+        # Initialize parent class with enhanced capabilities
+        super().__init__(
+            console=console,
+            game_state_manager=game_state_manager,
+            nlp_processor=self.nlp_processor,
+        )
+
+        self.use_nlp = use_nlp
         self.command_mapper = CommandMapper()
         self.conversation_context = ConversationContext()
 
@@ -124,10 +136,11 @@ class EnhancedInputProcessor(InputProcessor):
             return pattern_command
 
         try:
-            # Process with NLP
-            nlp_command = await self.nlp_processor.process_input(
-                normalized_input, game_context
-            )
+            # Process with NLP if available
+            if self.nlp_processor:
+                nlp_command = await self.nlp_processor.process_input(
+                    normalized_input, game_context
+                )
 
             # Map NLP intent to command
             if nlp_command.command_type != CommandType.UNKNOWN:
@@ -214,7 +227,17 @@ class EnhancedInputProcessor(InputProcessor):
                 }
             )
 
-        # Use NLP processor to disambiguate
+        # Use NLP processor to disambiguate if available
+        if not self.nlp_processor:
+            # Fall back to first command if no NLP processor
+            return (
+                possible_commands[0]
+                if possible_commands
+                else ParsedCommand(
+                    command_type=CommandType.UNKNOWN, action="unknown", subject=None
+                )
+            )
+
         context_str = self.nlp_processor._format_context(game_context)
         result = await self.nlp_processor.disambiguate_input(
             user_input, interpretations, context_str
