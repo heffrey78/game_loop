@@ -12,7 +12,8 @@ diagram and handles the entity-specific text preprocessing and embedding generat
 import logging
 from typing import Any
 
-from game_loop.embeddings.service import EmbeddingError, EmbeddingService
+from game_loop.embeddings.exceptions import EmbeddingError
+from game_loop.embeddings.service import EmbeddingService
 
 logger = logging.getLogger(__name__)
 

@@ -181,6 +181,22 @@ class ConfigCLI:
             dest="prompts.default_template",
         )
 
+        # Feature options
+        feature_group = self.parser.add_argument_group("Feature options")
+        feature_group.add_argument(
+            "--features.use-embedding-search",
+            help="Enable embedding-based semantic search",
+            action="store_true",
+            default=None,
+            dest="features.use_embedding_search",
+        )
+        feature_group.add_argument(
+            "--features.no-embedding-search",
+            help="Disable embedding-based semantic search",
+            action="store_false",
+            dest="features.use_embedding_search",
+        )
+
     def parse_args(self, args: list[str] | None = None) -> dict[str, Any]:
         """
         Parse command line arguments.

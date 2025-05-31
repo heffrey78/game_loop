@@ -167,11 +167,12 @@ class GameConfig(BaseModel):
         default_factory=LoggingConfig, description="Logging configuration"
     )
     features: FeaturesConfig = Field(
-        default_factory=FeaturesConfig, description="Feature flags configuration"
+        default_factory=FeaturesConfig,
+        description="Feature flags configuration",
     )
 
     def sync_embedding_dimensions(self) -> "GameConfig":
-        """Set embedding dimensions from database config if not in llm config."""
+        """Set embedding dimensions from database if not in LLM config."""
         if self.llm.embedding_dimensions is None and hasattr(self, "database"):
             self.llm.embedding_dimensions = self.database.embedding_dimensions
         return self

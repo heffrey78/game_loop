@@ -10,12 +10,12 @@ from uuid import UUID
 import asyncpg
 from rich.console import Console
 
+from game_loop.config.manager import ConfigManager
 from game_loop.config.models import GameConfig
 from game_loop.core.command_handlers.factory import CommandHandlerFactory
 from game_loop.core.enhanced_input_processor import EnhancedInputProcessor
 from game_loop.core.input_processor import CommandType, InputProcessor, ParsedCommand
 from game_loop.core.location import LocationDisplay
-from game_loop.llm.config import ConfigManager
 from game_loop.state.manager import GameStateManager
 from game_loop.state.models import ActionResult, Location, PlayerState, WorldState
 
@@ -54,7 +54,7 @@ class GameLoop:
         # Update the prompt template directory to point to our implementation
         project_root = Path(__file__).parent.parent.parent
         prompt_dir = project_root / "game_loop" / "llm" / "prompts"
-        self.config_manager.prompt_config.template_dir = str(prompt_dir)
+        self.config_manager.config.prompts.template_dir = str(prompt_dir)
 
         # Initialize GameStateManager with the correct config manager type
         self.state_manager = GameStateManager(self.game_config_manager, self.db_pool)

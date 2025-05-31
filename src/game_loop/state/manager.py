@@ -2,15 +2,25 @@
 coordinating player, world, and session state."""
 
 import logging
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import asyncpg
 
 from ..config.manager import ConfigManager
-from .models import ActionResult, GameSession, Location, PlayerState, WorldState
+from .models import (
+    ActionResult,
+    GameSession,
+    Location,
+    PlayerState,
+    WorldState,
+)
 from .player_state import PlayerStateTracker
 from .session_manager import SessionManager
 from .world_state import WorldStateTracker
+
+if TYPE_CHECKING:
+    from ..embeddings.service import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +28,43 @@ logger = logging.getLogger(__name__)
 class GameStateManager:
     """Coordinates PlayerStateTracker, WorldStateTracker, and SessionManager."""
 
-    def __init__(self, config_manager: ConfigManager, db_pool: asyncpg.Pool):
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        db_pool: asyncpg.Pool,
+        # Optional dependency injection
+        embedding_service: "EmbeddingService | None" = None,
+    ):
         self.config_manager = config_manager
         self.db_pool = db_pool
         self.player_tracker = PlayerStateTracker(db_pool)
         self.world_tracker = WorldStateTracker(db_pool)
         self.session_manager = SessionManager(db_pool)
         self._current_session: GameSession | None = None
+        # Lazy initialization for embedding service
+        self._embedding_service = embedding_service
+
+    @property
+    def embedding_service(self) -> "EmbeddingService | None":
+        """
+        Get embedding service if features.use_embedding_search is enabled.
+
+        Returns:
+            EmbeddingService instance if enabled and available, None otherwise
+        """
+        # Check if embedding search is enabled via feature flags
+        if not self.config_manager.is_embedding_enabled():
+            return None
+
+        # Lazy initialization
+        if self._embedding_service is None:
+            try:
+                self._embedding_service = self.config_manager.create_embedding_service()
+            except (ImportError, ValueError) as e:
+                logger.warning(f"Failed to create embedding service: {e}")
+                return None
+
+        return self._embedding_service
 
     async def initialize(
         self,
@@ -34,6 +74,7 @@ class GameStateManager:
     ) -> None:
         """Initializes all state trackers, loading data based on provided IDs."""
         logger.info(f"Initializing GameStateManager for session {session_id}...")
+
         if session_id:
             self._current_session = await self.session_manager.load_session(session_id)
             if not self._current_session:
@@ -438,19 +479,20 @@ class GameStateManager:
                         # Get connections for this location
                         connections = await conn.fetch(
                             """
-                            SELECT direction, target_id FROM location_connections
-                            WHERE source_id = $1
+                            SELECT direction, to_location_id FROM location_connections
+                            WHERE from_location_id = $1
                             """,
                             loc_id,
                         )
                         for conn_data in connections:
                             location.connections[conn_data["direction"]] = conn_data[
-                                "target_id"
+                                "to_location_id"
                             ]
 
                         # Add objects for this location
                         objects = await conn.fetch(
-                            "SELECT * FROM objects WHERE location_id = $1", loc_id
+                            "SELECT * FROM objects WHERE location_id = $1",
+                            loc_id,
                         )
                         for obj_data in objects:
                             from game_loop.state.models import WorldObject
@@ -472,7 +514,9 @@ class GameStateManager:
                         for npc_data in npcs:
                             import json
 
-                            from game_loop.state.models import NonPlayerCharacter
+                            from game_loop.state.models import (
+                                NonPlayerCharacter,
+                            )
 
                             # Parse JSON fields
                             (
@@ -494,7 +538,9 @@ class GameStateManager:
                             # Create knowledge objects if available
                             knowledge_items = []
                             if "items" in knowledge:
-                                from game_loop.state.models import PlayerKnowledge
+                                from game_loop.state.models import (
+                                    PlayerKnowledge,
+                                )
 
                                 for k_item in knowledge["items"]:
                                     knowledge_items.append(
@@ -588,28 +634,32 @@ class GameStateManager:
         # Create forward connection
         await conn.execute(
             """
-            INSERT INTO location_connections (source_id, target_id, direction, is_bidirectional, is_hidden, requirements_json)
+            INSERT INTO location_connections
+            (from_location_id, to_location_id, connection_type, direction,
+             is_visible, requirements_json)
             VALUES ($1, $2, $3, $4, $5, $6)
-            """,  # noqa: E501
+            """,
             source_id,
             target_id,
+            "path",  # Default connection type
             direction,
             True,
-            False,
             "{}",
         )
 
         # Create return connection
         await conn.execute(
             """
-            INSERT INTO location_connections (source_id, target_id, direction, is_bidirectional, is_hidden, requirements_json)
+            INSERT INTO location_connections
+            (from_location_id, to_location_id, connection_type, direction,
+             is_visible, requirements_json)
             VALUES ($1, $2, $3, $4, $5, $6)
-            """,  # noqa: E501
+            """,
             target_id,
             source_id,
+            "path",  # Default connection type
             return_direction,
             True,
-            False,
             "{}",
         )
 
@@ -705,7 +755,9 @@ class GameStateManager:
         # If auto-saving:
         # await self.save_game() # Might be too frequent
 
-    def get_current_state(self) -> tuple[PlayerState | None, WorldState | None]:
+    def get_current_state(
+        self,
+    ) -> tuple[PlayerState | None, WorldState | None]:
         """Returns the current in-memory player and world states."""
         return self.player_tracker.get_state(), self.world_tracker.get_state()
 

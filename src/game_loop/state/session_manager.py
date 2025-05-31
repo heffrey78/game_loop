@@ -43,9 +43,12 @@ class SessionManager:
                 if not player_row:
                     player_id = await conn.fetchval(
                         """
-                        INSERT INTO players (username, created_at, settings_json)
-                        VALUES ($1, CURRENT_TIMESTAMP, $2) RETURNING id
+                        INSERT INTO players (name, username, created_at, settings_json)
+                        VALUES ($1, $2, CURRENT_TIMESTAMP, $3) RETURNING id
                         """,
+                        str(player_state_id)[
+                            :50
+                        ],  # Use player_state_id as name (truncated)
                         str(player_state_id)[
                             :50
                         ],  # Username has a 50-char limit in schema

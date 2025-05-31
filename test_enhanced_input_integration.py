@@ -13,9 +13,9 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from rich.console import Console
 
+from game_loop.config.manager import ConfigManager
 from game_loop.core.enhanced_input_processor import EnhancedInputProcessor
 from game_loop.core.input_processor import CommandType, InputProcessor
-from game_loop.llm.config import ConfigManager
 
 
 async def test_basic_input_processor():

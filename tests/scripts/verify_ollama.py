@@ -6,7 +6,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-from game_loop.llm.config import ConfigManager
+from game_loop.config.manager import ConfigManager
 from game_loop.llm.ollama.client import OllamaClient, OllamaEmbeddingConfig
 
 # Add project root to Python path to allow imports
@@ -25,7 +25,7 @@ async def verify_ollama_integration():
     # Step 1: Connect to Ollama API and check health
     print("Step 1: Connecting to Ollama API...")
     client = OllamaClient(
-        base_url=config_mgr.llm_config.base_url, timeout=config_mgr.llm_config.timeout
+        base_url=config_mgr.config.llm.base_url, timeout=config_mgr.config.llm.timeout
     )
 
     try:
@@ -50,7 +50,7 @@ async def verify_ollama_integration():
             return False
 
         test_model = (
-            model_names[0] if model_names else config_mgr.llm_config.default_model
+            model_names[0] if model_names else config_mgr.config.llm.default_model
         )
         model_available = await client.check_model_availability(test_model)
         print(

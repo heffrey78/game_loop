@@ -6,7 +6,7 @@ Handles loading, merging, and accessing configuration from multiple sources.
 import logging
 import os
 from pathlib import Path
-from typing import Any, TypeVar, cast, get_type_hints
+from typing import TYPE_CHECKING, Any, TypeVar, cast, get_type_hints
 
 import yaml
 from pydantic import BaseModel
@@ -15,6 +15,9 @@ from game_loop.config.models import (
     GameConfig,
     OllamaConfig,
 )
+
+if TYPE_CHECKING:
+    from game_loop.embeddings.service import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -369,12 +372,116 @@ class ConfigManager:
         Returns:
             Absolute path
         """
+        # If it's already absolute, use as-is
         if os.path.isabs(path):
             return path
 
-        # Ensure base_dir is a string
-        base_dir = str(self.base_dir) if self.base_dir is not None else ""
-        return os.path.normpath(os.path.join(base_dir, path))
+        # If we have a config file, use its directory as base
+        if self.config_file:
+            config_dir = os.path.dirname(self.config_file)
+            return os.path.abspath(os.path.join(config_dir, path))
+
+        # Otherwise, use the config directory
+        if self.config_dir is None:
+            # Fallback or raise error if config_dir is essential and None
+            raise ValueError("Config directory is not set, cannot resolve path.")
+        return os.path.abspath(os.path.join(self.config_dir, path))
+
+    def create_embedding_service(self) -> "EmbeddingService":
+        """
+        Create embedding service with current configuration.
+
+        Returns:
+            Configured EmbeddingService instance
+
+        Raises:
+            ImportError: If embedding service dependencies are not available
+            ValueError: If configuration is invalid for embedding service
+        """
+        try:
+            from game_loop.embeddings.service import EmbeddingService
+
+            # Pass this ConfigManager directly - no bridge needed
+            return EmbeddingService(config_manager=self)
+        except ImportError as e:
+            raise ImportError(
+                f"Failed to import EmbeddingService: {e}. "
+                "Ensure embedding dependencies are installed."
+            ) from e
+        except Exception as e:
+            raise ValueError(f"Failed to create EmbeddingService: {e}") from e
+
+    def is_embedding_enabled(self) -> bool:
+        """
+        Check if embedding functionality is enabled via feature flags.
+
+        Returns:
+            True if embedding search feature is enabled, False otherwise
+        """
+        try:
+            return self.config.features.use_embedding_search
+        except AttributeError:
+            return False
+
+    def get_prompt_template(self, template_name: str) -> str:
+        """
+        Load and cache a prompt template.
+
+        Args:
+            template_name: Name of the template to load
+
+        Returns:
+            Template content as string
+
+        Raises:
+            ValueError: If template cannot be loaded
+        """
+        if not hasattr(self, "_prompt_templates"):
+            self._prompt_templates: dict[str, str] = {}
+
+        # If template is already loaded, return it
+        if template_name in self._prompt_templates:
+            return self._prompt_templates[template_name]
+
+        # Build template path
+        template_dir = self.config.prompts.template_dir
+        if not os.path.isabs(template_dir):
+            template_dir = self.resolve_path(template_dir)
+
+        template_path = os.path.join(template_dir, template_name)
+        if not template_path.endswith(".txt"):
+            template_path += ".txt"
+
+        # Load and cache template
+        try:
+            with open(template_path) as f:
+                template_content = f.read()
+            self._prompt_templates[template_name] = template_content
+            return template_content
+        except OSError as e:
+            raise ValueError(f"Failed to load template {template_name}: {e}") from e
+
+    def format_prompt(self, template_name: str, **kwargs: Any) -> str:
+        """
+        Load and format a prompt template with variables.
+
+        Args:
+            template_name: Name of the template to use
+            **kwargs: Variables to substitute in the template
+
+        Returns:
+            Formatted prompt text
+
+        Raises:
+            ValueError: If template loading or formatting fails
+        """
+        template = self.get_prompt_template(template_name)
+        try:
+            return template.format(**kwargs)
+        except KeyError as e:
+            raise ValueError(
+                f"Missing required variable in template '{template_name}': {e}"
+            ) from e
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the configuration to a dictionary."""

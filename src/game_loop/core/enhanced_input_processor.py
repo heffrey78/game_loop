@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 
+from game_loop.config.manager import ConfigManager
 from game_loop.core.command_mapper import CommandMapper
 from game_loop.core.input_processor import CommandType, InputProcessor, ParsedCommand
-from game_loop.llm.config import ConfigManager
 from game_loop.llm.conversation_context import ConversationContext
 from game_loop.llm.nlp_processor import NLPProcessor
 

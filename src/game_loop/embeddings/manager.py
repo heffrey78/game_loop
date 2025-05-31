@@ -19,7 +19,7 @@ from uuid import UUID
 
 from game_loop.database.db_connection import get_connection
 from game_loop.embeddings.entity_generator import EntityEmbeddingGenerator
-from game_loop.embeddings.service import EmbeddingError
+from game_loop.embeddings.exceptions import EmbeddingError
 
 logger = logging.getLogger(__name__)
 

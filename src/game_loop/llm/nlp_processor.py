@@ -11,8 +11,8 @@ from typing import Any
 import ollama
 from pydantic import BaseModel
 
+from game_loop.config.manager import ConfigManager
 from game_loop.core.input_processor import CommandType, ParsedCommand
-from game_loop.llm.config import ConfigManager
 from game_loop.llm.models import (
     CommandTypeStr,
     Disambiguation,
@@ -44,24 +44,24 @@ class NLPProcessor:
         self.config_manager = config_manager or ConfigManager()
 
         # Use the official Ollama Python client
-        self.host = self.config_manager.llm_config.base_url
-        self.model = self.config_manager.llm_config.default_model
+        self.host = self.config_manager.config.llm.base_url
+        self.model = self.config_manager.config.llm.default_model
         self.client = ollama_client or ollama
 
         # Load parameters from config
-        self.temperature = self.config_manager.ollama_config.completion_params.get(
+        self.temperature = self.config_manager.config.ollama.completion_params.get(
             "temperature", 0.7
         )
-        self.top_p = self.config_manager.ollama_config.completion_params.get(
+        self.top_p = self.config_manager.config.ollama.completion_params.get(
             "top_p", 0.9
         )
-        self.top_k = self.config_manager.ollama_config.completion_params.get(
+        self.top_k = self.config_manager.config.ollama.completion_params.get(
             "top_k", 40
         )
-        self.max_tokens = self.config_manager.ollama_config.completion_params.get(
+        self.max_tokens = self.config_manager.config.ollama.completion_params.get(
             "max_tokens", 1024
         )
-        self.system_prompt = self.config_manager.ollama_config.system_prompt
+        self.system_prompt = self.config_manager.config.ollama.system_prompt
 
     async def process_input(
         self, user_input: str, game_context: dict[str, Any] | None = None
