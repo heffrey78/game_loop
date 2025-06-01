@@ -10,9 +10,27 @@ architecture diagram, enabling semantic search capabilities,
 as well as contextual relevance determination.
 """
 
+from game_loop.embeddings.analytics import (
+    cluster_embeddings,
+    compute_embedding_stats,
+    reduce_dimensions,
+    visualize_embeddings,
+)
 from game_loop.embeddings.cache import EmbeddingCache
 from game_loop.embeddings.config import EmbeddingConfig
+from game_loop.embeddings.entity_embeddings import (
+    EntityEmbeddingGenerator as EntityEmbeddingGeneratorV2,
+)
 from game_loop.embeddings.entity_generator import EntityEmbeddingGenerator
+from game_loop.embeddings.entity_preprocessing import (
+    create_entity_context,
+    extract_salient_features,
+    preprocess_character,
+    preprocess_event,
+    preprocess_item,
+    preprocess_location,
+)
+from game_loop.embeddings.entity_registry import EntityEmbeddingRegistry
 from game_loop.embeddings.exceptions import (
     EmbeddingCacheError,
     EmbeddingConfigError,
@@ -31,6 +49,13 @@ from game_loop.embeddings.preprocessing import (
     preprocess_for_embedding,
 )
 from game_loop.embeddings.service import EmbeddingService
+from game_loop.embeddings.similarity import (
+    boost_by_context,
+    cosine_similarity,
+    dot_product,
+    euclidean_distance,
+    search_entities,
+)
 
 __all__ = [
     # Core service
@@ -54,5 +79,25 @@ __all__ = [
     "with_retry_async",
     # Entity handling
     "EntityEmbeddingGenerator",
+    "EntityEmbeddingGeneratorV2",
+    "EntityEmbeddingRegistry",
     "EmbeddingManager",
+    # Entity preprocessing
+    "preprocess_character",
+    "preprocess_location",
+    "preprocess_item",
+    "preprocess_event",
+    "extract_salient_features",
+    "create_entity_context",
+    # Similarity
+    "cosine_similarity",
+    "euclidean_distance",
+    "dot_product",
+    "search_entities",
+    "boost_by_context",
+    # Analytics
+    "compute_embedding_stats",
+    "reduce_dimensions",
+    "cluster_embeddings",
+    "visualize_embeddings",
 ]

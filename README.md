@@ -15,6 +15,7 @@ Game Loop is an interactive text adventure system that uses natural language pro
 - Persistent game state management
 - Rules and evolution systems
 - Integration with LLM services via Ollama
+- Entity embedding system for semantic understanding of game elements
 
 ## Getting Started
 
@@ -47,6 +48,8 @@ The Game Loop system is built with a modular architecture, allowing for easy ext
 - NLP Integration: Connects to LLM services for language understanding
 - Database Integration: Stores game state, world data, and vector embeddings
 - Output Generation: Creates rich, contextual responses
+- Entity Embedding System: Generates and manages specialized embeddings for game entities
+- Semantic Search: Finds related game elements based on semantic similarity
 
 ## Development
 

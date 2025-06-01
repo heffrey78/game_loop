@@ -21,6 +21,8 @@ rich = ">=14.0.0,<15.0.0"
 asyncpg = ">=0.30.0,<0.31.0"
 ollama = ">=0.4.8,<0.5.0"
 jinja2 = "^3.1.2"
+numpy = "^1.26.4"
+matplotlib = "^3.8.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
@@ -30,8 +32,6 @@ mypy = "^1.15.0"
 pre-commit = "^4.2.0"
 pytest-cov = "^4.1.0"
 pytest-asyncio = "^0.26.0"
-types-pyyaml = "^6.0.12.20250402"
-
 # Define the entry point for the game_loop command
 [tool.poetry.scripts]
 game_loop = "game_loop.main:main"
@@ -68,7 +68,9 @@ module = [
     "httpx.*",
     "ollama.*",
     "jinja2.*",
-    "asyncpg.*"
+    "asyncpg.*",
+    "numpy.*",
+    "matplotlib.*"
 ]
 ignore_missing_imports = true
 
