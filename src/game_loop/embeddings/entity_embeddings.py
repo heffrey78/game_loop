@@ -340,3 +340,17 @@ class EntityEmbeddingGenerator:
                 template += f"{key.capitalize()}: {value}\n"
 
         return template.strip()
+
+    async def generate_embedding(self, text: str) -> list[float]:
+        """
+        Generate an embedding for raw text (compatibility method).
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            list of embedding values as floats
+        """
+        # Convert text to a general entity for processing
+        entity = {"name": text, "description": text}
+        return await self.generate_entity_embedding(entity, "general")

@@ -76,6 +76,22 @@ flowchart TD
         EmbeddingManager --> |Update DB| VectorStore
     end
 
+    %% Semantic Search System
+    subgraph SearchSystem["Semantic Search System"]
+        SemanticSearchService[Semantic Search Service]
+        QueryProcessor[Query Processor]
+        ResultsProcessor[Results Processor]
+        CacheManager[Cache Manager]
+        EntitySimilarityAnalyzer[Entity Similarity Analyzer]
+        SearchGameIntegrator[Search Game Integrator]
+
+        SemanticSearchService --> QueryProcessor
+        SemanticSearchService --> ResultsProcessor
+        SemanticSearchService --> CacheManager
+        SemanticSearchService --> EntitySimilarityAnalyzer
+        SearchGameIntegrator --> SemanticSearchService
+    end
+
     %% Processing Flow Connections
     InputProcessor --> LLMService
     IntentRecognition --> VectorSearch
@@ -116,6 +132,11 @@ flowchart TD
         QuestGenerator[Quest Generator]
     end
 
+    %% API Endpoints
+    subgraph APIEndpoints["API Endpoints"]
+        SearchEndpoints[Search API Endpoints]
+    end
+
     TimeManager --> EvolutionProcessor
     EvolutionProcessor --> DB
     EvolutionQueue --> EvolutionProcessor
@@ -140,6 +161,14 @@ flowchart TD
     DynamicWorldGenerator --> EmbeddingPipeline
     OutputGenerator --> EmbeddingPipeline
 
+    %% Search System Connections
+    GameLoop --> SearchSystem
+    SearchSystem --> VectorStore
+    SearchSystem --> EmbeddingSystem
+    SearchGameIntegrator --> GameStateManager
+    SearchEndpoints --> SemanticSearchService
+    APIEndpoints --> GameLoop
+
     %% Main Data Flows
     classDef dataFlow stroke:#3366FF,stroke-width:2px
     classDef userFlow stroke:#FF6633,stroke-width:2px
@@ -152,3 +181,6 @@ flowchart TD
     class DB,VectorStore,GraphDB,RelationalStore,WorldModel,PlayerModel,LocationsModel,ObjectsModel,NPCsModel,PlayerHistoryModel,QuestsModel,SessionsModel,RulesModel dataFlow
     class DynamicWorldGenerator,ContextualContentAdapter,TimeManager,EvolutionProcessor,NPCBehaviorEngine,QuestGenerator,WorldEvolution worldGenFlow
     class EmbeddingService,EntityEmbeddingGenerator,EmbeddingManager,EmbeddingSystem,EmbeddingPipeline embeddingFlow
+    class SemanticSearchService,QueryProcessor,ResultsProcessor,CacheManager,EntitySimilarityAnalyzer,SearchGameIntegrator,SearchSystem,SearchEndpoints searchFlow
+
+    classDef searchFlow stroke:#FF3399,stroke-width:2px

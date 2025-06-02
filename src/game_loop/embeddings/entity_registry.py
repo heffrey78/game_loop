@@ -306,3 +306,12 @@ class EntityEmbeddingRegistry:
             return 0.0
 
         return float(np.dot(vec1, vec2) / (norm1 * norm2))
+
+    def get_all_embeddings(self) -> dict[str, list[float]]:
+        """
+        Get all embeddings from the registry.
+
+        Returns:
+            Dictionary mapping entity IDs to embeddings
+        """
+        return dict(self.embeddings)
