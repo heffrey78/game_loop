@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from rich.console import Console
 
-from src.game_loop.core.input_processor import CommandType, InputProcessor
+from game_loop.core.input_processor import CommandType, InputProcessor
 
 
 async def test_enhanced_input_processor():

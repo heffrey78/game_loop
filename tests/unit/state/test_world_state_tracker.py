@@ -9,7 +9,7 @@ import pytest_asyncio
 from asyncpg import Pool
 from asyncpg.transaction import Transaction
 
-from src.game_loop.state.models import (
+from game_loop.state.models import (
     ActionResult,
     EvolutionEvent,
     Location,
@@ -17,7 +17,7 @@ from src.game_loop.state.models import (
     WorldObject,
     WorldState,
 )
-from src.game_loop.state.world_state import WorldStateTracker
+from game_loop.state.world_state import WorldStateTracker
 
 
 @pytest_asyncio.fixture

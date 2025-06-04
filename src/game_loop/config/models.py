@@ -126,6 +126,29 @@ class LoggingConfig(BaseModel):
     enable_console: bool = Field(default=True, description="Enable console logging")
 
 
+class ActionClassificationConfig(BaseModel):
+    """Configuration for action classification system."""
+
+    high_confidence_threshold: float = Field(
+        default=0.8, description="Threshold for high confidence classifications"
+    )
+    rule_confidence_threshold: float = Field(
+        default=0.7, description="Threshold for rule-based classification confidence"
+    )
+    llm_fallback_threshold: float = Field(
+        default=0.6, description="Threshold for triggering LLM fallback"
+    )
+    enable_cache: bool = Field(
+        default=True, description="Enable classification result caching"
+    )
+    cache_size: int = Field(
+        default=500, description="Maximum cache size for classifications"
+    )
+    cache_ttl_seconds: int = Field(
+        default=300, description="Cache time-to-live in seconds"
+    )
+
+
 class FeaturesConfig(BaseModel):
     """Configuration for game features."""
 
@@ -169,6 +192,10 @@ class GameConfig(BaseModel):
     features: FeaturesConfig = Field(
         default_factory=FeaturesConfig,
         description="Feature flags configuration",
+    )
+    action_classification: ActionClassificationConfig = Field(
+        default_factory=ActionClassificationConfig,
+        description="Action classification configuration",
     )
 
     def sync_embedding_dimensions(self) -> "GameConfig":

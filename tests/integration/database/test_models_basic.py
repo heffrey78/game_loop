@@ -84,7 +84,7 @@ async def test_model_constraints(db_session: AsyncSession) -> None:
     await db_session.commit()
 
     # Import and use SQLAlchemy models
-    from src.game_loop.database.models.base import Base
+    from game_loop.database.models.base import Base
 
     # Create all tables using a separate engine connection
     engine = db_session.bind
