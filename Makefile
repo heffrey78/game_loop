@@ -43,9 +43,9 @@ coverage:
 
 # Check if docker container is running and start if needed
 docker-check:
-	@if ! docker ps --format '{{.Names}}' | grep -q "game-loop-postgres"; then \
+	@if ! podman ps --format '{{.Names}}' | grep -q "game-loop-postgres"; then \
 	    echo "PostgreSQL container not running. Starting it now..."; \
-	    docker compose up -d postgres; \
+	    podman-compose up -d postgres; \
 	    echo "Waiting for PostgreSQL to initialize..."; \
 	    sleep 5; \
 	else \

@@ -58,14 +58,14 @@ def start_services() -> None:
         logger.error(f"Docker Compose file not found at {COMPOSE_FILE}")
         sys.exit(1)
 
-    # Check if Docker is running
-    docker_check = run_command(["docker", "info"], check=False, capture_output=True)
+    # Check if Podman is running
+    docker_check = run_command(["podman", "info"], check=False, capture_output=True)
     if docker_check and docker_check.returncode != 0:
-        logger.error("Docker daemon is not running or not accessible")
+        logger.error("Podman is not running or not accessible")
         sys.exit(1)
 
     # Start services
-    run_command(["docker", "compose", "-f", str(COMPOSE_FILE), "up", "-d"])
+    run_command(["podman-compose", "-f", str(COMPOSE_FILE), "up", "-d"])
 
     logger.info("Docker services started successfully")
 
@@ -79,7 +79,7 @@ def stop_services() -> None:
         sys.exit(1)
 
     # Stop services
-    run_command(["docker", "compose", "-f", str(COMPOSE_FILE), "down"])
+    run_command(["podman-compose", "-f", str(COMPOSE_FILE), "down"])
 
     logger.info("Docker services stopped successfully")
 
@@ -113,7 +113,8 @@ def initialize_database() -> None:
         }
     )
 
-    run_command([sys.executable, str(init_db_script)], env=env)
+    # Use poetry run to ensure we're using the correct Python environment
+    run_command(["poetry", "run", "python", str(init_db_script)], env=env)
 
     logger.info("Database initialized successfully")
 
@@ -147,7 +148,8 @@ def verify_setup() -> None:
         }
     )
 
-    run_command([sys.executable, str(verify_script)], env=env)
+    # Use poetry run to ensure we're using the correct Python environment
+    run_command(["poetry", "run", "python", str(verify_script)], env=env)
 
     logger.info("Setup verification completed")
 

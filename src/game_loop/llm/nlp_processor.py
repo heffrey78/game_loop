@@ -43,25 +43,60 @@ class NLPProcessor:
         """
         self.config_manager = config_manager or ConfigManager()
 
+        # Override prompt template directory to point to the correct location
+        if hasattr(self.config_manager, "config") and hasattr(
+            self.config_manager.config, "prompts"
+        ):
+            from pathlib import Path
+
+            # Set the prompts directory to the actual location in the source code
+            prompts_dir = Path(__file__).parent / "prompts"
+            self.config_manager.config.prompts.template_dir = str(prompts_dir)
+
         # Use the official Ollama Python client
-        self.host = self.config_manager.config.llm.base_url
-        self.model = self.config_manager.config.llm.default_model
+        if hasattr(self.config_manager, "llm_config"):
+            # New ConfigManager structure
+            self.host = self.config_manager.llm_config.base_url
+            self.model = self.config_manager.llm_config.default_model
+        else:
+            # Fallback to default values from LLMConfig
+            from .config import LLMConfig
+
+            default_config = LLMConfig()
+            self.host = default_config.base_url
+            self.model = default_config.default_model
+
         self.client = ollama_client or ollama
 
         # Load parameters from config
-        self.temperature = self.config_manager.config.ollama.completion_params.get(
-            "temperature", 0.7
-        )
-        self.top_p = self.config_manager.config.ollama.completion_params.get(
-            "top_p", 0.9
-        )
-        self.top_k = self.config_manager.config.ollama.completion_params.get(
-            "top_k", 40
-        )
-        self.max_tokens = self.config_manager.config.ollama.completion_params.get(
-            "max_tokens", 1024
-        )
-        self.system_prompt = self.config_manager.config.ollama.system_prompt
+        if hasattr(self.config_manager, "ollama_config"):
+            self.temperature = self.config_manager.ollama_config.completion_params.get(
+                "temperature", 0.7
+            )
+            self.top_p = self.config_manager.ollama_config.completion_params.get(
+                "top_p", 0.9
+            )
+            self.top_k = self.config_manager.ollama_config.completion_params.get(
+                "top_k", 40
+            )
+            self.max_tokens = self.config_manager.ollama_config.completion_params.get(
+                "max_tokens", 1024
+            )
+            self.system_prompt = self.config_manager.ollama_config.system_prompt
+        else:
+            # Fallback to default values from OllamaConfig
+            from .config import OllamaConfig
+
+            default_ollama_config = OllamaConfig()
+            self.temperature = default_ollama_config.completion_params.get(
+                "temperature", 0.7
+            )
+            self.top_p = default_ollama_config.completion_params.get("top_p", 0.9)
+            self.top_k = default_ollama_config.completion_params.get("top_k", 40)
+            self.max_tokens = default_ollama_config.completion_params.get(
+                "max_tokens", 1024
+            )
+            self.system_prompt = default_ollama_config.system_prompt
 
     async def process_input(
         self, user_input: str, game_context: dict[str, Any] | None = None
@@ -145,7 +180,7 @@ class NLPProcessor:
                 # Call the Ollama API with format parameter for structured output
                 response = await asyncio.wait_for(
                     self._generate_completion_async(prompt, Intent),
-                    timeout=10.0,
+                    timeout=30.0,  # Increased timeout for LLM processing
                 )
 
                 json_string = json.dumps(response)
@@ -979,7 +1014,14 @@ class NLPProcessor:
                 )
 
                 if ollama_response:
-                    response_text = ollama_response.get("response", "")
+                    # Handle ollama._types.GenerateResponse object
+                    if hasattr(ollama_response, "response"):
+                        response_text = ollama_response.response
+                    elif isinstance(ollama_response, dict):
+                        response_text = ollama_response.get("response", "")
+                    else:
+                        response_text = str(ollama_response)
+
                     try:
                         response_json = json.loads(response_text)
                         if isinstance(response_json, dict):
