@@ -5,10 +5,10 @@ This module provides physics validation, strength calculations, energy expenditu
 and realistic physics simulation for game actions.
 """
 
-import asyncio
 import logging
 import math
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from game_loop.core.command_handlers.physical_action_processor import PhysicalActionType
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class PhysicsConstants:
     """Physical constants used in calculations."""
-    
+
     GRAVITY = 9.81  # m/s²
     AIR_DENSITY = 1.225  # kg/m³
     WATER_DENSITY = 1000.0  # kg/m³
@@ -40,7 +40,7 @@ class PhysicsConstants:
 class PhysicsConstraintEngine:
     """
     Apply realistic physics constraints to physical actions.
-    
+
     This class validates physical constraints, calculates requirements,
     and simulates realistic physics behavior for game actions.
     """
@@ -53,18 +53,18 @@ class PhysicsConstraintEngine:
             configuration_manager: Configuration manager for physics settings
         """
         self.config = configuration_manager
-        self._constraint_rules: Dict[str, Callable] = {}
-        self._physics_constants: Dict[str, float] = {}
-        self._environment_factors: Dict[str, Dict[str, float]] = {}
+        self._constraint_rules: dict[str, Callable] = {}
+        self._physics_constants: dict[str, float] = {}
+        self._environment_factors: dict[str, dict[str, float]] = {}
         self._load_physics_configuration()
         self._initialize_constraint_rules()
 
     async def validate_physical_constraints(
         self,
         action_type: PhysicalActionType,
-        entities: List[str],
-        player_state: Dict[str, Any],
-    ) -> Tuple[bool, Optional[str]]:
+        entities: list[str],
+        player_state: dict[str, Any],
+    ) -> tuple[bool, str | None]:
         """
         Validate physical constraints for an action.
 
@@ -80,7 +80,9 @@ class PhysicsConstraintEngine:
             # Run all relevant constraint rules
             for rule_name, rule_func in self._constraint_rules.items():
                 try:
-                    is_valid, error_msg = await rule_func(action_type, entities, player_state)
+                    is_valid, error_msg = await rule_func(
+                        action_type, entities, player_state
+                    )
                     if not is_valid:
                         return False, f"{rule_name}: {error_msg}"
                 except Exception as e:
@@ -97,7 +99,7 @@ class PhysicsConstraintEngine:
         self,
         action_type: PhysicalActionType,
         target_mass: float,
-        difficulty_modifiers: Dict[str, float],
+        difficulty_modifiers: dict[str, float],
     ) -> float:
         """
         Calculate strength requirements for physical action.
@@ -127,10 +129,10 @@ class PhysicsConstraintEngine:
             }
 
             base_requirement = base_requirements.get(action_type, 1.0)
-            
+
             # Calculate mass factor
             mass_factor = self._calculate_mass_factor(action_type, target_mass)
-            
+
             # Apply difficulty modifiers
             total_modifier = 1.0
             for modifier_name, modifier_value in difficulty_modifiers.items():
@@ -140,7 +142,9 @@ class PhysicsConstraintEngine:
             leverage_factor = difficulty_modifiers.get("leverage_factor", 1.0)
 
             # Final strength requirement
-            strength_required = (base_requirement * mass_factor * total_modifier) / leverage_factor
+            strength_required = (
+                base_requirement * mass_factor * total_modifier
+            ) / leverage_factor
 
             return max(0.1, strength_required)  # Minimum requirement
 
@@ -150,9 +154,9 @@ class PhysicsConstraintEngine:
 
     async def check_spatial_constraints(
         self,
-        action_location: Dict[str, Any],
-        required_space: Dict[str, float],
-        entities: List[str],
+        action_location: dict[str, Any],
+        required_space: dict[str, float],
+        entities: list[str],
     ) -> bool:
         """
         Check if sufficient space exists for action.
@@ -167,17 +171,22 @@ class PhysicsConstraintEngine:
         """
         try:
             # Get available space at location
-            available_space = action_location.get("available_space", {
-                "width": 10.0,
-                "height": 3.0,
-                "depth": 10.0,
-            })
+            available_space = action_location.get(
+                "available_space",
+                {
+                    "width": 10.0,
+                    "height": 3.0,
+                    "depth": 10.0,
+                },
+            )
 
             # Check each dimension
             for dimension, required in required_space.items():
                 available = available_space.get(dimension, 0.0)
                 if available < required:
-                    logger.info(f"Insufficient {dimension}: need {required}, have {available}")
+                    logger.info(
+                        f"Insufficient {dimension}: need {required}, have {available}"
+                    )
                     return False
 
             # Check for entity overlap
@@ -185,7 +194,9 @@ class PhysicsConstraintEngine:
             for entity in entities:
                 entity_space = entity_positions.get(entity, {})
                 # Only check overlap if entity has position data
-                if entity_space and self._check_space_overlap(entity_space, required_space):
+                if entity_space and self._check_space_overlap(
+                    entity_space, required_space
+                ):
                     logger.info(f"Space overlap detected with entity {entity}")
                     return False
 
@@ -197,7 +208,7 @@ class PhysicsConstraintEngine:
 
     async def validate_structural_integrity(
         self, entity_id: str, applied_force: float, force_type: str
-    ) -> Tuple[bool, Optional[Dict[str, Any]]]:
+    ) -> tuple[bool, dict[str, Any] | None]:
         """
         Check if entity can withstand applied force.
 
@@ -212,11 +223,11 @@ class PhysicsConstraintEngine:
         try:
             # Get entity structural properties
             entity_props = await self._get_entity_structural_properties(entity_id)
-            
+
             # Get maximum force capacity for the force type
             max_force = entity_props.get(f"max_{force_type}_force", 1000.0)
             yield_strength = entity_props.get("yield_strength", 500.0)
-            
+
             damage_info = None
 
             if applied_force > max_force:
@@ -231,7 +242,9 @@ class PhysicsConstraintEngine:
 
             elif applied_force > yield_strength:
                 # Entity is damaged but doesn't break
-                damage_severity = min(1.0, (applied_force - yield_strength) / (max_force - yield_strength))
+                damage_severity = min(
+                    1.0, (applied_force - yield_strength) / (max_force - yield_strength)
+                )
                 damage_info = {
                     "type": "structural_damage",
                     "severity": damage_severity,
@@ -251,7 +264,7 @@ class PhysicsConstraintEngine:
         action_type: PhysicalActionType,
         duration: float,
         intensity: float,
-        player_stats: Dict[str, Any],
+        player_stats: dict[str, Any],
     ) -> float:
         """
         Calculate energy cost for physical action.
@@ -268,7 +281,7 @@ class PhysicsConstraintEngine:
         try:
             # Base metabolic rate (calories per second at rest)
             base_metabolic_rate = 1.2  # ~70 calories per minute
-            
+
             # Activity multipliers for different action types
             activity_multipliers = {
                 PhysicalActionType.MOVEMENT: 3.0,
@@ -285,15 +298,15 @@ class PhysicsConstraintEngine:
             }
 
             activity_multiplier = activity_multipliers.get(action_type, 2.0)
-            
+
             # Player fitness affects energy efficiency
             fitness_level = player_stats.get("fitness", 50) / 100.0  # 0.0 to 1.0
             efficiency = 0.5 + (fitness_level * 0.5)  # 0.5 to 1.0 efficiency
-            
+
             # Calculate energy expenditure
             base_energy = base_metabolic_rate * activity_multiplier * duration
             intensity_factor = 1.0 + (intensity * 2.0)  # 1.0 to 3.0
-            
+
             total_energy = (base_energy * intensity_factor) / efficiency
 
             return max(1.0, total_energy)  # Minimum 1 energy unit
@@ -304,7 +317,7 @@ class PhysicsConstraintEngine:
 
     async def simulate_collision_effects(
         self, entity1: str, entity2: str, impact_force: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Simulate effects of collision between entities.
 
@@ -323,7 +336,7 @@ class PhysicsConstraintEngine:
 
             mass1 = props1.get("mass", 10.0)
             mass2 = props2.get("mass", 10.0)
-            
+
             # Calculate momentum transfer (simplified elastic collision)
             total_mass = mass1 + mass2
             velocity_change_1 = (2 * mass2 / total_mass) * (impact_force / mass1)
@@ -340,7 +353,8 @@ class PhysicsConstraintEngine:
                 "entity1_effects": {
                     "velocity_change": velocity_change_1,
                     "damage": damage1,
-                    "position_change": velocity_change_1 * 0.1,  # Simplified displacement
+                    "position_change": velocity_change_1
+                    * 0.1,  # Simplified displacement
                 },
                 "entity2_effects": {
                     "velocity_change": velocity_change_2,
@@ -363,7 +377,7 @@ class PhysicsConstraintEngine:
         self,
         entity_id: str,
         action_type: PhysicalActionType,
-        environmental_factors: Dict[str, Any],
+        environmental_factors: dict[str, Any],
     ) -> bool:
         """
         Check if entity maintains balance during action.
@@ -379,9 +393,11 @@ class PhysicsConstraintEngine:
         try:
             # Get entity balance properties
             entity_props = await self._get_entity_physical_properties(entity_id)
-            center_of_gravity = entity_props.get("center_of_gravity", 0.5)  # 0.0 to 1.0 (low to high)
+            center_of_gravity = entity_props.get(
+                "center_of_gravity", 0.5
+            )  # 0.0 to 1.0 (low to high)
             stability_factor = entity_props.get("stability", 0.7)
-            
+
             # Action-specific balance challenges
             balance_challenges = {
                 PhysicalActionType.MOVEMENT: 0.1,
@@ -394,18 +410,27 @@ class PhysicsConstraintEngine:
             }
 
             challenge_level = balance_challenges.get(action_type, 0.2)
-            
+
             # Environmental factors
-            wind_factor = environmental_factors.get("wind_speed", 0.0) / 50.0  # 0.0 to 1.0+
-            surface_stability = environmental_factors.get("surface_stability", 1.0)  # 0.0 to 1.0
+            wind_factor = (
+                environmental_factors.get("wind_speed", 0.0) / 50.0
+            )  # 0.0 to 1.0+
+            surface_stability = environmental_factors.get(
+                "surface_stability", 1.0
+            )  # 0.0 to 1.0
             visibility = environmental_factors.get("visibility", 1.0)  # 0.0 to 1.0
-            
+
             # Calculate total stability requirement
-            total_challenge = challenge_level + wind_factor + (1.0 - surface_stability) + (1.0 - visibility) * 0.2
-            
+            total_challenge = (
+                challenge_level
+                + wind_factor
+                + (1.0 - surface_stability)
+                + (1.0 - visibility) * 0.2
+            )
+
             # Account for center of gravity
             balance_ability = stability_factor * (2.0 - center_of_gravity)
-            
+
             return balance_ability >= total_challenge
 
         except Exception as e:
@@ -413,8 +438,8 @@ class PhysicsConstraintEngine:
             return True  # Default to stable
 
     async def apply_gravity_effects(
-        self, entity_id: str, height: float, support_structure: Optional[str]
-    ) -> Dict[str, Any]:
+        self, entity_id: str, height: float, support_structure: str | None
+    ) -> dict[str, Any]:
         """
         Apply gravity effects to elevated entities.
 
@@ -433,18 +458,22 @@ class PhysicsConstraintEngine:
             # Get entity properties
             entity_props = await self._get_entity_physical_properties(entity_id)
             mass = entity_props.get("mass", 10.0)
-            
+
             # Calculate gravitational potential energy
             potential_energy = mass * PhysicsConstants.GRAVITY * height
-            
+
             # Check support structure
             if support_structure:
-                support_props = await self._get_entity_structural_properties(support_structure)
+                support_props = await self._get_entity_structural_properties(
+                    support_structure
+                )
                 max_load = support_props.get("max_load", 1000.0)
-                
+
                 if mass * PhysicsConstants.GRAVITY > max_load:
                     # Support fails
-                    fall_effects = await self._calculate_fall_effects(entity_id, height, mass)
+                    fall_effects = await self._calculate_fall_effects(
+                        entity_id, height, mass
+                    )
                     return {
                         "support_failure": True,
                         "fall_effects": fall_effects,
@@ -458,8 +487,12 @@ class PhysicsConstraintEngine:
             drag_coefficient = PhysicsConstants.DRAG_COEFFICIENTS["default"]
             cross_sectional_area = entity_props.get("cross_sectional_area", 1.0)
             terminal_velocity = math.sqrt(
-                (2 * mass * PhysicsConstants.GRAVITY) / 
-                (PhysicsConstants.AIR_DENSITY * drag_coefficient * cross_sectional_area)
+                (2 * mass * PhysicsConstants.GRAVITY)
+                / (
+                    PhysicsConstants.AIR_DENSITY
+                    * drag_coefficient
+                    * cross_sectional_area
+                )
             )
 
             return {
@@ -487,8 +520,8 @@ class PhysicsConstraintEngine:
         self._constraint_rules[rule_name] = validator
 
     async def get_constraint_violations(
-        self, action_type: PhysicalActionType, context: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, action_type: PhysicalActionType, context: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Get list of constraint violations for action.
 
@@ -507,13 +540,19 @@ class PhysicsConstraintEngine:
             # Check all constraint rules
             for rule_name, rule_func in self._constraint_rules.items():
                 try:
-                    is_valid, error_msg = await rule_func(action_type, entities, player_state)
+                    is_valid, error_msg = await rule_func(
+                        action_type, entities, player_state
+                    )
                     if not is_valid:
-                        violations.append({
-                            "rule": rule_name,
-                            "violation": error_msg,
-                            "severity": "high" if "break" in error_msg.lower() else "medium",
-                        })
+                        violations.append(
+                            {
+                                "rule": rule_name,
+                                "violation": error_msg,
+                                "severity": (
+                                    "high" if "break" in error_msg.lower() else "medium"
+                                ),
+                            }
+                        )
                 except Exception as e:
                     logger.error(f"Error checking rule {rule_name}: {e}")
 
@@ -536,7 +575,7 @@ class PhysicsConstraintEngine:
                 "default_friction": PhysicsConstants.FRICTION_COEFFICIENTS["default"],
                 "default_drag": PhysicsConstants.DRAG_COEFFICIENTS["default"],
             }
-            
+
             # Load environment factors
             self._environment_factors = {
                 "normal": {"gravity_multiplier": 1.0, "air_resistance": 1.0},
@@ -559,8 +598,11 @@ class PhysicsConstraintEngine:
         }
 
     async def _validate_mass_limits(
-        self, action_type: PhysicalActionType, entities: List[str], player_state: Dict[str, Any]
-    ) -> Tuple[bool, str]:
+        self,
+        action_type: PhysicalActionType,
+        entities: list[str],
+        player_state: dict[str, Any],
+    ) -> tuple[bool, str]:
         """Validate mass-based constraints."""
         try:
             player_strength = player_state.get("strength", 50)
@@ -569,15 +611,21 @@ class PhysicsConstraintEngine:
             for entity in entities:
                 entity_props = await self._get_entity_physical_properties(entity)
                 entity_mass = entity_props.get("mass", 10.0)
-                
-                if action_type in [PhysicalActionType.PUSHING, PhysicalActionType.PULLING]:
+
+                if action_type in [
+                    PhysicalActionType.PUSHING,
+                    PhysicalActionType.PULLING,
+                ]:
                     # Pushing/pulling allows more mass than lifting
                     max_capacity = max_lift_capacity * 3
                 else:
                     max_capacity = max_lift_capacity
 
                 if entity_mass > max_capacity:
-                    return False, f"Entity {entity} is too heavy ({entity_mass} kg > {max_capacity} kg capacity)"
+                    return (
+                        False,
+                        f"Entity {entity} is too heavy ({entity_mass} kg > {max_capacity} kg capacity)",
+                    )
 
             return True, ""
 
@@ -586,8 +634,11 @@ class PhysicsConstraintEngine:
             return True, ""
 
     async def _validate_energy_requirements(
-        self, action_type: PhysicalActionType, entities: List[str], player_state: Dict[str, Any]
-    ) -> Tuple[bool, str]:
+        self,
+        action_type: PhysicalActionType,
+        entities: list[str],
+        player_state: dict[str, Any],
+    ) -> tuple[bool, str]:
         """Validate energy requirements."""
         current_energy = player_state.get("energy", 100)
         min_energy_required = len(entities) * 5  # 5 energy per entity
@@ -596,13 +647,19 @@ class PhysicsConstraintEngine:
             min_energy_required *= 2
 
         if current_energy < min_energy_required:
-            return False, f"Insufficient energy: {min_energy_required} required, {current_energy} available"
+            return (
+                False,
+                f"Insufficient energy: {min_energy_required} required, {current_energy} available",
+            )
 
         return True, ""
 
     async def _validate_spatial_clearance(
-        self, action_type: PhysicalActionType, entities: List[str], player_state: Dict[str, Any]
-    ) -> Tuple[bool, str]:
+        self,
+        action_type: PhysicalActionType,
+        entities: list[str],
+        player_state: dict[str, Any],
+    ) -> tuple[bool, str]:
         """Validate spatial requirements."""
         # Simplified spatial validation
         current_location = player_state.get("current_location", {})
@@ -615,32 +672,41 @@ class PhysicsConstraintEngine:
             required_space = 4
 
         if available_space < required_space:
-            return False, f"Insufficient space: {required_space} required, {available_space} available"
+            return (
+                False,
+                f"Insufficient space: {required_space} required, {available_space} available",
+            )
 
         return True, ""
 
     async def _validate_structural_integrity_rule(
-        self, action_type: PhysicalActionType, entities: List[str], player_state: Dict[str, Any]
-    ) -> Tuple[bool, str]:
+        self,
+        action_type: PhysicalActionType,
+        entities: list[str],
+        player_state: dict[str, Any],
+    ) -> tuple[bool, str]:
         """Validate structural integrity constraints."""
         for entity in entities:
             entity_props = await self._get_entity_structural_properties(entity)
             durability = entity_props.get("durability", 100.0)
-            
+
             if durability <= 0:
                 return False, f"Entity {entity} is too damaged to interact with"
-            
+
             if action_type == PhysicalActionType.BREAKING and durability > 200:
                 return False, f"Entity {entity} is too sturdy to break"
 
         return True, ""
 
     async def _validate_balance_requirements(
-        self, action_type: PhysicalActionType, entities: List[str], player_state: Dict[str, Any]
-    ) -> Tuple[bool, str]:
+        self,
+        action_type: PhysicalActionType,
+        entities: list[str],
+        player_state: dict[str, Any],
+    ) -> tuple[bool, str]:
         """Validate balance and stability requirements."""
         player_balance = player_state.get("balance_skill", 50)
-        
+
         if action_type in [PhysicalActionType.CLIMBING, PhysicalActionType.JUMPING]:
             if player_balance < 30:
                 return False, "Insufficient balance skill for this action"
@@ -648,7 +714,7 @@ class PhysicsConstraintEngine:
         return True, ""
 
     async def _calculate_leverage_factor(
-        self, tool_id: Optional[str], action_type: PhysicalActionType
+        self, tool_id: str | None, action_type: PhysicalActionType
     ) -> float:
         """Calculate leverage factor when using tools."""
         if not tool_id:
@@ -671,7 +737,7 @@ class PhysicsConstraintEngine:
         """Get environmental resistance factors."""
         # Simplified environmental resistance
         base_resistance = 1.0
-        
+
         if "underwater" in location_id.lower():
             base_resistance *= 3.0
         elif "muddy" in location_id.lower():
@@ -684,7 +750,9 @@ class PhysicsConstraintEngine:
 
         return base_resistance
 
-    def _calculate_mass_factor(self, action_type: PhysicalActionType, mass: float) -> float:
+    def _calculate_mass_factor(
+        self, action_type: PhysicalActionType, mass: float
+    ) -> float:
         """Calculate how mass affects action difficulty."""
         # Different actions scale differently with mass
         if action_type == PhysicalActionType.MOVEMENT:
@@ -698,18 +766,26 @@ class PhysicsConstraintEngine:
         else:
             return 1.0 + (mass / 75.0)  # Default scaling
 
-    def _check_space_overlap(self, space1: Dict[str, float], space2: Dict[str, float]) -> bool:
+    def _check_space_overlap(
+        self, space1: dict[str, float], space2: dict[str, float]
+    ) -> bool:
         """Check if two spaces overlap."""
         # Simplified 2D overlap check
         x1_min, x1_max = space1.get("x", 0), space1.get("x", 0) + space1.get("width", 1)
-        y1_min, y1_max = space1.get("y", 0), space1.get("y", 0) + space1.get("height", 1)
-        
-        x2_min, x2_max = space2.get("x", 0), space2.get("x", 0) + space2.get("width", 1)
-        y2_min, y2_max = space2.get("y", 0), space2.get("y", 0) + space2.get("height", 1)
-        
-        return not (x1_max <= x2_min or x2_max <= x1_min or y1_max <= y2_min or y2_max <= y1_min)
+        y1_min, y1_max = space1.get("y", 0), space1.get("y", 0) + space1.get(
+            "height", 1
+        )
 
-    async def _get_entity_structural_properties(self, entity_id: str) -> Dict[str, Any]:
+        x2_min, x2_max = space2.get("x", 0), space2.get("x", 0) + space2.get("width", 1)
+        y2_min, y2_max = space2.get("y", 0), space2.get("y", 0) + space2.get(
+            "height", 1
+        )
+
+        return not (
+            x1_max <= x2_min or x2_max <= x1_min or y1_max <= y2_min or y2_max <= y1_min
+        )
+
+    async def _get_entity_structural_properties(self, entity_id: str) -> dict[str, Any]:
         """Get structural properties of an entity."""
         # Simulate entity structural data
         return {
@@ -721,7 +797,7 @@ class PhysicsConstraintEngine:
             "max_load": 500.0,
         }
 
-    async def _get_entity_physical_properties(self, entity_id: str) -> Dict[str, Any]:
+    async def _get_entity_physical_properties(self, entity_id: str) -> dict[str, Any]:
         """Get physical properties of an entity."""
         # Simulate entity physical data
         return {
@@ -733,42 +809,44 @@ class PhysicsConstraintEngine:
         }
 
     def _calculate_collision_damage(
-        self, entity_id: str, impact_force: float, entity_props: Dict[str, Any]
+        self, entity_id: str, impact_force: float, entity_props: dict[str, Any]
     ) -> float:
         """Calculate damage from collision."""
         durability = entity_props.get("durability", 100.0)
         damage_threshold = entity_props.get("damage_threshold", 100.0)
-        
+
         if impact_force > damage_threshold:
-            damage_ratio = min(1.0, (impact_force - damage_threshold) / damage_threshold)
+            damage_ratio = min(
+                1.0, (impact_force - damage_threshold) / damage_threshold
+            )
             return damage_ratio
-        
+
         return 0.0
 
     def _generate_collision_sound(
-        self, props1: Dict[str, Any], props2: Dict[str, Any], impact_force: float
+        self, props1: dict[str, Any], props2: dict[str, Any], impact_force: float
     ) -> str:
         """Generate collision sound effect description."""
         material1 = props1.get("material", "unknown")
         material2 = props2.get("material", "unknown")
-        
+
         if impact_force > 500:
             intensity = "loud"
         elif impact_force > 100:
             intensity = "moderate"
         else:
             intensity = "soft"
-        
+
         return f"A {intensity} {material1}-on-{material2} collision sound"
 
     async def _calculate_fall_effects(
         self, entity_id: str, height: float, mass: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Calculate effects of falling."""
         # Simplified fall damage calculation
         kinetic_energy = mass * PhysicsConstants.GRAVITY * height
         damage = min(1.0, kinetic_energy / 1000.0)  # Normalize to 0-1
-        
+
         return {
             "impact_energy": kinetic_energy,
             "damage": damage,

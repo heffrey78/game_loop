@@ -1,0 +1,33 @@
+Analyze the following conversation and extract any new factual information that was revealed:
+
+Conversation:
+{conversation_history}
+
+Extract information in these categories:
+1. World/Lore information (historical facts, locations, events)
+2. Character relationships and backgrounds
+3. Location descriptions or connections
+4. Object information or properties
+5. Quest or objective information
+6. Skills, abilities, or game mechanics
+
+For each piece of information, specify:
+- Category (world_lore, character_info, location_info, object_info, quest_info, game_mechanic)
+- Specific information learned (be precise and factual)
+- Confidence level (high/medium/low) based on how clearly it was stated
+- Source (which speaker revealed it)
+
+Format as JSON with this structure:
+{
+  "extracted_information": [
+    {
+      "category": "world_lore",
+      "information": "specific fact learned",
+      "confidence": "high",
+      "source": "speaker_name",
+      "keywords": ["key", "terms", "for", "search"]
+    }
+  ]
+}
+
+If no significant factual information was revealed, return an empty list.

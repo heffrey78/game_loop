@@ -1,0 +1,13 @@
+Based on the following information sources, provide a helpful answer to the player's query.
+
+Query: "{query_text}"
+
+Information Sources:
+{information_sources}
+
+Player Context:
+- Location: {current_location}
+- Recent Actions: {recent_actions}
+- Active Quests: {active_quests}
+
+Provide a natural, conversational response that directly answers the query using the available information. If information is incomplete, mention what aspects you're uncertain about. Keep the response concise but informative (2-4 sentences typically).

@@ -6,15 +6,15 @@ multi-container support, and advanced organization features.
 """
 
 from .inventory_manager import (
-    InventoryManager,
     InventoryConstraint,
     InventoryConstraintType,
+    InventoryManager,
     InventorySlot,
 )
 
 __all__ = [
     "InventoryManager",
-    "InventoryConstraint", 
+    "InventoryConstraint",
     "InventoryConstraintType",
     "InventorySlot",
 ]

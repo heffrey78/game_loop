@@ -5,15 +5,15 @@ This module provides the core processor for handling all physical actions includ
 movement, environment interaction, and spatial manipulation.
 """
 
-import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 from rich.console import Console
 
-from game_loop.core.actions.types import ActionClassification, ActionType
+from game_loop.core.actions.types import ActionClassification
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class PhysicalActionType(Enum):
     """Types of physical actions that can be performed."""
 
     MOVEMENT = "movement"
-    MANIPULATION = "manipulation" 
+    MANIPULATION = "manipulation"
     CLIMBING = "climbing"
     JUMPING = "jumping"
     PUSHING = "pushing"
@@ -40,15 +40,15 @@ class PhysicalActionResult:
 
     success: bool
     action_type: PhysicalActionType
-    affected_entities: List[str]
-    state_changes: Dict[str, Any]
+    affected_entities: list[str]
+    state_changes: dict[str, Any]
     energy_cost: float
     time_elapsed: float
-    side_effects: List[str]
+    side_effects: list[str]
     description: str
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary format."""
         return {
             "success": self.success,
@@ -66,7 +66,7 @@ class PhysicalActionResult:
 class PhysicalActionProcessor:
     """
     Core processor for handling all physical actions in the game world.
-    
+
     This class coordinates movement, environment interaction, and spatial actions
     by integrating with physics constraints, game state management, and search services.
     """
@@ -91,13 +91,13 @@ class PhysicalActionProcessor:
         self.state_manager = game_state_manager
         self.search_service = search_service
         self.physics = physics_engine
-        self._action_handlers: Dict[PhysicalActionType, Callable] = {}
-        self._constraint_validators: List[Callable] = []
-        self._action_metrics: Dict[str, Any] = {}
+        self._action_handlers: dict[PhysicalActionType, Callable] = {}
+        self._constraint_validators: list[Callable] = []
+        self._action_metrics: dict[str, Any] = {}
         self._initialize_handlers()
 
     async def process_physical_action(
-        self, action_classification: ActionClassification, context: Dict[str, Any]
+        self, action_classification: ActionClassification, context: dict[str, Any]
     ) -> PhysicalActionResult:
         """
         Main entry point for processing physical actions.
@@ -117,9 +117,9 @@ class PhysicalActionProcessor:
 
             # Validate action feasibility
             is_feasible, error_msg = await self.validate_action_feasibility(
-                physical_action_type, 
+                physical_action_type,
                 action_classification.secondary_targets or [],
-                context
+                context,
             )
 
             if not is_feasible:
@@ -149,9 +149,7 @@ class PhysicalActionProcessor:
             if result.success:
                 await self.update_world_state(result, context)
                 side_effects = await self.calculate_side_effects(
-                    physical_action_type,
-                    result.affected_entities,
-                    context
+                    physical_action_type, result.affected_entities, context
                 )
                 result.side_effects = side_effects
 
@@ -177,9 +175,9 @@ class PhysicalActionProcessor:
     async def validate_action_feasibility(
         self,
         action_type: PhysicalActionType,
-        target_entities: List[str],
-        context: Dict[str, Any],
-    ) -> Tuple[bool, Optional[str]]:
+        target_entities: list[str],
+        context: dict[str, Any],
+    ) -> tuple[bool, str | None]:
         """
         Check if the physical action is feasible in current context.
 
@@ -200,7 +198,10 @@ class PhysicalActionProcessor:
             current_location = player_state.get("current_location")
 
             if not current_location:
-                return False, "Player must be in a valid location to perform physical actions."
+                return (
+                    False,
+                    "Player must be in a valid location to perform physical actions.",
+                )
 
             # Check energy requirements
             if player_state.get("energy", 100) < 10:  # Minimum energy threshold
@@ -208,15 +209,19 @@ class PhysicalActionProcessor:
 
             # Run constraint validators if physics engine is available
             if self.physics:
-                constraints_valid, constraint_error = await self.physics.validate_physical_constraints(
-                    action_type, target_entities, player_state
+                constraints_valid, constraint_error = (
+                    await self.physics.validate_physical_constraints(
+                        action_type, target_entities, player_state
+                    )
                 )
                 if not constraints_valid:
                     return False, constraint_error
 
             # Run custom validators
             for validator in self._constraint_validators:
-                is_valid, error_msg = await validator(action_type, target_entities, context)
+                is_valid, error_msg = await validator(
+                    action_type, target_entities, context
+                )
                 if not is_valid:
                     return False, error_msg
 
@@ -227,8 +232,8 @@ class PhysicalActionProcessor:
             return False, f"Validation error: {str(e)}"
 
     async def calculate_action_requirements(
-        self, action_type: PhysicalActionType, target_entities: List[str]
-    ) -> Dict[str, Any]:
+        self, action_type: PhysicalActionType, target_entities: list[str]
+    ) -> dict[str, Any]:
         """
         Calculate energy, time, and resource requirements for action.
 
@@ -241,16 +246,48 @@ class PhysicalActionProcessor:
         """
         # Base requirements by action type
         base_requirements = {
-            PhysicalActionType.MOVEMENT: {"energy": 5.0, "time": 3.0, "difficulty": 0.2},
-            PhysicalActionType.MANIPULATION: {"energy": 10.0, "time": 5.0, "difficulty": 0.4},
-            PhysicalActionType.CLIMBING: {"energy": 20.0, "time": 10.0, "difficulty": 0.7},
-            PhysicalActionType.JUMPING: {"energy": 15.0, "time": 2.0, "difficulty": 0.5},
-            PhysicalActionType.PUSHING: {"energy": 25.0, "time": 8.0, "difficulty": 0.6},
-            PhysicalActionType.PULLING: {"energy": 25.0, "time": 8.0, "difficulty": 0.6},
+            PhysicalActionType.MOVEMENT: {
+                "energy": 5.0,
+                "time": 3.0,
+                "difficulty": 0.2,
+            },
+            PhysicalActionType.MANIPULATION: {
+                "energy": 10.0,
+                "time": 5.0,
+                "difficulty": 0.4,
+            },
+            PhysicalActionType.CLIMBING: {
+                "energy": 20.0,
+                "time": 10.0,
+                "difficulty": 0.7,
+            },
+            PhysicalActionType.JUMPING: {
+                "energy": 15.0,
+                "time": 2.0,
+                "difficulty": 0.5,
+            },
+            PhysicalActionType.PUSHING: {
+                "energy": 25.0,
+                "time": 8.0,
+                "difficulty": 0.6,
+            },
+            PhysicalActionType.PULLING: {
+                "energy": 25.0,
+                "time": 8.0,
+                "difficulty": 0.6,
+            },
             PhysicalActionType.OPENING: {"energy": 8.0, "time": 4.0, "difficulty": 0.3},
             PhysicalActionType.CLOSING: {"energy": 8.0, "time": 4.0, "difficulty": 0.3},
-            PhysicalActionType.BREAKING: {"energy": 30.0, "time": 12.0, "difficulty": 0.8},
-            PhysicalActionType.BUILDING: {"energy": 40.0, "time": 20.0, "difficulty": 0.9},
+            PhysicalActionType.BREAKING: {
+                "energy": 30.0,
+                "time": 12.0,
+                "difficulty": 0.8,
+            },
+            PhysicalActionType.BUILDING: {
+                "energy": 40.0,
+                "time": 20.0,
+                "difficulty": 0.9,
+            },
         }
 
         requirements = base_requirements.get(
@@ -258,14 +295,16 @@ class PhysicalActionProcessor:
         ).copy()
 
         # Modify requirements based on target entities
-        entity_modifier = 1.0 + (len(target_entities) * 0.2)  # More entities = more work
+        entity_modifier = 1.0 + (
+            len(target_entities) * 0.2
+        )  # More entities = more work
         requirements["energy"] *= entity_modifier
         requirements["time"] *= entity_modifier
 
         return requirements
 
     async def execute_movement_action(
-        self, direction: str, distance: Optional[float], context: Dict[str, Any]
+        self, direction: str, distance: float | None, context: dict[str, Any]
     ) -> PhysicalActionResult:
         """
         Execute movement to a new location or direction.
@@ -295,7 +334,7 @@ class PhysicalActionProcessor:
 
             # Normalize direction
             normalized_direction = self._normalize_direction(direction)
-            
+
             # Calculate movement cost
             requirements = await self.calculate_action_requirements(
                 PhysicalActionType.MOVEMENT, []
@@ -333,7 +372,7 @@ class PhysicalActionProcessor:
             )
 
     async def execute_manipulation_action(
-        self, target_entity: str, action_verb: str, context: Dict[str, Any]
+        self, target_entity: str, action_verb: str, context: dict[str, Any]
     ) -> PhysicalActionResult:
         """
         Execute object manipulation (push, pull, lift, etc.).
@@ -349,7 +388,7 @@ class PhysicalActionProcessor:
         try:
             # Determine manipulation type
             manipulation_type = self._get_manipulation_type(action_verb)
-            
+
             # Calculate requirements
             requirements = await self.calculate_action_requirements(
                 manipulation_type, [target_entity]
@@ -384,7 +423,10 @@ class PhysicalActionProcessor:
             )
 
     async def execute_environmental_action(
-        self, target_entity: str, action_type: PhysicalActionType, context: Dict[str, Any]
+        self,
+        target_entity: str,
+        action_type: PhysicalActionType,
+        context: dict[str, Any],
     ) -> PhysicalActionResult:
         """
         Execute environmental interactions (climbing, jumping, etc.).
@@ -435,9 +477,9 @@ class PhysicalActionProcessor:
     async def apply_physics_constraints(
         self,
         action_type: PhysicalActionType,
-        entities: List[str],
-        context: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
+        entities: list[str],
+        context: dict[str, Any],
+    ) -> list[dict[str, Any]]:
         """
         Apply physics constraints and limitations to actions.
 
@@ -463,7 +505,7 @@ class PhysicalActionProcessor:
         return constraints
 
     async def update_world_state(
-        self, action_result: PhysicalActionResult, context: Dict[str, Any]
+        self, action_result: PhysicalActionResult, context: dict[str, Any]
     ) -> None:
         """
         Update world state based on successful physical action.
@@ -480,7 +522,9 @@ class PhysicalActionProcessor:
             player_id = context.get("player_id")
             if player_id and action_result.energy_cost > 0:
                 # In a full implementation, this would update player state
-                logger.info(f"Player {player_id} expended {action_result.energy_cost} energy")
+                logger.info(
+                    f"Player {player_id} expended {action_result.energy_cost} energy"
+                )
 
             # Apply state changes
             for entity, change in action_result.state_changes.items():
@@ -492,9 +536,9 @@ class PhysicalActionProcessor:
     async def calculate_side_effects(
         self,
         action_type: PhysicalActionType,
-        entities: List[str],
-        context: Dict[str, Any],
-    ) -> List[str]:
+        entities: list[str],
+        context: dict[str, Any],
+    ) -> list[str]:
         """
         Calculate secondary effects of physical actions.
 
@@ -540,7 +584,7 @@ class PhysicalActionProcessor:
         self._constraint_validators.append(validator)
 
     async def _determine_physical_action_type(
-        self, action_classification: ActionClassification, context: Dict[str, Any]
+        self, action_classification: ActionClassification, context: dict[str, Any]
     ) -> PhysicalActionType:
         """Determine the specific physical action type from classification."""
         # Extract action verb or intent to determine physical action type
@@ -549,7 +593,18 @@ class PhysicalActionProcessor:
         parameters = action_classification.parameters or {}
 
         # Look for movement indicators
-        movement_words = ["move", "go", "walk", "run", "travel", "head", "north", "south", "east", "west"]
+        movement_words = [
+            "move",
+            "go",
+            "walk",
+            "run",
+            "travel",
+            "head",
+            "north",
+            "south",
+            "east",
+            "west",
+        ]
         if any(word in intent.lower() for word in movement_words):
             return PhysicalActionType.MOVEMENT
 
@@ -578,7 +633,7 @@ class PhysicalActionProcessor:
     def _get_manipulation_type(self, action_verb: str) -> PhysicalActionType:
         """Get manipulation type from action verb."""
         verb_lower = action_verb.lower()
-        
+
         if "push" in verb_lower:
             return PhysicalActionType.PUSHING
         elif "pull" in verb_lower:
@@ -589,26 +644,36 @@ class PhysicalActionProcessor:
     def _normalize_direction(self, direction: str) -> str:
         """Normalize direction string to standard format."""
         direction_map = {
-            "n": "north", "north": "north",
-            "s": "south", "south": "south", 
-            "e": "east", "east": "east",
-            "w": "west", "west": "west",
-            "ne": "northeast", "northeast": "northeast",
-            "nw": "northwest", "northwest": "northwest",
-            "se": "southeast", "southeast": "southeast",
-            "sw": "southwest", "southwest": "southwest",
-            "u": "up", "up": "up",
-            "d": "down", "down": "down",
+            "n": "north",
+            "north": "north",
+            "s": "south",
+            "south": "south",
+            "e": "east",
+            "east": "east",
+            "w": "west",
+            "west": "west",
+            "ne": "northeast",
+            "northeast": "northeast",
+            "nw": "northwest",
+            "northwest": "northwest",
+            "se": "southeast",
+            "southeast": "southeast",
+            "sw": "southwest",
+            "southwest": "southwest",
+            "u": "up",
+            "up": "up",
+            "d": "down",
+            "down": "down",
         }
-        
+
         return direction_map.get(direction.lower(), direction.lower())
 
     async def _execute_action_by_type(
         self,
         action_type: PhysicalActionType,
         action_classification: ActionClassification,
-        context: Dict[str, Any],
-        requirements: Dict[str, Any],
+        context: dict[str, Any],
+        requirements: dict[str, Any],
     ) -> PhysicalActionResult:
         """Execute action based on its type."""
         target = action_classification.target or ""
@@ -616,9 +681,17 @@ class PhysicalActionProcessor:
 
         if action_type == PhysicalActionType.MOVEMENT:
             # Extract direction from intent or target
-            direction = target if target in ["north", "south", "east", "west", "up", "down"] else "forward"
+            direction = (
+                target
+                if target in ["north", "south", "east", "west", "up", "down"]
+                else "forward"
+            )
             return await self.execute_movement_action(direction, None, context)
-        elif action_type in [PhysicalActionType.PUSHING, PhysicalActionType.PULLING, PhysicalActionType.MANIPULATION]:
+        elif action_type in [
+            PhysicalActionType.PUSHING,
+            PhysicalActionType.PULLING,
+            PhysicalActionType.MANIPULATION,
+        ]:
             return await self.execute_manipulation_action(target, intent, context)
         else:
             return await self.execute_environmental_action(target, action_type, context)
@@ -644,7 +717,7 @@ class PhysicalActionProcessor:
         metrics["total_time"] += result.time_elapsed
 
     async def _validate_entity_accessibility(
-        self, entity_id: str, context: Dict[str, Any]
+        self, entity_id: str, context: dict[str, Any]
     ) -> bool:
         """Check if entity is accessible for physical interaction."""
         # In a full implementation, this would check distance, obstacles, etc.
@@ -673,10 +746,14 @@ class PhysicalActionProcessor:
     def _initialize_handlers(self) -> None:
         """Initialize default action handlers."""
         # Register default handlers for each action type
-        self._action_handlers[PhysicalActionType.MOVEMENT] = self.execute_movement_action
-        self._action_handlers[PhysicalActionType.MANIPULATION] = self.execute_manipulation_action
+        self._action_handlers[PhysicalActionType.MOVEMENT] = (
+            self.execute_movement_action
+        )
+        self._action_handlers[PhysicalActionType.MANIPULATION] = (
+            self.execute_manipulation_action
+        )
         # Additional handlers would be registered here in a full implementation
 
-    def get_action_metrics(self) -> Dict[str, Any]:
+    def get_action_metrics(self) -> dict[str, Any]:
         """Get action performance metrics."""
         return self._action_metrics.copy()

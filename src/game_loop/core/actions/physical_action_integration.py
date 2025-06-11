@@ -7,7 +7,8 @@ providing coordination between all physical action components.
 
 import asyncio
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from game_loop.core.actions.types import ActionClassification
 from game_loop.core.command_handlers.physical_action_processor import (
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class ActionExecutionContext:
     """Context for action execution with all necessary components."""
-    
+
     def __init__(
         self,
         physical_processor: PhysicalActionProcessor,
@@ -46,7 +47,7 @@ class ActionExecutionContext:
 class PhysicalActionIntegration:
     """
     Integrate physical action processing with the main game systems.
-    
+
     This class coordinates execution of physical actions by managing the interaction
     between all physical action components and the broader game systems.
     """
@@ -79,19 +80,19 @@ class PhysicalActionIntegration:
             spatial_navigator,
             game_state_manager,
         )
-        self._action_metrics: Dict[str, Any] = {}
-        self._integration_hooks: Dict[str, List[Callable]] = {
+        self._action_metrics: dict[str, Any] = {}
+        self._integration_hooks: dict[str, list[Callable]] = {
             "pre_execution": [],
             "post_execution": [],
             "error_handling": [],
             "state_update": [],
         }
-        self._active_actions: Dict[str, Dict[str, Any]] = {}
-        self._action_history: List[Dict[str, Any]] = []
+        self._active_actions: dict[str, dict[str, Any]] = {}
+        self._action_history: list[dict[str, Any]] = []
 
     async def process_classified_physical_action(
-        self, action_classification: ActionClassification, context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, action_classification: ActionClassification, context: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Main entry point for processing classified physical actions.
 
@@ -104,7 +105,7 @@ class PhysicalActionIntegration:
         """
         try:
             action_id = f"action_{asyncio.get_event_loop().time()}"
-            
+
             # Record action start
             self._active_actions[action_id] = {
                 "classification": action_classification,
@@ -119,9 +120,16 @@ class PhysicalActionIntegration:
             )
 
             # Validate action feasibility with enhanced context
-            is_feasible, feasibility_error = await self.validate_action_chain_feasibility(
-                [{"classification": action_classification, "context": enhanced_context}],
-                enhanced_context
+            is_feasible, feasibility_error = (
+                await self.validate_action_chain_feasibility(
+                    [
+                        {
+                            "classification": action_classification,
+                            "context": enhanced_context,
+                        }
+                    ],
+                    enhanced_context,
+                )
             )
 
             if not is_feasible:
@@ -191,15 +199,15 @@ class PhysicalActionIntegration:
                 "action_type": "physical",
                 "classification": action_classification.to_dict(),
             }
-            
+
             # Execute error handling hooks
             await self._execute_error_hooks(e, action_classification, context)
-            
+
             return error_result
 
     async def coordinate_multi_step_actions(
-        self, action_sequence: List[Dict[str, Any]], context: Dict[str, Any]
-    ) -> List[PhysicalActionResult]:
+        self, action_sequence: list[dict[str, Any]], context: dict[str, Any]
+    ) -> list[PhysicalActionResult]:
         """
         Coordinate execution of multi-step physical actions.
 
@@ -233,7 +241,9 @@ class PhysicalActionIntegration:
 
                 # Convert to PhysicalActionResult if needed
                 if isinstance(step_result_dict, dict):
-                    step_result = await self._convert_dict_to_action_result(step_result_dict)
+                    step_result = await self._convert_dict_to_action_result(
+                        step_result_dict
+                    )
                 else:
                     step_result = step_result_dict
 
@@ -247,17 +257,21 @@ class PhysicalActionIntegration:
                     failure_strategy = await self._handle_multi_step_failure(
                         i, action_sequence, results, updated_context
                     )
-                    
+
                     if failure_strategy == "abort":
                         break
                     elif failure_strategy == "retry":
                         # Retry the current step once
-                        retry_result_dict = await self.process_classified_physical_action(
-                            step_classification, step_context
+                        retry_result_dict = (
+                            await self.process_classified_physical_action(
+                                step_classification, step_context
+                            )
                         )
-                        retry_result = await self._convert_dict_to_action_result(retry_result_dict)
+                        retry_result = await self._convert_dict_to_action_result(
+                            retry_result_dict
+                        )
                         results[-1] = retry_result
-                        
+
                         if retry_result.success:
                             updated_context.update(retry_result.state_changes)
                         else:
@@ -274,8 +288,8 @@ class PhysicalActionIntegration:
             return []
 
     async def handle_action_interruptions(
-        self, active_action: Dict[str, Any], interruption_event: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, active_action: dict[str, Any], interruption_event: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Handle interruptions during physical action execution.
 
@@ -300,7 +314,7 @@ class PhysicalActionIntegration:
                 effects = await self._apply_interruption_effects(
                     active_action, interruption_event
                 )
-                
+
                 return {
                     "action_status": "continued",
                     "effects": effects,
@@ -312,7 +326,7 @@ class PhysicalActionIntegration:
                 partial_result = await self._calculate_partial_action_result(
                     active_action, interruption_event
                 )
-                
+
                 return {
                     "action_status": "interrupted",
                     "partial_result": partial_result,
@@ -331,7 +345,7 @@ class PhysicalActionIntegration:
             }
 
     async def optimize_action_performance(
-        self, action_type: PhysicalActionType, frequency_data: Dict[str, Any]
+        self, action_type: PhysicalActionType, frequency_data: dict[str, Any]
     ) -> None:
         """
         Optimize performance for frequently used actions.
@@ -365,14 +379,16 @@ class PhysicalActionIntegration:
             for strategy in optimization_strategies:
                 await self._apply_optimization_strategy(action_type, strategy)
 
-            logger.info(f"Applied {len(optimization_strategies)} optimizations for {action_type.value}")
+            logger.info(
+                f"Applied {len(optimization_strategies)} optimizations for {action_type.value}"
+            )
 
         except Exception as e:
             logger.error(f"Error optimizing action performance: {e}")
 
     async def validate_action_chain_feasibility(
-        self, action_chain: List[Dict[str, Any]], context: Dict[str, Any]
-    ) -> Tuple[bool, Optional[int]]:
+        self, action_chain: list[dict[str, Any]], context: dict[str, Any]
+    ) -> tuple[bool, int | None]:
         """
         Validate that a chain of actions can be completed.
 
@@ -391,10 +407,12 @@ class PhysicalActionIntegration:
                 step_context = action_step.get("context", simulated_context)
 
                 # Validate individual step
-                is_feasible, error_msg = await self.execution_context.physical_processor.validate_action_feasibility(
-                    await self._extract_physical_action_type(classification),
-                    classification.secondary_targets or [],
-                    step_context
+                is_feasible, error_msg = (
+                    await self.execution_context.physical_processor.validate_action_feasibility(
+                        await self._extract_physical_action_type(classification),
+                        classification.secondary_targets or [],
+                        step_context,
+                    )
                 )
 
                 if not is_feasible:
@@ -451,14 +469,16 @@ class PhysicalActionIntegration:
                 if action_data["experience"] > action_data["skill_level"] * 100:
                     action_data["skill_level"] += 0.1
                     action_data["experience"] = 0.0
-                    logger.info(f"Player {player_id} improved {action_type.value} skill to {action_data['skill_level']:.1f}")
+                    logger.info(
+                        f"Player {player_id} improved {action_type.value} skill to {action_data['skill_level']:.1f}"
+                    )
 
         except Exception as e:
             logger.error(f"Error applying learning effects: {e}")
 
     async def handle_concurrent_actions(
-        self, actions: List[Dict[str, Any]], context: Dict[str, Any]
-    ) -> List[PhysicalActionResult]:
+        self, actions: list[dict[str, Any]], context: dict[str, Any]
+    ) -> list[PhysicalActionResult]:
         """
         Handle multiple physical actions happening simultaneously.
 
@@ -472,10 +492,12 @@ class PhysicalActionIntegration:
         try:
             # Check for action conflicts
             conflicts = await self._detect_action_conflicts(actions, context)
-            
+
             if conflicts:
                 # Resolve conflicts by prioritizing actions
-                resolved_actions = await self._resolve_action_conflicts(actions, conflicts)
+                resolved_actions = await self._resolve_action_conflicts(
+                    actions, conflicts
+                )
             else:
                 resolved_actions = actions
 
@@ -484,15 +506,17 @@ class PhysicalActionIntegration:
             for action in resolved_actions:
                 classification = action.get("classification")
                 action_context = action.get("context", context)
-                
+
                 task = asyncio.create_task(
-                    self.process_classified_physical_action(classification, action_context)
+                    self.process_classified_physical_action(
+                        classification, action_context
+                    )
                 )
                 tasks.append(task)
 
             # Wait for all actions to complete
             results_dicts = await asyncio.gather(*tasks, return_exceptions=True)
-            
+
             # Convert results and handle exceptions
             results = []
             for result in results_dicts:
@@ -520,7 +544,7 @@ class PhysicalActionIntegration:
             return []
 
     async def generate_action_feedback(
-        self, action_result: PhysicalActionResult, context: Dict[str, Any]
+        self, action_result: PhysicalActionResult, context: dict[str, Any]
     ) -> str:
         """
         Generate descriptive feedback for physical action results.
@@ -534,24 +558,33 @@ class PhysicalActionIntegration:
         """
         try:
             base_description = action_result.description
-            
+
             # Enhance description based on context and results
             enhancements = []
 
             # Add energy/time information if significant
             if action_result.energy_cost > 20:
-                enhancements.append(f"The effort leaves you feeling tired ({action_result.energy_cost:.1f} energy used).")
-            
+                enhancements.append(
+                    f"The effort leaves you feeling tired ({action_result.energy_cost:.1f} energy used)."
+                )
+
             if action_result.time_elapsed > 10:
-                enhancements.append(f"The action took {action_result.time_elapsed:.1f} seconds to complete.")
+                enhancements.append(
+                    f"The action took {action_result.time_elapsed:.1f} seconds to complete."
+                )
 
             # Add side effects
             for side_effect in action_result.side_effects:
                 enhancements.append(side_effect)
 
             # Add physics-based feedback
-            if action_result.action_type in [PhysicalActionType.PUSHING, PhysicalActionType.PULLING]:
-                enhancements.append("You feel the resistance of the object against your effort.")
+            if action_result.action_type in [
+                PhysicalActionType.PUSHING,
+                PhysicalActionType.PULLING,
+            ]:
+                enhancements.append(
+                    "You feel the resistance of the object against your effort."
+                )
             elif action_result.action_type == PhysicalActionType.CLIMBING:
                 enhancements.append("Your muscles strain as you pull yourself upward.")
 
@@ -568,7 +601,7 @@ class PhysicalActionIntegration:
             return action_result.description
 
     async def update_world_physics_state(
-        self, action_results: List[PhysicalActionResult]
+        self, action_results: list[PhysicalActionResult]
     ) -> None:
         """
         Update world physics state based on action results.
@@ -586,7 +619,10 @@ class PhysicalActionIntegration:
                     # Apply global physics effects
                     if result.action_type == PhysicalActionType.BREAKING:
                         await self._handle_destruction_physics(result)
-                    elif result.action_type in [PhysicalActionType.PUSHING, PhysicalActionType.PULLING]:
+                    elif result.action_type in [
+                        PhysicalActionType.PUSHING,
+                        PhysicalActionType.PULLING,
+                    ]:
                         await self._handle_movement_physics(result)
 
         except Exception as e:
@@ -610,11 +646,11 @@ class PhysicalActionIntegration:
     # Private helper methods
 
     async def _execute_pre_execution_hooks(
-        self, classification: ActionClassification, context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, classification: ActionClassification, context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Execute pre-execution hooks."""
         enhanced_context = context.copy()
-        
+
         for hook in self._integration_hooks["pre_execution"]:
             try:
                 hook_result = await hook(classification, enhanced_context)
@@ -622,15 +658,15 @@ class PhysicalActionIntegration:
                     enhanced_context.update(hook_result)
             except Exception as e:
                 logger.error(f"Error in pre-execution hook: {e}")
-        
+
         return enhanced_context
 
     async def _execute_post_execution_hooks(
-        self, result: Dict[str, Any], classification: ActionClassification
-    ) -> Dict[str, Any]:
+        self, result: dict[str, Any], classification: ActionClassification
+    ) -> dict[str, Any]:
         """Execute post-execution hooks."""
         enhanced_result = result.copy()
-        
+
         for hook in self._integration_hooks["post_execution"]:
             try:
                 hook_result = await hook(enhanced_result, classification)
@@ -638,11 +674,14 @@ class PhysicalActionIntegration:
                     enhanced_result.update(hook_result)
             except Exception as e:
                 logger.error(f"Error in post-execution hook: {e}")
-        
+
         return enhanced_result
 
     async def _execute_error_hooks(
-        self, error: Exception, classification: ActionClassification, context: Dict[str, Any]
+        self,
+        error: Exception,
+        classification: ActionClassification,
+        context: dict[str, Any],
     ) -> None:
         """Execute error handling hooks."""
         for hook in self._integration_hooks["error_handling"]:
@@ -652,12 +691,18 @@ class PhysicalActionIntegration:
                 logger.error(f"Error in error handling hook: {e}")
 
     async def _determine_execution_strategy(
-        self, classification: ActionClassification, context: Dict[str, Any]
+        self, classification: ActionClassification, context: dict[str, Any]
     ) -> str:
         """Determine the appropriate execution strategy."""
-        if classification.action_type.value in ["movement", "physical"] and classification.target in ["north", "south", "east", "west"]:
+        if classification.action_type.value in [
+            "movement",
+            "physical",
+        ] and classification.target in ["north", "south", "east", "west"]:
             return "movement"
-        elif classification.intent and any(word in classification.intent.lower() for word in ["container", "open", "close", "use"]):
+        elif classification.intent and any(
+            word in classification.intent.lower()
+            for word in ["container", "open", "close", "use"]
+        ):
             return "environment"
         elif len(classification.secondary_targets or []) > 2:
             return "complex"
@@ -665,50 +710,50 @@ class PhysicalActionIntegration:
             return "default"
 
     async def _execute_movement_action(
-        self, classification: ActionClassification, context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, classification: ActionClassification, context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Execute movement-specific action."""
         try:
             player_id = context.get("player_id", "unknown")
             direction = classification.target or classification.intent or "forward"
-            
+
             result = await self.execution_context.movement.process_movement_command(
                 player_id, direction, context
             )
-            
+
             return await self._convert_action_result_to_dict(result)
         except Exception as e:
             return {"success": False, "error": str(e), "action_type": "movement"}
 
     async def _execute_environment_action(
-        self, classification: ActionClassification, context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, classification: ActionClassification, context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Execute environment-specific action."""
         try:
             player_id = context.get("player_id", "unknown")
             target = classification.target or "unknown"
             intent = classification.intent or "interact"
-            
+
             result = await self.execution_context.environment.process_environment_interaction(
                 player_id, target, intent, context
             )
-            
+
             return await self._convert_action_result_to_dict(result)
         except Exception as e:
             return {"success": False, "error": str(e), "action_type": "environment"}
 
     async def _execute_complex_action(
-        self, classification: ActionClassification, context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, classification: ActionClassification, context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Execute complex multi-component action."""
         try:
             # Break down complex action into simpler components
             components = await self._decompose_complex_action(classification, context)
-            
+
             if len(components) > 1:
                 # Execute as multi-step action
                 results = await self.coordinate_multi_step_actions(components, context)
-                
+
                 # Combine results
                 combined_result = await self._combine_action_results(results)
                 return await self._convert_action_result_to_dict(combined_result)
@@ -718,15 +763,19 @@ class PhysicalActionIntegration:
                     classification, context
                 )
                 return await self._convert_action_result_to_dict(action_result)
-                
+
         except Exception as e:
             return {"success": False, "error": str(e), "action_type": "complex"}
 
-    async def _convert_action_result_to_dict(self, result: PhysicalActionResult) -> Dict[str, Any]:
+    async def _convert_action_result_to_dict(
+        self, result: PhysicalActionResult
+    ) -> dict[str, Any]:
         """Convert PhysicalActionResult to dictionary."""
         return result.to_dict()
 
-    async def _convert_dict_to_action_result(self, result_dict: Dict[str, Any]) -> PhysicalActionResult:
+    async def _convert_dict_to_action_result(
+        self, result_dict: dict[str, Any]
+    ) -> PhysicalActionResult:
         """Convert dictionary to PhysicalActionResult."""
         action_type_value = result_dict.get("action_type")
         if isinstance(action_type_value, str):
@@ -740,8 +789,12 @@ class PhysicalActionIntegration:
                 except ValueError:
                     action_type = PhysicalActionType.MANIPULATION
         else:
-            action_type = action_type_value if action_type_value else PhysicalActionType.MANIPULATION
-        
+            action_type = (
+                action_type_value
+                if action_type_value
+                else PhysicalActionType.MANIPULATION
+            )
+
         return PhysicalActionResult(
             success=result_dict.get("success", False),
             action_type=action_type,
@@ -754,11 +807,18 @@ class PhysicalActionIntegration:
             error_message=result_dict.get("error_message"),
         )
 
-    async def _extract_physical_action_type(self, classification: ActionClassification) -> PhysicalActionType:
+    async def _extract_physical_action_type(
+        self, classification: ActionClassification
+    ) -> PhysicalActionType:
         """Extract physical action type from classification."""
         intent = classification.intent or ""
-        
-        if "move" in intent.lower() or classification.target in ["north", "south", "east", "west"]:
+
+        if "move" in intent.lower() or classification.target in [
+            "north",
+            "south",
+            "east",
+            "west",
+        ]:
             return PhysicalActionType.MOVEMENT
         elif "push" in intent.lower():
             return PhysicalActionType.PUSHING
@@ -768,8 +828,8 @@ class PhysicalActionIntegration:
             return PhysicalActionType.MANIPULATION
 
     async def _simulate_action_execution(
-        self, classification: ActionClassification, context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, classification: ActionClassification, context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Simulate action execution for planning purposes."""
         return {
             "state_changes": {"simulated": True},
@@ -777,28 +837,30 @@ class PhysicalActionIntegration:
             "time_elapsed": 3.0,
         }
 
-    async def _handle_action_completion(self, action_id: str, result: Dict[str, Any]) -> None:
+    async def _handle_action_completion(
+        self, action_id: str, result: dict[str, Any]
+    ) -> None:
         """Handle action completion cleanup and recording."""
         if action_id in self._active_actions:
             action_data = self._active_actions[action_id]
             action_data["status"] = "completed"
             action_data["result"] = result
             action_data["end_time"] = asyncio.get_event_loop().time()
-            
+
             # Move to history
             self._action_history.append(action_data)
             del self._active_actions[action_id]
-            
+
             # Limit history size
             if len(self._action_history) > 1000:
                 self._action_history = self._action_history[-500:]
 
     async def _update_integration_metrics(
-        self, classification: ActionClassification, result: Dict[str, Any]
+        self, classification: ActionClassification, result: dict[str, Any]
     ) -> None:
         """Update integration performance metrics."""
         action_type = classification.action_type.value
-        
+
         if action_type not in self._action_metrics:
             self._action_metrics[action_type] = {
                 "total_executions": 0,
@@ -806,70 +868,114 @@ class PhysicalActionIntegration:
                 "avg_execution_time": 0.0,
                 "total_execution_time": 0.0,
             }
-        
+
         metrics = self._action_metrics[action_type]
         metrics["total_executions"] += 1
-        
+
         if result.get("success", False):
             metrics["successful_executions"] += 1
-        
+
         execution_time = result.get("time_elapsed", 0.0)
         metrics["total_execution_time"] += execution_time
-        metrics["avg_execution_time"] = metrics["total_execution_time"] / metrics["total_executions"]
+        metrics["avg_execution_time"] = (
+            metrics["total_execution_time"] / metrics["total_executions"]
+        )
 
     # Additional placeholder methods for complex functionality
-    
-    async def _validate_resource_availability(self, required_resources: Dict[str, Any], player_state: Dict[str, Any]) -> bool:
+
+    async def _validate_resource_availability(
+        self, required_resources: dict[str, Any], player_state: dict[str, Any]
+    ) -> bool:
         return True
 
-    async def _calculate_composite_action_cost(self, actions: List[Dict[str, Any]]) -> Dict[str, float]:
+    async def _calculate_composite_action_cost(
+        self, actions: list[dict[str, Any]]
+    ) -> dict[str, float]:
         return {"energy": 10.0, "time": 5.0}
 
-    def _should_cache_action_result(self, action_type: PhysicalActionType, context: Dict[str, Any]) -> bool:
-        return action_type in [PhysicalActionType.MOVEMENT, PhysicalActionType.MANIPULATION]
+    def _should_cache_action_result(
+        self, action_type: PhysicalActionType, context: dict[str, Any]
+    ) -> bool:
+        return action_type in [
+            PhysicalActionType.MOVEMENT,
+            PhysicalActionType.MANIPULATION,
+        ]
 
-    async def _update_context_from_previous_results(self, context: Dict[str, Any], results: List[PhysicalActionResult]) -> Dict[str, Any]:
+    async def _update_context_from_previous_results(
+        self, context: dict[str, Any], results: list[PhysicalActionResult]
+    ) -> dict[str, Any]:
         updated_context = context.copy()
         for result in results:
             updated_context.update(result.state_changes)
         return updated_context
 
-    async def _handle_multi_step_failure(self, step_index: int, action_sequence: List[Dict[str, Any]], results: List[PhysicalActionResult], context: Dict[str, Any]) -> str:
+    async def _handle_multi_step_failure(
+        self,
+        step_index: int,
+        action_sequence: list[dict[str, Any]],
+        results: list[PhysicalActionResult],
+        context: dict[str, Any],
+    ) -> str:
         return "abort"  # Simple strategy: abort on failure
 
-    async def _can_action_continue_after_interruption(self, active_action: Dict[str, Any], interruption_event: Dict[str, Any]) -> bool:
+    async def _can_action_continue_after_interruption(
+        self, active_action: dict[str, Any], interruption_event: dict[str, Any]
+    ) -> bool:
         return interruption_event.get("severity", "medium") != "critical"
 
-    async def _apply_interruption_effects(self, active_action: Dict[str, Any], interruption_event: Dict[str, Any]) -> Dict[str, Any]:
+    async def _apply_interruption_effects(
+        self, active_action: dict[str, Any], interruption_event: dict[str, Any]
+    ) -> dict[str, Any]:
         return {"energy_penalty": 5.0, "time_penalty": 2.0}
 
-    async def _calculate_partial_action_result(self, active_action: Dict[str, Any], interruption_event: Dict[str, Any]) -> Dict[str, Any]:
+    async def _calculate_partial_action_result(
+        self, active_action: dict[str, Any], interruption_event: dict[str, Any]
+    ) -> dict[str, Any]:
         return {"partial_completion": 0.5, "effects": ["action_interrupted"]}
 
-    async def _generate_recovery_options(self, active_action: Dict[str, Any], interruption_event: Dict[str, Any]) -> List[str]:
+    async def _generate_recovery_options(
+        self, active_action: dict[str, Any], interruption_event: dict[str, Any]
+    ) -> list[str]:
         return ["retry_action", "modify_approach", "abandon_action"]
 
-    async def _apply_optimization_strategy(self, action_type: PhysicalActionType, strategy: str) -> None:
-        logger.info(f"Applied optimization strategy '{strategy}' for {action_type.value}")
+    async def _apply_optimization_strategy(
+        self, action_type: PhysicalActionType, strategy: str
+    ) -> None:
+        logger.info(
+            f"Applied optimization strategy '{strategy}' for {action_type.value}"
+        )
 
-    async def _detect_action_conflicts(self, actions: List[Dict[str, Any]], context: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _detect_action_conflicts(
+        self, actions: list[dict[str, Any]], context: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         return []  # No conflicts detected in simplified implementation
 
-    async def _resolve_action_conflicts(self, actions: List[Dict[str, Any]], conflicts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _resolve_action_conflicts(
+        self, actions: list[dict[str, Any]], conflicts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         return actions  # Return actions unchanged in simplified implementation
 
-    async def _decompose_complex_action(self, classification: ActionClassification, context: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _decompose_complex_action(
+        self, classification: ActionClassification, context: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         # Simple decomposition: return single component
         return [{"classification": classification, "context": context}]
 
-    async def _combine_action_results(self, results: List[PhysicalActionResult]) -> PhysicalActionResult:
+    async def _combine_action_results(
+        self, results: list[PhysicalActionResult]
+    ) -> PhysicalActionResult:
         if not results:
             return PhysicalActionResult(
-                success=False, action_type=PhysicalActionType.MANIPULATION,
-                affected_entities=[], state_changes={}, energy_cost=0.0,
-                time_elapsed=0.0, side_effects=[], description="No results to combine."
+                success=False,
+                action_type=PhysicalActionType.MANIPULATION,
+                affected_entities=[],
+                state_changes={},
+                energy_cost=0.0,
+                time_elapsed=0.0,
+                side_effects=[],
+                description="No results to combine.",
             )
-        
+
         # Combine multiple results into one
         combined_success = all(r.success for r in results)
         combined_entities = []
@@ -877,14 +983,14 @@ class PhysicalActionIntegration:
         total_energy = 0.0
         total_time = 0.0
         combined_effects = []
-        
+
         for result in results:
             combined_entities.extend(result.affected_entities)
             combined_changes.update(result.state_changes)
             total_energy += result.energy_cost
             total_time += result.time_elapsed
             combined_effects.extend(result.side_effects)
-        
+
         return PhysicalActionResult(
             success=combined_success,
             action_type=results[0].action_type,
@@ -896,7 +1002,9 @@ class PhysicalActionIntegration:
             description=f"Combined action affecting {len(combined_entities)} entities.",
         )
 
-    async def _update_entity_physics_state(self, entity: str, result: PhysicalActionResult) -> None:
+    async def _update_entity_physics_state(
+        self, entity: str, result: PhysicalActionResult
+    ) -> None:
         logger.info(f"Updated physics state for entity {entity}")
 
     async def _handle_destruction_physics(self, result: PhysicalActionResult) -> None:

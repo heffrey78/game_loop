@@ -7,8 +7,8 @@ specialized container types, and advanced organization features.
 
 from .container_manager import (
     ContainerManager,
-    ContainerType,
     ContainerSpecification,
+    ContainerType,
 )
 
 __all__ = [

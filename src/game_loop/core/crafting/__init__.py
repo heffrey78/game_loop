@@ -6,13 +6,13 @@ skill-based success probability, and component tracking.
 """
 
 from .crafting_manager import (
+    CraftingComplexity,
     CraftingManager,
     CraftingRecipe,
-    CraftingComplexity,
 )
 
 __all__ = [
     "CraftingManager",
-    "CraftingRecipe", 
+    "CraftingRecipe",
     "CraftingComplexity",
 ]

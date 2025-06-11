@@ -5,12 +5,13 @@ This module tests the spatial navigation functionality including
 pathfinding algorithms, landmark identification, and navigation assistance.
 """
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import AsyncMock, Mock, patch
 
 from game_loop.core.navigation.spatial_navigator import (
-    SpatialNavigator,
     NavigationAlgorithm,
+    SpatialNavigator,
 )
 
 
@@ -33,7 +34,9 @@ class TestSpatialNavigator:
         return Mock()
 
     @pytest.fixture
-    def spatial_navigator(self, mock_world_graph_manager, mock_location_service, mock_search_service):
+    def spatial_navigator(
+        self, mock_world_graph_manager, mock_location_service, mock_search_service
+    ):
         """Fixture for SpatialNavigator instance."""
         return SpatialNavigator(
             world_graph_manager=mock_world_graph_manager,
@@ -64,12 +67,14 @@ class TestSpatialNavigator:
         }
 
     @pytest.mark.asyncio
-    async def test_find_optimal_path_success(self, spatial_navigator, sample_preferences):
+    async def test_find_optimal_path_success(
+        self, spatial_navigator, sample_preferences
+    ):
         """Test successful optimal path finding."""
         path = await spatial_navigator.find_optimal_path(
             "town_square", "mountain_peak", sample_preferences
         )
-        
+
         assert isinstance(path, list)
         if path:  # Path found
             assert len(path) > 0
@@ -81,12 +86,15 @@ class TestSpatialNavigator:
     async def test_find_optimal_path_no_path(self, spatial_navigator):
         """Test path finding when no path exists."""
         # Use preferences that might lead to no path
-        preferences = {"algorithm": NavigationAlgorithm.DIJKSTRA, "blocked_locations": ["all"]}
-        
+        preferences = {
+            "algorithm": NavigationAlgorithm.DIJKSTRA,
+            "blocked_locations": ["all"],
+        }
+
         path = await spatial_navigator.find_optimal_path(
             "isolated_island", "unreachable_destination", preferences
         )
-        
+
         # Should return None or empty list when no path exists
         assert path is None or path == []
 
@@ -94,7 +102,7 @@ class TestSpatialNavigator:
     async def test_find_optimal_path_different_algorithms(self, spatial_navigator):
         """Test path finding with different algorithms."""
         start, end = "village", "castle"
-        
+
         algorithms = [
             NavigationAlgorithm.A_STAR,
             NavigationAlgorithm.DIJKSTRA,
@@ -102,33 +110,37 @@ class TestSpatialNavigator:
             NavigationAlgorithm.DEPTH_FIRST,
             NavigationAlgorithm.BEST_FIRST,
         ]
-        
+
         for algorithm in algorithms:
             preferences = {"algorithm": algorithm}
             path = await spatial_navigator.find_optimal_path(start, end, preferences)
-            
+
             # Each algorithm should return a result (success or failure)
             assert path is None or isinstance(path, list)
 
     @pytest.mark.asyncio
-    async def test_get_navigation_directions_success(self, spatial_navigator, sample_player_knowledge):
+    async def test_get_navigation_directions_success(
+        self, spatial_navigator, sample_player_knowledge
+    ):
         """Test successful navigation directions generation."""
         directions = await spatial_navigator.get_navigation_directions(
             "town_square", "mountain_peak", sample_player_knowledge
         )
-        
+
         assert isinstance(directions, list)
         assert len(directions) > 0
         # Each direction should be a string
         assert all(isinstance(direction, str) for direction in directions)
 
     @pytest.mark.asyncio
-    async def test_get_navigation_directions_no_path(self, spatial_navigator, sample_player_knowledge):
+    async def test_get_navigation_directions_no_path(
+        self, spatial_navigator, sample_player_knowledge
+    ):
         """Test navigation directions when no path exists."""
         directions = await spatial_navigator.get_navigation_directions(
             "unreachable_start", "unreachable_end", sample_player_knowledge
         )
-        
+
         assert isinstance(directions, list)
         assert len(directions) > 0
         # Should contain error message
@@ -138,7 +150,7 @@ class TestSpatialNavigator:
     async def test_identify_landmarks_success(self, spatial_navigator):
         """Test successful landmark identification."""
         landmarks = await spatial_navigator.identify_landmarks("central_plaza", 200.0)
-        
+
         assert isinstance(landmarks, list)
         # Each landmark should have required fields
         for landmark in landmarks:
@@ -152,7 +164,7 @@ class TestSpatialNavigator:
     async def test_identify_landmarks_empty_area(self, spatial_navigator):
         """Test landmark identification in area with no landmarks."""
         landmarks = await spatial_navigator.identify_landmarks("empty_desert", 100.0)
-        
+
         assert isinstance(landmarks, list)
         # Should return empty list or minimal landmarks
 
@@ -162,18 +174,18 @@ class TestSpatialNavigator:
         path = ["village", "crossroads", "forest", "mountain_base", "mountain_peak"]
         movement_speed = 50.0  # units per minute
         obstacles = ["fallen_tree", "river_crossing"]
-        
+
         estimates = await spatial_navigator.calculate_travel_estimates(
             path, movement_speed, obstacles
         )
-        
+
         assert isinstance(estimates, dict)
         assert "total_time" in estimates
         assert "total_energy" in estimates
         assert "total_distance" in estimates
         assert "difficulty_rating" in estimates
         assert "segments" in estimates
-        
+
         # All values should be positive
         assert estimates["total_time"] > 0
         assert estimates["total_energy"] > 0
@@ -183,7 +195,7 @@ class TestSpatialNavigator:
     async def test_calculate_travel_estimates_empty_path(self, spatial_navigator):
         """Test travel estimates calculation for empty path."""
         estimates = await spatial_navigator.calculate_travel_estimates([], 50.0, [])
-        
+
         assert isinstance(estimates, dict)
         assert "error" in estimates
 
@@ -193,11 +205,11 @@ class TestSpatialNavigator:
         blocked_path = ["town", "main_road", "bridge", "city"]
         target = "city"
         constraints = {"start": "town", "avoid_dangerous": True}
-        
+
         alternatives = await spatial_navigator.find_alternative_routes(
             blocked_path, target, constraints
         )
-        
+
         assert isinstance(alternatives, list)
         # Each alternative should be a list of location IDs
         for alternative in alternatives:
@@ -212,7 +224,7 @@ class TestSpatialNavigator:
         alternatives = await spatial_navigator.find_alternative_routes(
             blocked_path, "isolated_end", {"start": "isolated_start"}
         )
-        
+
         assert isinstance(alternatives, list)
         # Should return empty list if no alternatives
 
@@ -221,11 +233,11 @@ class TestSpatialNavigator:
         """Test updating player navigation knowledge."""
         discovered_path = ["home", "forest_path", "hidden_grove", "secret_cave"]
         path_quality = 0.85
-        
+
         await spatial_navigator.update_navigation_knowledge(
             "player_1", discovered_path, path_quality
         )
-        
+
         # Should not raise an exception
         # Check that data was stored
         assert "player_1" in spatial_navigator._exploration_data
@@ -234,11 +246,11 @@ class TestSpatialNavigator:
     async def test_get_exploration_suggestions(self, spatial_navigator):
         """Test getting exploration suggestions."""
         exploration_history = ["village", "nearby_forest", "old_ruins"]
-        
+
         suggestions = await spatial_navigator.get_exploration_suggestions(
             "village", exploration_history
         )
-        
+
         assert isinstance(suggestions, list)
         # Each suggestion should have required fields
         for suggestion in suggestions:
@@ -258,11 +270,11 @@ class TestSpatialNavigator:
             "climbing_skill": 40,
             "swimming_skill": 30,
         }
-        
+
         can_traverse, issues = await spatial_navigator.validate_path_accessibility(
             path, player_capabilities
         )
-        
+
         assert isinstance(can_traverse, bool)
         assert isinstance(issues, list)
 
@@ -275,11 +287,11 @@ class TestSpatialNavigator:
             "agility": 10,
             "climbing_skill": 5,
         }
-        
+
         can_traverse, issues = await spatial_navigator.validate_path_accessibility(
             path, weak_player_capabilities
         )
-        
+
         assert isinstance(can_traverse, bool)
         assert isinstance(issues, list)
         if not can_traverse:
@@ -292,11 +304,11 @@ class TestSpatialNavigator:
         await spatial_navigator.update_navigation_knowledge(
             "explorer", ["base", "forest", "mountain"], 0.8
         )
-        
+
         mental_map = await spatial_navigator.create_mental_map(
             "explorer", {"exploration_history": ["base", "forest"]}
         )
-        
+
         assert isinstance(mental_map, dict)
         assert "known_locations" in mental_map
         assert "known_connections" in mental_map
@@ -305,20 +317,19 @@ class TestSpatialNavigator:
     @pytest.mark.asyncio
     async def test_create_mental_map_no_data(self, spatial_navigator):
         """Test creating mental map for player with no exploration data."""
-        mental_map = await spatial_navigator.create_mental_map(
-            "new_player", {}
-        )
-        
+        mental_map = await spatial_navigator.create_mental_map("new_player", {})
+
         assert isinstance(mental_map, dict)
         assert "error" in mental_map
 
     def test_register_navigation_algorithm(self, spatial_navigator):
         """Test registering custom navigation algorithm."""
+
         def custom_algorithm(start, goal, graph, preferences):
             return [start, goal]  # Simple direct path
-        
+
         spatial_navigator.register_navigation_algorithm("custom", custom_algorithm)
-        
+
         assert "custom" in spatial_navigator._pathfinding_algorithms
         assert spatial_navigator._pathfinding_algorithms["custom"] == custom_algorithm
 
@@ -330,9 +341,9 @@ class TestSpatialNavigator:
             "middle": [{"id": "end", "cost": 1.0}],
             "end": [],
         }
-        
+
         path = await spatial_navigator._a_star_pathfinding("start", "end", graph, {})
-        
+
         if path:  # Path found
             assert isinstance(path, list)
             assert path[0] == "start"
@@ -346,9 +357,9 @@ class TestSpatialNavigator:
             "middle": [{"id": "end", "cost": 1.0}],
             "end": [],
         }
-        
+
         path = await spatial_navigator._dijkstra_pathfinding("start", "end", graph, {})
-        
+
         if path:  # Path found
             assert isinstance(path, list)
             assert path[0] == "start"
@@ -363,9 +374,11 @@ class TestSpatialNavigator:
             "middle2": [{"id": "end"}],
             "end": [],
         }
-        
-        path = await spatial_navigator._breadth_first_pathfinding("start", "end", graph, {})
-        
+
+        path = await spatial_navigator._breadth_first_pathfinding(
+            "start", "end", graph, {}
+        )
+
         if path:  # Path found
             assert isinstance(path, list)
             assert path[0] == "start"
@@ -379,9 +392,11 @@ class TestSpatialNavigator:
             "middle": [{"id": "end"}],
             "end": [],
         }
-        
-        path = await spatial_navigator._depth_first_pathfinding("start", "end", graph, {})
-        
+
+        path = await spatial_navigator._depth_first_pathfinding(
+            "start", "end", graph, {}
+        )
+
         if path:  # Path found
             assert isinstance(path, list)
             assert path[0] == "start"
@@ -395,9 +410,11 @@ class TestSpatialNavigator:
             "middle": [{"id": "end"}],
             "end": [],
         }
-        
-        path = await spatial_navigator._best_first_pathfinding("start", "end", graph, {})
-        
+
+        path = await spatial_navigator._best_first_pathfinding(
+            "start", "end", graph, {}
+        )
+
         if path:  # Path found
             assert isinstance(path, list)
             assert path[0] == "start"
@@ -406,8 +423,10 @@ class TestSpatialNavigator:
     @pytest.mark.asyncio
     async def test_heuristic_distance_calculation(self, spatial_navigator):
         """Test heuristic distance calculation."""
-        distance = await spatial_navigator._heuristic_distance("location_a", "location_b")
-        
+        distance = await spatial_navigator._heuristic_distance(
+            "location_a", "location_b"
+        )
+
         assert isinstance(distance, float)
         assert distance >= 0
 
@@ -418,9 +437,9 @@ class TestSpatialNavigator:
             {"location": "start", "direction": "start"},
             {"location": "end", "direction": "north"},
         ]
-        
+
         is_valid = await spatial_navigator._is_path_still_valid(sample_path)
-        
+
         assert isinstance(is_valid, bool)
 
     @pytest.mark.asyncio
@@ -428,9 +447,11 @@ class TestSpatialNavigator:
         """Test path enhancement with additional information."""
         simple_path = ["start", "middle", "end"]
         preferences = {"add_landmarks": True, "include_warnings": True}
-        
-        enhanced_path = await spatial_navigator._enhance_path_information(simple_path, preferences)
-        
+
+        enhanced_path = await spatial_navigator._enhance_path_information(
+            simple_path, preferences
+        )
+
         assert isinstance(enhanced_path, list)
         assert len(enhanced_path) == len(simple_path)
         # Each step should have enhanced information
@@ -444,9 +465,11 @@ class TestSpatialNavigator:
         """Test landmark visibility calculation."""
         landmark_data = {"prominence": 1.5, "height": 100}
         distance = 300.0
-        
-        visibility = spatial_navigator._calculate_landmark_visibility(landmark_data, distance)
-        
+
+        visibility = spatial_navigator._calculate_landmark_visibility(
+            landmark_data, distance
+        )
+
         assert isinstance(visibility, float)
         assert visibility >= 0
 
@@ -460,10 +483,10 @@ class TestSpatialNavigator:
             "is_landmark": False,
             "tags": [],
         }
-        
+
         high_value = spatial_navigator._calculate_exploration_value(high_value_location)
         low_value = spatial_navigator._calculate_exploration_value(low_value_location)
-        
+
         assert isinstance(high_value, float)
         assert isinstance(low_value, float)
         assert high_value > low_value
@@ -474,7 +497,7 @@ class TestSpatialNavigator:
         segment_data = await spatial_navigator._calculate_segment_estimates(
             "start", "end", 60.0, ["obstacle1", "obstacle2"]
         )
-        
+
         assert isinstance(segment_data, dict)
         assert "start" in segment_data
         assert "end" in segment_data
@@ -493,10 +516,10 @@ class TestSpatialNavigator:
             {"obstacles": ["cliff", "river", "dense_forest"]},
             {"obstacles": ["swamp", "thorns"]},
         ]
-        
+
         easy_difficulty = spatial_navigator._calculate_path_difficulty(easy_segments)
         hard_difficulty = spatial_navigator._calculate_path_difficulty(hard_segments)
-        
+
         assert isinstance(easy_difficulty, float)
         assert isinstance(hard_difficulty, float)
         assert hard_difficulty > easy_difficulty
@@ -509,11 +532,11 @@ class TestSpatialNavigator:
         long_path = ["start", "waypoint1", "waypoint2", "waypoint3", "end"]
         high_energy = 150.0
         long_time = 4000.0  # More than 1 hour
-        
+
         recommendations = await spatial_navigator._generate_travel_recommendations(
             long_path, long_time, high_energy
         )
-        
+
         assert isinstance(recommendations, list)
         # Should provide recommendations for long/difficult journeys
 
@@ -523,11 +546,9 @@ class TestSpatialNavigator:
         # Test with invalid inputs
         path = await spatial_navigator.find_optimal_path(None, None, {})
         assert path is None
-        
+
         # Test directions with invalid location
-        directions = await spatial_navigator.get_navigation_directions(
-            None, None, {}
-        )
+        directions = await spatial_navigator.get_navigation_directions(None, None, {})
         assert isinstance(directions, list)
         assert len(directions) > 0
         assert any("error" in direction.lower() for direction in directions)
@@ -546,38 +567,38 @@ async def test_spatial_navigator_integration():
     """Test SpatialNavigator integration scenarios."""
     # Create spatial navigator
     spatial_navigator = SpatialNavigator()
-    
+
     # Test complex navigation scenario
     preferences = {
         "algorithm": NavigationAlgorithm.A_STAR,
         "avoid_dangerous": True,
         "prefer_roads": True,
     }
-    
+
     # Find path
     path = await spatial_navigator.find_optimal_path(
         "adventure_start", "quest_destination", preferences
     )
-    
+
     # Get directions
     player_knowledge = {
         "known_locations": {"adventure_start"},
         "visited_locations": {"adventure_start"},
     }
-    
+
     directions = await spatial_navigator.get_navigation_directions(
         "adventure_start", "quest_destination", player_knowledge
     )
-    
+
     # Calculate estimates if path exists
     if path and len(path) > 1:
         path_ids = [step["location"] for step in path]
         estimates = await spatial_navigator.calculate_travel_estimates(
             path_ids, 45.0, ["river", "mountain_pass"]
         )
-        
+
         assert isinstance(estimates, dict)
-    
+
     # Test results
     assert path is None or isinstance(path, list)
     assert isinstance(directions, list)

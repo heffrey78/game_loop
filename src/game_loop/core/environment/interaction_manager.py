@@ -7,7 +7,8 @@ and environmental puzzle mechanics for the game world.
 
 import asyncio
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from game_loop.core.command_handlers.physical_action_processor import (
     PhysicalActionResult,
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class InteractionType:
     """Constants for interaction types."""
-    
+
     EXAMINE = "examine"
     MANIPULATE = "manipulate"
     CONTAINER = "container"
@@ -31,7 +32,7 @@ class InteractionType:
 class EnvironmentInteractionManager:
     """
     Manage interactions between entities and environmental elements.
-    
+
     This class handles object manipulation, container interactions, tool usage,
     environmental state tracking, and puzzle mechanics.
     """
@@ -53,9 +54,9 @@ class EnvironmentInteractionManager:
         self.world_state = world_state_manager
         self.objects = object_manager
         self.physics = physics_engine
-        self._interaction_handlers: Dict[str, Callable] = {}
-        self._environmental_states: Dict[str, Dict[str, Any]] = {}
-        self._interaction_history: List[Dict[str, Any]] = []
+        self._interaction_handlers: dict[str, Callable] = {}
+        self._environmental_states: dict[str, dict[str, Any]] = {}
+        self._interaction_history: list[dict[str, Any]] = []
         self._initialize_handlers()
 
     async def process_environment_interaction(
@@ -63,7 +64,7 @@ class EnvironmentInteractionManager:
         player_id: str,
         target_entity: str,
         interaction_type: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
     ) -> PhysicalActionResult:
         """
         Process interaction with environmental element.
@@ -93,7 +94,9 @@ class EnvironmentInteractionManager:
                     time_elapsed=0.0,
                     side_effects=[],
                     description="Interaction failed.",
-                    error_message=requirements_error[0] if requirements_error else "Unknown error",
+                    error_message=(
+                        requirements_error[0] if requirements_error else "Unknown error"
+                    ),
                 )
 
             # Get interaction handler
@@ -107,11 +110,15 @@ class EnvironmentInteractionManager:
             result = await handler(player_id, target_entity, context)
 
             # Update interaction history
-            await self._record_interaction(player_id, target_entity, interaction_type, result)
+            await self._record_interaction(
+                player_id, target_entity, interaction_type, result
+            )
 
             # Update environmental state
             if result.success:
-                await self.update_environmental_state(target_entity, result.state_changes)
+                await self.update_environmental_state(
+                    target_entity, result.state_changes
+                )
 
             return result
 
@@ -133,8 +140,8 @@ class EnvironmentInteractionManager:
         self,
         interaction_type: str,
         target_entity: str,
-        player_state: Dict[str, Any],
-    ) -> Tuple[bool, List[str]]:
+        player_state: dict[str, Any],
+    ) -> tuple[bool, list[str]]:
         """
         Validate that player meets requirements for interaction.
 
@@ -150,19 +157,23 @@ class EnvironmentInteractionManager:
             errors = []
 
             # Check if player_state is provided and valid
-            if not player_state or (isinstance(player_state, dict) and len(player_state) == 0):
+            if not player_state or (
+                isinstance(player_state, dict) and len(player_state) == 0
+            ):
                 errors.append("Player state is required for interactions.")
                 return False, errors
 
             # Check energy requirements
             current_energy = player_state.get("energy", 100)
             min_energy_required = 5  # Minimum energy for any interaction
-            
+
             if interaction_type in ["push", "pull", "lift", "move"]:
                 min_energy_required = 10  # Physical actions require more energy
-            
+
             if current_energy < min_energy_required:
-                errors.append(f"Insufficient energy for {interaction_type}. Need {min_energy_required}, have {current_energy}.")
+                errors.append(
+                    f"Insufficient energy for {interaction_type}. Need {min_energy_required}, have {current_energy}."
+                )
 
             # Check basic accessibility
             if not await self._validate_object_accessibility(
@@ -172,9 +183,15 @@ class EnvironmentInteractionManager:
 
             # Check interaction-specific requirements
             if interaction_type == InteractionType.TOOL_USE:
-                required_tool = await self._get_required_tool(target_entity, interaction_type)
-                if required_tool and required_tool not in player_state.get("inventory", []):
-                    errors.append(f"You need a {required_tool} to interact with {target_entity}.")
+                required_tool = await self._get_required_tool(
+                    target_entity, interaction_type
+                )
+                if required_tool and required_tool not in player_state.get(
+                    "inventory", []
+                ):
+                    errors.append(
+                        f"You need a {required_tool} to interact with {target_entity}."
+                    )
 
             # Check skill requirements
             required_skills = await self._get_interaction_skill_requirements(
@@ -192,7 +209,10 @@ class EnvironmentInteractionManager:
             if entity_state.get("broken", False):
                 errors.append(f"{target_entity} is broken and cannot be used.")
 
-            if entity_state.get("locked", False) and interaction_type != InteractionType.EXAMINE:
+            if (
+                entity_state.get("locked", False)
+                and interaction_type != InteractionType.EXAMINE
+            ):
                 errors.append(f"{target_entity} is locked.")
 
             return len(errors) == 0, errors
@@ -202,7 +222,7 @@ class EnvironmentInteractionManager:
             return False, [f"Validation error: {str(e)}"]
 
     async def execute_object_manipulation(
-        self, object_id: str, manipulation_type: str, player_state: Dict[str, Any]
+        self, object_id: str, manipulation_type: str, player_state: dict[str, Any]
     ) -> PhysicalActionResult:
         """
         Execute manipulation of environmental objects.
@@ -232,17 +252,23 @@ class EnvironmentInteractionManager:
                 )
 
             # Calculate manipulation difficulty
-            difficulty = await self._calculate_interaction_difficulty(manipulation_type, object_id)
-            
+            difficulty = await self._calculate_interaction_difficulty(
+                manipulation_type, object_id
+            )
+
             # Calculate energy and time costs
             mass = object_info.get("mass", 10.0)
-            energy_cost = self._calculate_manipulation_energy_cost(manipulation_type, mass, difficulty)
-            time_cost = self._calculate_manipulation_time_cost(manipulation_type, mass, difficulty)
+            energy_cost = self._calculate_manipulation_energy_cost(
+                manipulation_type, mass, difficulty
+            )
+            time_cost = self._calculate_manipulation_time_cost(
+                manipulation_type, mass, difficulty
+            )
 
             # Check if manipulation is possible
             max_strength = player_state.get("strength", 50)
             required_strength = mass * difficulty
-            
+
             if required_strength > max_strength:
                 return PhysicalActionResult(
                     success=False,
@@ -273,7 +299,9 @@ class EnvironmentInteractionManager:
                 state_changes=state_changes,
                 energy_cost=energy_cost,
                 time_elapsed=time_cost,
-                side_effects=await self._get_manipulation_side_effects(manipulation_type, object_id),
+                side_effects=await self._get_manipulation_side_effects(
+                    manipulation_type, object_id
+                ),
                 description=description,
             )
 
@@ -295,8 +323,8 @@ class EnvironmentInteractionManager:
         self,
         container_id: str,
         action: str,
-        item_id: Optional[str],
-        context: Dict[str, Any],
+        item_id: str | None,
+        context: dict[str, Any],
     ) -> PhysicalActionResult:
         """
         Handle interactions with containers (chests, doors, etc.).
@@ -316,13 +344,21 @@ class EnvironmentInteractionManager:
 
             # Handle different container actions
             if action == "open":
-                return await self._handle_container_open(container_id, container_state, player_state)
+                return await self._handle_container_open(
+                    container_id, container_state, player_state
+                )
             elif action == "close":
-                return await self._handle_container_close(container_id, container_state, player_state)
+                return await self._handle_container_close(
+                    container_id, container_state, player_state
+                )
             elif action == "put" and item_id:
-                return await self._handle_container_put(container_id, item_id, container_state, player_state)
+                return await self._handle_container_put(
+                    container_id, item_id, container_state, player_state
+                )
             elif action == "take" and item_id:
-                return await self._handle_container_take(container_id, item_id, container_state, player_state)
+                return await self._handle_container_take(
+                    container_id, item_id, container_state, player_state
+                )
             else:
                 return PhysicalActionResult(
                     success=False,
@@ -351,7 +387,7 @@ class EnvironmentInteractionManager:
             )
 
     async def process_tool_usage(
-        self, tool_id: str, target_id: str, action: str, context: Dict[str, Any]
+        self, tool_id: str, target_id: str, action: str, context: dict[str, Any]
     ) -> PhysicalActionResult:
         """
         Process usage of tools on environmental targets.
@@ -367,7 +403,7 @@ class EnvironmentInteractionManager:
         """
         try:
             player_state = context.get("player_state", {})
-            
+
             # Validate tool ownership
             if tool_id not in player_state.get("inventory", []):
                 return PhysicalActionResult(
@@ -416,7 +452,9 @@ class EnvironmentInteractionManager:
 
             # Calculate tool usage effects
             effectiveness = tool_info.get("effectiveness", {}).get(action, 1.0)
-            energy_cost = 15.0 / effectiveness  # More effective tools require less energy
+            energy_cost = (
+                15.0 / effectiveness
+            )  # More effective tools require less energy
             time_cost = 10.0 / effectiveness
 
             # Apply tool usage effects
@@ -442,7 +480,9 @@ class EnvironmentInteractionManager:
                 state_changes=state_changes,
                 energy_cost=energy_cost,
                 time_elapsed=time_cost,
-                side_effects=await self._get_tool_usage_side_effects(tool_id, target_id, action),
+                side_effects=await self._get_tool_usage_side_effects(
+                    tool_id, target_id, action
+                ),
                 description=description,
             )
 
@@ -461,7 +501,7 @@ class EnvironmentInteractionManager:
             )
 
     async def handle_environmental_puzzles(
-        self, puzzle_element: str, action: str, context: Dict[str, Any]
+        self, puzzle_element: str, action: str, context: dict[str, Any]
     ) -> PhysicalActionResult:
         """
         Handle interactions with puzzle elements.
@@ -498,7 +538,9 @@ class EnvironmentInteractionManager:
             )
 
             # Check if action solves the puzzle
-            is_solved = await self._check_puzzle_completion(puzzle_element, puzzle_result["new_state"])
+            is_solved = await self._check_puzzle_completion(
+                puzzle_element, puzzle_result["new_state"]
+            )
 
             state_changes = puzzle_result["state_changes"]
             if is_solved:
@@ -537,7 +579,7 @@ class EnvironmentInteractionManager:
             )
 
     async def update_environmental_state(
-        self, entity_id: str, state_changes: Dict[str, Any]
+        self, entity_id: str, state_changes: dict[str, Any]
     ) -> None:
         """
         Update environmental entity state.
@@ -560,7 +602,9 @@ class EnvironmentInteractionManager:
             # Update in world state if available
             if self.world_state:
                 # In a full implementation, this would update the world state
-                logger.info(f"Environmental state updated for {entity_id}: {state_changes}")
+                logger.info(
+                    f"Environmental state updated for {entity_id}: {state_changes}"
+                )
 
         except Exception as e:
             logger.error(f"Error updating environmental state: {e}")
@@ -568,9 +612,9 @@ class EnvironmentInteractionManager:
     async def check_interaction_side_effects(
         self,
         interaction_type: str,
-        entities: List[str],
-        context: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
+        entities: list[str],
+        context: dict[str, Any],
+    ) -> list[dict[str, Any]]:
         """
         Check for side effects of environmental interactions.
 
@@ -598,8 +642,8 @@ class EnvironmentInteractionManager:
             return []
 
     async def get_interaction_options(
-        self, entity_id: str, player_state: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, entity_id: str, player_state: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Get available interaction options for an entity.
 
@@ -613,48 +657,60 @@ class EnvironmentInteractionManager:
         try:
             options = []
             entity_info = await self._get_object_info(entity_id)
-            
+
             if not entity_info:
                 return options
 
             # Basic interactions available for all objects
-            options.append({
-                "action": "examine",
-                "description": f"Examine the {entity_id}",
-                "requirements": [],
-            })
+            options.append(
+                {
+                    "action": "examine",
+                    "description": f"Examine the {entity_id}",
+                    "requirements": [],
+                }
+            )
 
             # Add interaction options based on entity type
             entity_type = entity_info.get("type", "object")
-            
+
             if entity_type == "container":
                 entity_state = await self._get_entity_state(entity_id)
                 if entity_state.get("open", False):
-                    options.append({
-                        "action": "close",
-                        "description": f"Close the {entity_id}",
-                        "requirements": [],
-                    })
+                    options.append(
+                        {
+                            "action": "close",
+                            "description": f"Close the {entity_id}",
+                            "requirements": [],
+                        }
+                    )
                 else:
-                    options.append({
-                        "action": "open", 
-                        "description": f"Open the {entity_id}",
-                        "requirements": entity_state.get("open_requirements", []),
-                    })
+                    options.append(
+                        {
+                            "action": "open",
+                            "description": f"Open the {entity_id}",
+                            "requirements": entity_state.get("open_requirements", []),
+                        }
+                    )
 
             if entity_info.get("moveable", False):
-                options.extend([
-                    {
-                        "action": "push",
-                        "description": f"Push the {entity_id}",
-                        "requirements": [f"strength >= {entity_info.get('mass', 10)}"],
-                    },
-                    {
-                        "action": "pull",
-                        "description": f"Pull the {entity_id}",
-                        "requirements": [f"strength >= {entity_info.get('mass', 10)}"],
-                    },
-                ])
+                options.extend(
+                    [
+                        {
+                            "action": "push",
+                            "description": f"Push the {entity_id}",
+                            "requirements": [
+                                f"strength >= {entity_info.get('mass', 10)}"
+                            ],
+                        },
+                        {
+                            "action": "pull",
+                            "description": f"Pull the {entity_id}",
+                            "requirements": [
+                                f"strength >= {entity_info.get('mass', 10)}"
+                            ],
+                        },
+                    ]
+                )
 
             return options
 
@@ -677,7 +733,7 @@ class EnvironmentInteractionManager:
     # Private helper methods
 
     async def _validate_object_accessibility(
-        self, object_id: str, player_position: Dict[str, Any]
+        self, object_id: str, player_position: dict[str, Any]
     ) -> bool:
         """Check if object is within reach for interaction."""
         # In a full implementation, this would check actual distances
@@ -697,29 +753,39 @@ class EnvironmentInteractionManager:
         }
         return base_difficulties.get(interaction_type, 1.0)
 
-    async def _apply_wear_and_tear(self, entity_id: str, usage_intensity: float) -> None:
+    async def _apply_wear_and_tear(
+        self, entity_id: str, usage_intensity: float
+    ) -> None:
         """Apply wear and tear effects to frequently used objects."""
         if entity_id not in self._environmental_states:
             self._environmental_states[entity_id] = {"durability": 100.0}
 
-        current_durability = self._environmental_states[entity_id].get("durability", 100.0)
+        current_durability = self._environmental_states[entity_id].get(
+            "durability", 100.0
+        )
         wear_amount = usage_intensity * 2.0  # 2% wear per usage point
         new_durability = max(0.0, current_durability - wear_amount)
-        
+
         self._environmental_states[entity_id]["durability"] = new_durability
-        
+
         if new_durability <= 0:
             self._environmental_states[entity_id]["broken"] = True
 
     def _initialize_handlers(self) -> None:
         """Initialize default interaction handlers."""
-        self._interaction_handlers[InteractionType.EXAMINE] = self._handle_examine_interaction
-        self._interaction_handlers[InteractionType.CONTAINER] = self._handle_container_interaction
-        self._interaction_handlers[InteractionType.TOOL_USE] = self._handle_tool_use_interaction
+        self._interaction_handlers[InteractionType.EXAMINE] = (
+            self._handle_examine_interaction
+        )
+        self._interaction_handlers[InteractionType.CONTAINER] = (
+            self._handle_container_interaction
+        )
+        self._interaction_handlers[InteractionType.TOOL_USE] = (
+            self._handle_tool_use_interaction
+        )
 
     # Additional helper methods (simplified implementations)
 
-    async def _get_object_info(self, object_id: str) -> Optional[Dict[str, Any]]:
+    async def _get_object_info(self, object_id: str) -> dict[str, Any] | None:
         """Get object information."""
         # Simulate object data
         return {
@@ -730,12 +796,12 @@ class EnvironmentInteractionManager:
             "description": f"A {object_id}",
         }
 
-    async def _get_entity_state(self, entity_id: str) -> Dict[str, Any]:
+    async def _get_entity_state(self, entity_id: str) -> dict[str, Any]:
         """Get current state of an entity."""
         return self._environmental_states.get(entity_id, {})
 
     async def _handle_examine_interaction(
-        self, player_id: str, target_entity: str, context: Dict[str, Any]
+        self, player_id: str, target_entity: str, context: dict[str, Any]
     ) -> PhysicalActionResult:
         """Handle examination interactions."""
         description = f"You examine the {target_entity} carefully."
@@ -751,13 +817,15 @@ class EnvironmentInteractionManager:
         )
 
     async def _handle_container_interaction(
-        self, player_id: str, target_entity: str, context: Dict[str, Any]
+        self, player_id: str, target_entity: str, context: dict[str, Any]
     ) -> PhysicalActionResult:
         """Handle container interactions."""
-        return await self.handle_container_interactions(target_entity, "examine", None, context)
+        return await self.handle_container_interactions(
+            target_entity, "examine", None, context
+        )
 
     async def _handle_tool_use_interaction(
-        self, player_id: str, target_entity: str, context: Dict[str, Any]
+        self, player_id: str, target_entity: str, context: dict[str, Any]
     ) -> PhysicalActionResult:
         """Handle tool use interactions."""
         # This would need more context about which tool is being used
@@ -774,13 +842,23 @@ class EnvironmentInteractionManager:
         )
 
     # Placeholder implementations for additional helper methods
-    async def _get_required_tool(self, target_entity: str, interaction_type: str) -> Optional[str]:
+    async def _get_required_tool(
+        self, target_entity: str, interaction_type: str
+    ) -> str | None:
         return None
 
-    async def _get_interaction_skill_requirements(self, interaction_type: str, target_entity: str) -> Dict[str, int]:
+    async def _get_interaction_skill_requirements(
+        self, interaction_type: str, target_entity: str
+    ) -> dict[str, int]:
         return {}
 
-    async def _handle_generic_interaction(self, player_id: str, target_entity: str, interaction_type: str, context: Dict[str, Any]) -> PhysicalActionResult:
+    async def _handle_generic_interaction(
+        self,
+        player_id: str,
+        target_entity: str,
+        interaction_type: str,
+        context: dict[str, Any],
+    ) -> PhysicalActionResult:
         description = f"You {interaction_type} the {target_entity}."
         return PhysicalActionResult(
             success=True,
@@ -793,98 +871,188 @@ class EnvironmentInteractionManager:
             description=description,
         )
 
-    async def _record_interaction(self, player_id: str, target_entity: str, interaction_type: str, result: PhysicalActionResult) -> None:
-        self._interaction_history.append({
-            "player_id": player_id,
-            "target_entity": target_entity,
-            "interaction_type": interaction_type,
-            "success": result.success,
-            "timestamp": asyncio.get_event_loop().time(),
-        })
+    async def _record_interaction(
+        self,
+        player_id: str,
+        target_entity: str,
+        interaction_type: str,
+        result: PhysicalActionResult,
+    ) -> None:
+        self._interaction_history.append(
+            {
+                "player_id": player_id,
+                "target_entity": target_entity,
+                "interaction_type": interaction_type,
+                "success": result.success,
+                "timestamp": asyncio.get_event_loop().time(),
+            }
+        )
 
-    def _calculate_manipulation_energy_cost(self, manipulation_type: str, mass: float, difficulty: float) -> float:
+    def _calculate_manipulation_energy_cost(
+        self, manipulation_type: str, mass: float, difficulty: float
+    ) -> float:
         base_costs = {"push": 8.0, "pull": 7.0, "lift": 12.0, "drag": 6.0}
         base_cost = base_costs.get(manipulation_type, 8.0)
         return base_cost * (mass / 10.0) * difficulty
 
-    def _calculate_manipulation_time_cost(self, manipulation_type: str, mass: float, difficulty: float) -> float:
+    def _calculate_manipulation_time_cost(
+        self, manipulation_type: str, mass: float, difficulty: float
+    ) -> float:
         base_times = {"push": 5.0, "pull": 4.0, "lift": 8.0, "drag": 6.0}
         base_time = base_times.get(manipulation_type, 5.0)
         return base_time * (1.0 + mass / 20.0) * difficulty
 
-    async def _apply_manipulation_effects(self, object_id: str, manipulation_type: str, player_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _apply_manipulation_effects(
+        self, object_id: str, manipulation_type: str, player_state: dict[str, Any]
+    ) -> dict[str, Any]:
         return {f"{object_id}_position": f"{manipulation_type}_applied"}
 
-    async def _generate_manipulation_description(self, object_id: str, manipulation_type: str, state_changes: Dict[str, Any]) -> str:
+    async def _generate_manipulation_description(
+        self, object_id: str, manipulation_type: str, state_changes: dict[str, Any]
+    ) -> str:
         return f"You {manipulation_type} the {object_id}."
 
-    async def _get_manipulation_side_effects(self, manipulation_type: str, object_id: str) -> List[str]:
+    async def _get_manipulation_side_effects(
+        self, manipulation_type: str, object_id: str
+    ) -> list[str]:
         return []
 
-    async def _handle_container_open(self, container_id: str, container_state: Dict[str, Any], player_state: Dict[str, Any]) -> PhysicalActionResult:
+    async def _handle_container_open(
+        self,
+        container_id: str,
+        container_state: dict[str, Any],
+        player_state: dict[str, Any],
+    ) -> PhysicalActionResult:
         if container_state.get("locked", False):
             return PhysicalActionResult(
-                success=False, action_type=PhysicalActionType.OPENING, affected_entities=[container_id],
-                state_changes={}, energy_cost=0.0, time_elapsed=0.0, side_effects=[],
-                description=f"The {container_id} is locked.", error_message="Container is locked."
+                success=False,
+                action_type=PhysicalActionType.OPENING,
+                affected_entities=[container_id],
+                state_changes={},
+                energy_cost=0.0,
+                time_elapsed=0.0,
+                side_effects=[],
+                description=f"The {container_id} is locked.",
+                error_message="Container is locked.",
             )
-        
+
         return PhysicalActionResult(
-            success=True, action_type=PhysicalActionType.OPENING, affected_entities=[container_id],
-            state_changes={f"{container_id}_open": True}, energy_cost=3.0, time_elapsed=2.0,
-            side_effects=[], description=f"You open the {container_id}."
+            success=True,
+            action_type=PhysicalActionType.OPENING,
+            affected_entities=[container_id],
+            state_changes={f"{container_id}_open": True},
+            energy_cost=3.0,
+            time_elapsed=2.0,
+            side_effects=[],
+            description=f"You open the {container_id}.",
         )
 
-    async def _handle_container_close(self, container_id: str, container_state: Dict[str, Any], player_state: Dict[str, Any]) -> PhysicalActionResult:
+    async def _handle_container_close(
+        self,
+        container_id: str,
+        container_state: dict[str, Any],
+        player_state: dict[str, Any],
+    ) -> PhysicalActionResult:
         return PhysicalActionResult(
-            success=True, action_type=PhysicalActionType.CLOSING, affected_entities=[container_id],
-            state_changes={f"{container_id}_open": False}, energy_cost=2.0, time_elapsed=1.0,
-            side_effects=[], description=f"You close the {container_id}."
+            success=True,
+            action_type=PhysicalActionType.CLOSING,
+            affected_entities=[container_id],
+            state_changes={f"{container_id}_open": False},
+            energy_cost=2.0,
+            time_elapsed=1.0,
+            side_effects=[],
+            description=f"You close the {container_id}.",
         )
 
-    async def _handle_container_put(self, container_id: str, item_id: str, container_state: Dict[str, Any], player_state: Dict[str, Any]) -> PhysicalActionResult:
+    async def _handle_container_put(
+        self,
+        container_id: str,
+        item_id: str,
+        container_state: dict[str, Any],
+        player_state: dict[str, Any],
+    ) -> PhysicalActionResult:
         return PhysicalActionResult(
-            success=True, action_type=PhysicalActionType.MANIPULATION, affected_entities=[container_id, item_id],
-            state_changes={f"{item_id}_location": container_id}, energy_cost=2.0, time_elapsed=1.5,
-            side_effects=[], description=f"You put {item_id} in the {container_id}."
+            success=True,
+            action_type=PhysicalActionType.MANIPULATION,
+            affected_entities=[container_id, item_id],
+            state_changes={f"{item_id}_location": container_id},
+            energy_cost=2.0,
+            time_elapsed=1.5,
+            side_effects=[],
+            description=f"You put {item_id} in the {container_id}.",
         )
 
-    async def _handle_container_take(self, container_id: str, item_id: str, container_state: Dict[str, Any], player_state: Dict[str, Any]) -> PhysicalActionResult:
+    async def _handle_container_take(
+        self,
+        container_id: str,
+        item_id: str,
+        container_state: dict[str, Any],
+        player_state: dict[str, Any],
+    ) -> PhysicalActionResult:
         return PhysicalActionResult(
-            success=True, action_type=PhysicalActionType.MANIPULATION, affected_entities=[container_id, item_id],
-            state_changes={f"{item_id}_location": "inventory"}, energy_cost=2.0, time_elapsed=1.5,
-            side_effects=[], description=f"You take {item_id} from the {container_id}."
+            success=True,
+            action_type=PhysicalActionType.MANIPULATION,
+            affected_entities=[container_id, item_id],
+            state_changes={f"{item_id}_location": "inventory"},
+            energy_cost=2.0,
+            time_elapsed=1.5,
+            side_effects=[],
+            description=f"You take {item_id} from the {container_id}.",
         )
 
-    async def _get_tool_info(self, tool_id: str) -> Optional[Dict[str, Any]]:
-        return {"id": tool_id, "compatible_actions": ["cut", "dig", "repair"], "effectiveness": {"cut": 1.5, "dig": 1.2}}
-
-    async def _apply_tool_usage_effects(self, tool_id: str, target_id: str, action: str, effectiveness: float) -> Dict[str, Any]:
-        return {f"{target_id}_{action}": effectiveness}
-
-    async def _calculate_tool_wear(self, tool_id: str, action: str, effectiveness: float) -> float:
-        return 2.0 / effectiveness  # Better tools wear less
-
-    async def _get_tool_usage_side_effects(self, tool_id: str, target_id: str, action: str) -> List[str]:
-        return []
-
-    async def _get_puzzle_state(self, puzzle_element: str) -> Dict[str, Any]:
-        return self._environmental_states.get(puzzle_element, {"solved": False, "attempts": 0})
-
-    async def _process_puzzle_action(self, puzzle_element: str, action: str, puzzle_state: Dict[str, Any], player_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _get_tool_info(self, tool_id: str) -> dict[str, Any] | None:
         return {
-            "new_state": {"attempts": puzzle_state.get("attempts", 0) + 1},
-            "state_changes": {f"{puzzle_element}_attempts": puzzle_state.get("attempts", 0) + 1},
-            "description": f"You {action} the puzzle mechanism.",
-            "side_effects": []
+            "id": tool_id,
+            "compatible_actions": ["cut", "dig", "repair"],
+            "effectiveness": {"cut": 1.5, "dig": 1.2},
         }
 
-    async def _check_puzzle_completion(self, puzzle_element: str, new_state: Dict[str, Any]) -> bool:
+    async def _apply_tool_usage_effects(
+        self, tool_id: str, target_id: str, action: str, effectiveness: float
+    ) -> dict[str, Any]:
+        return {f"{target_id}_{action}": effectiveness}
+
+    async def _calculate_tool_wear(
+        self, tool_id: str, action: str, effectiveness: float
+    ) -> float:
+        return 2.0 / effectiveness  # Better tools wear less
+
+    async def _get_tool_usage_side_effects(
+        self, tool_id: str, target_id: str, action: str
+    ) -> list[str]:
+        return []
+
+    async def _get_puzzle_state(self, puzzle_element: str) -> dict[str, Any]:
+        return self._environmental_states.get(
+            puzzle_element, {"solved": False, "attempts": 0}
+        )
+
+    async def _process_puzzle_action(
+        self,
+        puzzle_element: str,
+        action: str,
+        puzzle_state: dict[str, Any],
+        player_state: dict[str, Any],
+    ) -> dict[str, Any]:
+        return {
+            "new_state": {"attempts": puzzle_state.get("attempts", 0) + 1},
+            "state_changes": {
+                f"{puzzle_element}_attempts": puzzle_state.get("attempts", 0) + 1
+            },
+            "description": f"You {action} the puzzle mechanism.",
+            "side_effects": [],
+        }
+
+    async def _check_puzzle_completion(
+        self, puzzle_element: str, new_state: dict[str, Any]
+    ) -> bool:
         # Simple puzzle: solved after 3 attempts
         return new_state.get("attempts", 0) >= 3
 
-    async def _get_puzzle_rewards(self, puzzle_element: str) -> Dict[str, Any]:
+    async def _get_puzzle_rewards(self, puzzle_element: str) -> dict[str, Any]:
         return {"experience": 50, "puzzle_solved": puzzle_element}
 
-    async def _get_entity_interaction_effects(self, entity: str, interaction_type: str) -> List[Dict[str, Any]]:
+    async def _get_entity_interaction_effects(
+        self, entity: str, interaction_type: str
+    ) -> list[dict[str, Any]]:
         return []

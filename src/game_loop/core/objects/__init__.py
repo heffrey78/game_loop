@@ -5,21 +5,21 @@ This module provides comprehensive object interaction mechanics, condition track
 and integration with other game systems.
 """
 
+from .condition_manager import (
+    ObjectCondition,
+    ObjectConditionManager,
+    QualityAspect,
+)
 from .interaction_system import (
+    InteractionResult,
     ObjectInteractionSystem,
     ObjectInteractionType,
-    InteractionResult,
-)
-from .condition_manager import (
-    ObjectConditionManager,
-    ObjectCondition,
-    QualityAspect,
 )
 from .object_integration import ObjectSystemIntegration
 
 __all__ = [
     "ObjectInteractionSystem",
-    "ObjectInteractionType", 
+    "ObjectInteractionType",
     "InteractionResult",
     "ObjectConditionManager",
     "ObjectCondition",

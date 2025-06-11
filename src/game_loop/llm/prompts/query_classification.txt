@@ -1,0 +1,14 @@
+Classify the following player query into one of these categories:
+- WORLD_INFO: Questions about the game world, lore, history, or general background
+- OBJECT_INFO: Questions about specific objects, items, or artifacts
+- NPC_INFO: Questions about characters, NPCs, or people
+- LOCATION_INFO: Questions about current location or other places
+- HELP: Requests for help, instructions, or game guidance
+- STATUS: Requests for player status, progress, or character information
+- INVENTORY: Questions about player's inventory or possessions
+- QUEST_INFO: Questions about quests, objectives, or missions
+
+Query: "{query_text}"
+Context: {context}
+
+Respond with just the category name (e.g., WORLD_INFO).

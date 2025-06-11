@@ -5,9 +5,8 @@ This module provides movement validation, location transitions, pathfinding,
 and navigation assistance for entities in the game world.
 """
 
-import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from game_loop.core.command_handlers.physical_action_processor import (
     PhysicalActionResult,
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 class MovementManager:
     """
     Handle player and entity movement through the game world.
-    
+
     This class manages direction parsing, location transitions, pathfinding,
     movement constraints, and travel calculations.
     """
@@ -42,12 +41,12 @@ class MovementManager:
         self.world_state = world_state_manager
         self.locations = location_service
         self.physics = physics_engine
-        self._movement_cache: Dict[str, Any] = {}
-        self._pathfinding_cache: Dict[str, List[str]] = {}
+        self._movement_cache: dict[str, Any] = {}
+        self._pathfinding_cache: dict[str, list[str]] = {}
         self._direction_aliases = self._initialize_direction_aliases()
 
     async def process_movement_command(
-        self, player_id: str, direction: str, context: Dict[str, Any]
+        self, player_id: str, direction: str, context: dict[str, Any]
     ) -> PhysicalActionResult:
         """
         Process a movement command from the player.
@@ -64,7 +63,7 @@ class MovementManager:
             # Get player's current location
             player_state = context.get("player_state", {})
             current_location = player_state.get("current_location")
-            
+
             if not current_location:
                 return PhysicalActionResult(
                     success=False,
@@ -94,8 +93,10 @@ class MovementManager:
                 )
 
             # Get available exits
-            available_exits = await self.get_available_exits(current_location, player_state)
-            
+            available_exits = await self.get_available_exits(
+                current_location, player_state
+            )
+
             # Find matching exit
             target_location = None
             for exit_info in available_exits:
@@ -138,7 +139,9 @@ class MovementManager:
             travel_time = await self.calculate_travel_time(
                 current_location, target_location, "walking"
             )
-            energy_cost = self._calculate_movement_energy_cost(travel_time, normalized_direction)
+            energy_cost = self._calculate_movement_energy_cost(
+                travel_time, normalized_direction
+            )
 
             # Check movement obstacles
             obstacles = await self.check_movement_obstacles(
@@ -197,8 +200,8 @@ class MovementManager:
             )
 
     async def validate_movement(
-        self, from_location: str, to_location: str, player_state: Dict[str, Any]
-    ) -> Tuple[bool, Optional[str]]:
+        self, from_location: str, to_location: str, player_state: dict[str, Any]
+    ) -> tuple[bool, str | None]:
         """
         Validate that movement between locations is possible.
 
@@ -246,8 +249,8 @@ class MovementManager:
         self,
         start_location: str,
         target_location: str,
-        constraints: Dict[str, Any],
-    ) -> Optional[List[str]]:
+        constraints: dict[str, Any],
+    ) -> list[str] | None:
         """
         Find a path between two locations.
 
@@ -273,32 +276,32 @@ class MovementManager:
             visited = set()
             queue = [(start_location, [start_location])]
             max_depth = 10  # Prevent infinite loops
-            
+
             while queue:
                 current_location, path = queue.pop(0)
-                
+
                 # Prevent infinite pathfinding
                 if len(path) > max_depth:
                     continue
-                
+
                 if current_location in visited:
                     continue
-                    
+
                 visited.add(current_location)
-                
+
                 # Get connected locations
                 exits = await self._get_location_exits(current_location)
-                
+
                 for exit_info in exits:
                     next_location = exit_info.get("target_location")
                     if not next_location:
                         continue
-                        
+
                     if next_location == target_location:
                         final_path = path + [next_location]
                         self._pathfinding_cache[cache_key] = final_path
                         return final_path
-                    
+
                     if next_location not in visited and len(path) < max_depth:
                         queue.append((next_location, path + [next_location]))
 
@@ -338,7 +341,7 @@ class MovementManager:
             # Add modifiers based on location characteristics
             # In a full implementation, this would consider terrain, weather, etc.
             terrain_modifier = 1.0
-            
+
             # Simulate different terrain difficulties
             if "mountain" in to_location.lower():
                 terrain_modifier = 1.5
@@ -354,8 +357,8 @@ class MovementManager:
             return 5.0  # Default travel time
 
     async def get_available_exits(
-        self, location_id: str, player_state: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, location_id: str, player_state: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Get list of available exits from current location.
 
@@ -373,7 +376,7 @@ class MovementManager:
             for exit_info in exits:
                 # Check if player can use this exit
                 can_use = True
-                
+
                 # Check access requirements
                 requirements = exit_info.get("requirements", {})
                 if requirements:
@@ -399,7 +402,7 @@ class MovementManager:
 
     async def handle_location_transition(
         self, player_id: str, from_location: str, to_location: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Handle the transition between locations.
 
@@ -448,8 +451,8 @@ class MovementManager:
             }
 
     async def check_movement_obstacles(
-        self, location_id: str, direction: str, player_state: Dict[str, Any]
-    ) -> List[str]:
+        self, location_id: str, direction: str, player_state: dict[str, Any]
+    ) -> list[str]:
         """
         Check for obstacles preventing movement.
 
@@ -465,7 +468,9 @@ class MovementManager:
             obstacles = []
 
             # Check for physical obstacles
-            location_obstacles = await self._get_location_obstacles(location_id, direction)
+            location_obstacles = await self._get_location_obstacles(
+                location_id, direction
+            )
             obstacles.extend(location_obstacles)
 
             # Check for ability-based obstacles
@@ -476,7 +481,9 @@ class MovementManager:
                 obstacles.append("Your fear of heights prevents you from going down.")
 
             # Check for item-based obstacles
-            required_items = await self._get_movement_required_items(location_id, direction)
+            required_items = await self._get_movement_required_items(
+                location_id, direction
+            )
             for item in required_items:
                 if item not in player_state.get("inventory", []):
                     obstacles.append(f"You need a {item} to go {direction}.")
@@ -508,12 +515,14 @@ class MovementManager:
                 # Apply energy cost
                 if movement_result.energy_cost > 0:
                     # In a full implementation, this would reduce player energy
-                    logger.info(f"Player {player_id} expended {movement_result.energy_cost} energy")
+                    logger.info(
+                        f"Player {player_id} expended {movement_result.energy_cost} energy"
+                    )
 
         except Exception as e:
             logger.error(f"Error applying movement effects: {e}")
 
-    def parse_direction_input(self, direction_input: str) -> Optional[str]:
+    def parse_direction_input(self, direction_input: str) -> str | None:
         """
         Parse player direction input into standardized direction.
 
@@ -527,7 +536,7 @@ class MovementManager:
         return self._direction_aliases.get(normalized)
 
     async def _update_location_state(
-        self, location_id: str, changes: Dict[str, Any]
+        self, location_id: str, changes: dict[str, Any]
     ) -> None:
         """Update location state after movement events."""
         try:
@@ -551,31 +560,51 @@ class MovementManager:
         """Normalize direction string to standard format."""
         return self.parse_direction_input(direction) or direction.lower()
 
-    def _initialize_direction_aliases(self) -> Dict[str, str]:
+    def _initialize_direction_aliases(self) -> dict[str, str]:
         """Initialize direction aliases and synonyms."""
         return {
             # Cardinal directions
-            "north": "north", "n": "north",
-            "south": "south", "s": "south",
-            "east": "east", "e": "east",
-            "west": "west", "w": "west",
-            
+            "north": "north",
+            "n": "north",
+            "south": "south",
+            "s": "south",
+            "east": "east",
+            "e": "east",
+            "west": "west",
+            "w": "west",
             # Ordinal directions
-            "northeast": "northeast", "ne": "northeast",
-            "northwest": "northwest", "nw": "northwest",
-            "southeast": "southeast", "se": "southeast",
-            "southwest": "southwest", "sw": "southwest",
-            
+            "northeast": "northeast",
+            "ne": "northeast",
+            "northwest": "northwest",
+            "nw": "northwest",
+            "southeast": "southeast",
+            "se": "southeast",
+            "southwest": "southwest",
+            "sw": "southwest",
             # Vertical directions
-            "up": "up", "u": "up", "upward": "up", "upwards": "up",
-            "down": "down", "d": "down", "downward": "down", "downwards": "down",
-            
+            "up": "up",
+            "u": "up",
+            "upward": "up",
+            "upwards": "up",
+            "down": "down",
+            "d": "down",
+            "downward": "down",
+            "downwards": "down",
             # Special directions
-            "in": "in", "into": "in", "inside": "in",
-            "out": "out", "outside": "out", "exit": "out",
-            "forward": "forward", "forth": "forward", "ahead": "forward",
-            "back": "back", "backward": "back", "backwards": "back",
-            "left": "left", "right": "right",
+            "in": "in",
+            "into": "in",
+            "inside": "in",
+            "out": "out",
+            "outside": "out",
+            "exit": "out",
+            "forward": "forward",
+            "forth": "forward",
+            "ahead": "forward",
+            "back": "back",
+            "backward": "back",
+            "backwards": "back",
+            "left": "left",
+            "right": "right",
         }
 
     def _calculate_movement_energy_cost(
@@ -583,27 +612,27 @@ class MovementManager:
     ) -> float:
         """Calculate energy cost for movement."""
         base_cost = 5.0
-        
+
         # Different directions have different energy costs
         direction_modifiers = {
-            "up": 2.0,      # Climbing costs more energy
-            "down": 1.2,    # Going down costs slightly more due to care needed
-            "north": 1.0,   # Standard directions
+            "up": 2.0,  # Climbing costs more energy
+            "down": 1.2,  # Going down costs slightly more due to care needed
+            "north": 1.0,  # Standard directions
             "south": 1.0,
             "east": 1.0,
             "west": 1.0,
         }
-        
+
         modifier = direction_modifiers.get(direction, 1.0)
         time_factor = max(1.0, travel_time / 5.0)  # Longer travel = more energy
-        
+
         return base_cost * modifier * time_factor
 
-    async def _get_location_exits(self, location_id: str) -> List[Dict[str, Any]]:
+    async def _get_location_exits(self, location_id: str) -> list[dict[str, Any]]:
         """Get exits from a location."""
         # Simulate location exits - in a full implementation, this would
         # query the location service or world state
-        
+
         # Create a finite set of known locations to prevent infinite expansion
         known_locations = {
             "forest_clearing": ["forest_path", "mountain_base"],
@@ -613,27 +642,29 @@ class MovementManager:
             "mountain_peak": ["mountain_base"],
             "town_square": ["village"],
         }
-        
+
         # Get connected locations for this location
         connected = known_locations.get(location_id, [])
-        
+
         exits = []
         for i, target in enumerate(connected):
             direction = ["north", "south", "east", "west"][i % 4]
-            exits.append({
-                "direction": direction,
-                "target_location": target,
-                "description": f"A path leading {direction}",
-                "requirements": {},
-                "blocked": False,
-            })
-        
+            exits.append(
+                {
+                    "direction": direction,
+                    "target_location": target,
+                    "description": f"A path leading {direction}",
+                    "requirements": {},
+                    "blocked": False,
+                }
+            )
+
         return exits
 
-    async def _get_location_arrival_effects(self, location_id: str) -> List[str]:
+    async def _get_location_arrival_effects(self, location_id: str) -> list[str]:
         """Get effects that happen when arriving at a location."""
         effects = []
-        
+
         # Sample location-based effects
         if "dark" in location_id.lower():
             effects.append("The area is quite dark, making it hard to see.")
@@ -641,49 +672,51 @@ class MovementManager:
             effects.append("A chill runs through you as you enter this cold area.")
         if "warm" in location_id.lower():
             effects.append("The warmth of this area is welcoming.")
-            
+
         return effects
 
     async def _check_location_events(
         self, location_id: str, player_id: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Check for events triggered by arriving at a location."""
         events = []
-        
+
         # Sample events
         if "treasure" in location_id.lower():
-            events.append({
-                "type": "discovery",
-                "description": "You notice something glinting in the corner.",
-                "trigger": "arrival",
-            })
-            
+            events.append(
+                {
+                    "type": "discovery",
+                    "description": "You notice something glinting in the corner.",
+                    "trigger": "arrival",
+                }
+            )
+
         return events
 
     async def _get_location_obstacles(
         self, location_id: str, direction: str
-    ) -> List[str]:
+    ) -> list[str]:
         """Get obstacles in a specific direction from a location."""
         obstacles = []
-        
+
         # Sample obstacles
         if direction == "north" and "blocked" in location_id.lower():
             obstacles.append("A fallen tree blocks the northern path.")
         if direction == "up" and "no_climb" in location_id.lower():
             obstacles.append("The walls are too smooth to climb.")
-            
+
         return obstacles
 
     async def _get_movement_required_items(
         self, location_id: str, direction: str
-    ) -> List[str]:
+    ) -> list[str]:
         """Get items required for movement in a specific direction."""
         required_items = []
-        
+
         # Sample requirements
         if direction == "up" and "cliff" in location_id.lower():
             required_items.append("rope")
         if direction in ["north", "south"] and "locked_gate" in location_id.lower():
             required_items.append("key")
-            
+
         return required_items
