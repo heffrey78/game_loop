@@ -1,6 +1,5 @@
 """Conversation manager for handling NPC interactions and context tracking."""
 
-import time
 from typing import Any
 
 from game_loop.llm.ollama.client import OllamaClient
@@ -31,12 +30,12 @@ class ConversationManager:
         self.game_state_manager = game_state_manager
         self.semantic_search = semantic_search
         self.knowledge_extractor = KnowledgeExtractor(llm_client, semantic_search)
-        
+
         # In-memory storage for active conversations and NPC personalities
         # In production, these would be backed by database
         self._active_conversations: dict[str, ConversationContext] = {}
         self._npc_personalities: dict[str, NPCPersonality] = {}
-        
+
         # Initialize default personalities
         self._initialize_default_personalities()
 
@@ -179,7 +178,7 @@ class ConversationManager:
                 message, npc_personality, conversation
             )
             conversation.update_relationship(relationship_change)
-            
+
             if response_emotion != conversation.mood:
                 conversation.update_mood(response_emotion)
 
@@ -337,25 +336,25 @@ class ConversationManager:
         """Determine the emotion/mood for the NPC's response."""
         # Simple emotion determination based on message content and personality
         # In a more sophisticated system, this would use NLU
-        
+
         message_lower = player_message.lower()
         response_lower = npc_response.lower()
-        
+
         # Check for emotional keywords
         if any(word in message_lower for word in ["thank", "please", "help"]):
             if personality.get_trait_strength("helpful") > 0.7:
                 return "pleased"
-        
+
         if any(word in message_lower for word in ["threat", "attack", "kill"]):
             if personality.get_trait_strength("protective") > 0.7:
                 return "alarmed"
-                
+
         if any(word in response_lower for word in ["unfortunately", "sorry", "cannot"]):
             return "regretful"
-            
+
         if any(word in response_lower for word in ["excellent", "wonderful", "great"]):
             return "pleased"
-            
+
         # Default to current mood or neutral
         return current_mood if current_mood != "neutral" else "neutral"
 
@@ -368,38 +367,38 @@ class ConversationManager:
         """Calculate how the relationship should change based on the interaction."""
         message_lower = player_message.lower()
         change = 0.0
-        
+
         # Positive interactions
         if any(word in message_lower for word in ["thank", "please", "help"]):
             if personality.get_trait_strength("helpful") > 0.5:
                 change += 0.1
-                
+
         if any(word in message_lower for word in ["compliment", "good", "excellent"]):
             change += 0.05
-            
+
         # Negative interactions
         if any(word in message_lower for word in ["rude", "stupid", "idiot"]):
             change -= 0.2
-            
+
         if any(word in message_lower for word in ["threat", "kill", "attack"]):
             change -= 0.5
-            
+
         # Cap the change
         return max(-0.5, min(0.5, change))
 
     def _classify_message_type(self, message: str) -> MessageType:
         """Classify the type of player message."""
         message_lower = message.lower().strip()
-        
+
         if any(word in message_lower for word in ["hello", "hi", "greetings", "good morning"]):
             return MessageType.GREETING
-        
+
         if any(word in message_lower for word in ["bye", "goodbye", "farewell", "see you"]):
             return MessageType.FAREWELL
-            
+
         if message_lower.endswith("?") or message_lower.startswith(("what", "how", "why", "where", "when", "who")):
             return MessageType.QUESTION
-            
+
         return MessageType.STATEMENT
 
     async def _should_end_conversation(
@@ -407,15 +406,15 @@ class ConversationManager:
     ) -> bool:
         """Determine if the conversation should end naturally."""
         message_lower = player_message.lower()
-        
+
         # Explicit farewell
         if any(word in message_lower for word in ["bye", "goodbye", "farewell", "leave"]):
             return True
-            
+
         # Very long conversation (more than 20 exchanges)
         if conversation.get_exchange_count() > 20:
             return True
-            
+
         return False
 
     def _find_active_conversation(

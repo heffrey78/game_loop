@@ -1,8 +1,6 @@
 """Query processor for handling player information requests."""
 
-import json
 import time
-from typing import Any
 
 from game_loop.llm.ollama.client import OllamaClient
 from game_loop.search.semantic_search import SemanticSearchService
@@ -102,15 +100,15 @@ class QueryProcessor:
             response = await self.llm_client.generate_response(
                 classification_prompt, model="qwen2.5:3b"
             )
-            
+
             # Extract category from response
             category = response.strip().upper()
-            
+
             # Map to QueryType enum
             for query_type in QueryType:
                 if query_type.value.upper() == category:
                     return query_type
-            
+
             # Default fallback
             return QueryType.WORLD_INFO
 
@@ -187,15 +185,15 @@ class QueryProcessor:
     async def _handle_world_info_query(self, query: QueryRequest) -> QueryResponse:
         """Handle queries about the game world and lore."""
         context = QueryContext(player_id=query.player_id, **query.context)
-        
+
         # Search for relevant world information
         information_sources = await self._search_relevant_information(query)
-        
+
         # Get additional world information from aggregator
         world_info = await self.information_aggregator.gather_world_information(
             query.query_text, query.context
         )
-        
+
         # Add aggregated info as sources
         if world_info:
             for key, value in world_info.items():
@@ -219,7 +217,7 @@ class QueryProcessor:
 
         # Generate response
         response_text = await self._generate_response(query, information_sources, context)
-        
+
         return QueryResponse.success_response(
             response_text,
             information_type="world_info",
@@ -230,14 +228,14 @@ class QueryProcessor:
     async def _handle_object_info_query(self, query: QueryRequest) -> QueryResponse:
         """Handle queries about specific objects or items."""
         context = QueryContext(player_id=query.player_id, **query.context)
-        
+
         # Extract object name from query
         object_info = await self.information_aggregator.gather_object_information(
             query.query_text, query.context
         )
-        
+
         information_sources = await self._search_relevant_information(query)
-        
+
         if object_info:
             for key, value in object_info.items():
                 if isinstance(value, str) and value:
@@ -259,7 +257,7 @@ class QueryProcessor:
             )
 
         response_text = await self._generate_response(query, information_sources, context)
-        
+
         return QueryResponse.success_response(
             response_text,
             information_type="object_info",
@@ -270,14 +268,14 @@ class QueryProcessor:
     async def _handle_npc_info_query(self, query: QueryRequest) -> QueryResponse:
         """Handle queries about NPCs and characters."""
         context = QueryContext(player_id=query.player_id, **query.context)
-        
+
         # Get NPC information
         npc_info = await self.information_aggregator.gather_npc_information(
             query.query_text, query.context
         )
-        
+
         information_sources = await self._search_relevant_information(query)
-        
+
         if npc_info:
             for key, value in npc_info.items():
                 if isinstance(value, str) and value:
@@ -299,7 +297,7 @@ class QueryProcessor:
             )
 
         response_text = await self._generate_response(query, information_sources, context)
-        
+
         return QueryResponse.success_response(
             response_text,
             information_type="npc_info",
@@ -310,7 +308,7 @@ class QueryProcessor:
     async def _handle_location_info_query(self, query: QueryRequest) -> QueryResponse:
         """Handle queries about locations."""
         context = QueryContext(player_id=query.player_id, **query.context)
-        
+
         # Get current location details from game state
         location_info = {}
         if context.current_location_id:
@@ -324,7 +322,7 @@ class QueryProcessor:
                 pass
 
         information_sources = await self._search_relevant_information(query)
-        
+
         # Add location info as source
         if location_info:
             source = InformationSource(
@@ -338,7 +336,7 @@ class QueryProcessor:
             information_sources.insert(0, source)
 
         response_text = await self._generate_response(query, information_sources, context)
-        
+
         return QueryResponse.success_response(
             response_text,
             information_type="location_info",
@@ -360,7 +358,7 @@ class QueryProcessor:
         
         You can also just describe what you want to do in natural language!
         """
-        
+
         return QueryResponse.success_response(
             help_text,
             information_type="help",
@@ -373,7 +371,7 @@ class QueryProcessor:
         try:
             # Get player state
             player_state = await self.game_state_manager.get_player_state(query.player_id)
-            
+
             if not player_state:
                 return QueryResponse.error_response("Could not retrieve player status")
 
@@ -384,7 +382,7 @@ class QueryProcessor:
             • Level: {getattr(player_state, 'level', 'Unknown')}
             • Experience: {getattr(player_state, 'experience', 'Unknown')}
             """
-            
+
             return QueryResponse.success_response(
                 status_info,
                 information_type="status",
@@ -402,13 +400,13 @@ class QueryProcessor:
         try:
             # Get player inventory from game state
             player_state = await self.game_state_manager.get_player_state(query.player_id)
-            
+
             if not player_state:
                 return QueryResponse.error_response("Could not access inventory")
 
             # This would be implemented based on the actual inventory system
             inventory_info = "Your inventory system is not yet fully implemented."
-            
+
             return QueryResponse.success_response(
                 inventory_info,
                 information_type="inventory",
@@ -426,7 +424,7 @@ class QueryProcessor:
         try:
             # This would integrate with the quest system
             quest_info = "Quest information system is available but not yet integrated."
-            
+
             return QueryResponse.success_response(
                 quest_info,
                 information_type="quest_info",

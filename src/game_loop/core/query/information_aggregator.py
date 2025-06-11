@@ -32,7 +32,7 @@ class InformationAggregator:
             # Aggregate world information
             locations = []
             lore_entries = []
-            
+
             for result in world_results:
                 entity_type = result.get("entity_type", "")
                 if entity_type == "location":
@@ -50,7 +50,7 @@ class InformationAggregator:
 
             if locations:
                 world_info["locations"] = self._format_location_info(locations)
-            
+
             if lore_entries:
                 world_info["lore"] = self._format_lore_info(lore_entries)
 
@@ -83,7 +83,7 @@ class InformationAggregator:
 
             if objects:
                 object_info["objects"] = self._format_object_info(objects)
-                
+
                 # Add specific object details if we found a close match
                 best_match = max(objects, key=lambda x: x.get("similarity", 0))
                 if best_match:
@@ -119,7 +119,7 @@ class InformationAggregator:
 
             if npcs:
                 npc_info["npcs"] = self._format_npc_info(npcs)
-                
+
                 # Add primary NPC if we found a good match
                 best_match = max(npcs, key=lambda x: x.get("similarity", 0))
                 if best_match:
@@ -167,7 +167,7 @@ class InformationAggregator:
                         "connections": result.get("metadata", {}).get("connections", []),
                         "features": result.get("metadata", {}).get("features", []),
                     })
-                
+
                 location_info["related_locations"] = self._format_location_info(locations)
 
         except Exception as e:
@@ -198,12 +198,12 @@ class InformationAggregator:
             name = obj.get("name", "Unknown Object")
             description = obj.get("description", "No description available.")
             obj_type = obj.get("type", "")
-            
+
             info = f"**{name}**"
             if obj_type:
                 info += f" ({obj_type})"
             info += f": {description}"
-            
+
             formatted.append(info)
 
         return "\n".join(formatted)
@@ -218,12 +218,12 @@ class InformationAggregator:
             name = npc.get("name", "Unknown Character")
             description = npc.get("description", "No description available.")
             role = npc.get("role", "")
-            
+
             info = f"**{name}**"
             if role:
                 info += f" ({role})"
             info += f": {description}"
-            
+
             formatted.append(info)
 
         return "\n".join(formatted)

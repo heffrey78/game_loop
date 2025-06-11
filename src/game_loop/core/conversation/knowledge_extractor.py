@@ -30,12 +30,12 @@ class KnowledgeExtractor:
         try:
             # Format conversation for analysis
             conversation_text = self._format_conversation_for_analysis(conversation)
-            
+
             # Extract information using LLM
             extracted_info = await self._analyze_conversation_for_knowledge(
                 conversation_text
             )
-            
+
             return extracted_info
 
         except Exception as e:
@@ -49,7 +49,7 @@ class KnowledgeExtractor:
             # For now, we'll just validate and return success
             # In a full implementation, this would integrate with the database
             # and entity embedding system
-            
+
             stored_count = 0
             for info in information:
                 if self._validate_extracted_info(info):
@@ -73,13 +73,13 @@ class KnowledgeExtractor:
             # For now, just validate the input
             if not npc_id or not new_knowledge:
                 return False
-                
+
             # In full implementation:
             # 1. Validate new knowledge
             # 2. Update NPC personality in database
             # 3. Update knowledge areas and relationships
             # 4. Create embeddings for new knowledge
-            
+
             return True
 
         except Exception:
@@ -88,15 +88,15 @@ class KnowledgeExtractor:
     def _format_conversation_for_analysis(self, conversation: ConversationContext) -> str:
         """Format conversation exchanges for LLM analysis."""
         formatted_exchanges = []
-        
+
         for exchange in conversation.conversation_history:
             speaker = (
-                "Player" 
-                if exchange.speaker_id == conversation.player_id 
+                "Player"
+                if exchange.speaker_id == conversation.player_id
                 else conversation.npc_id
             )
             formatted_exchanges.append(f"{speaker}: {exchange.message_text}")
-        
+
         return "\n".join(formatted_exchanges)
 
     async def _analyze_conversation_for_knowledge(
@@ -144,7 +144,7 @@ class KnowledgeExtractor:
             response = await self.llm_client.generate_response(
                 analysis_prompt, model="qwen2.5:3b"
             )
-            
+
             # Try to parse JSON response
             try:
                 parsed_response = json.loads(response)
@@ -160,12 +160,12 @@ class KnowledgeExtractor:
         """Parse response when JSON parsing fails."""
         # Simple fallback parsing
         information = []
-        
+
         lines = response.split("\n")
         for line in lines:
             line = line.strip()
             if line and ":" in line and any(
-                category in line.lower() 
+                category in line.lower()
                 for category in ["world", "character", "location", "object", "quest"]
             ):
                 # Try to extract basic information
@@ -174,7 +174,7 @@ class KnowledgeExtractor:
                     if len(parts) == 2:
                         category = self._classify_information_category(parts[0])
                         info_text = parts[1].strip()
-                        
+
                         if info_text:
                             information.append({
                                 "category": category,
@@ -185,13 +185,13 @@ class KnowledgeExtractor:
                             })
                 except Exception:
                     continue
-        
+
         return information
 
     def _classify_information_category(self, text: str) -> str:
         """Classify information into categories."""
         text_lower = text.lower()
-        
+
         if any(word in text_lower for word in ["world", "lore", "history", "ancient"]):
             return "world_lore"
         elif any(word in text_lower for word in ["character", "npc", "person", "relationship"]):
@@ -209,7 +209,7 @@ class KnowledgeExtractor:
         """Extract keywords from information text."""
         # Simple keyword extraction
         import re
-        
+
         # Remove common words and extract meaningful terms
         common_words = {
             "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
@@ -219,36 +219,36 @@ class KnowledgeExtractor:
             "where", "when", "what", "who", "why", "how", "it", "its", "he", "she",
             "him", "her", "we", "us", "our", "you", "your"
         }
-        
+
         # Extract words
         words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
         keywords = [word for word in words if word not in common_words]
-        
+
         # Return unique keywords, limited to 5
         return list(set(keywords))[:5]
 
     def _validate_extracted_info(self, info: dict[str, Any]) -> bool:
         """Validate extracted information structure."""
         required_fields = ["category", "information", "confidence", "source"]
-        
+
         # Check required fields exist
         for field in required_fields:
             if field not in info:
                 return False
-        
+
         # Check field types and values
         if not isinstance(info["information"], str) or not info["information"].strip():
             return False
-            
+
         if info["confidence"] not in ["high", "medium", "low"]:
             return False
-            
+
         if info["category"] not in [
-            "world_lore", "character_info", "location_info", 
+            "world_lore", "character_info", "location_info",
             "object_info", "quest_info", "game_mechanic", "general_info"
         ]:
             return False
-        
+
         return True
 
     async def create_knowledge_embeddings(
@@ -256,12 +256,12 @@ class KnowledgeExtractor:
     ) -> list[dict[str, Any]]:
         """Create embeddings for extracted knowledge for semantic search."""
         embeddings = []
-        
+
         try:
             for info in information:
                 if not self._validate_extracted_info(info):
                     continue
-                
+
                 # Create embedding for the information
                 # This would integrate with the embedding system
                 embedding_data = {
@@ -276,10 +276,10 @@ class KnowledgeExtractor:
                         "extracted_at": info.get("extracted_at"),
                     },
                 }
-                
+
                 embeddings.append(embedding_data)
-        
+
         except Exception:
             pass
-        
+
         return embeddings
