@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from src.game_loop.core.objects.interaction_system import (
+from game_loop.core.objects.interaction_system import (
     InteractionResult,
     ObjectInteractionSystem,
     ObjectInteractionType,
@@ -365,27 +365,42 @@ class TestObjectInteractionSystem:
     @pytest.mark.asyncio
     async def test_complex_interaction_chain(self, interaction_system):
         """Test complex interaction involving multiple steps."""
-        # First interaction: examine object
-        examine_result = await interaction_system.process_object_interaction(
-            ObjectInteractionType.EXAMINE,
-            "complex_object",
-            None,
-            None,
-            {"player_state": {"skills": {}}},
-        )
+        # Mock the random module to ensure consistent results
+        import random
 
-        # Second interaction: use object based on examination
-        use_result = await interaction_system.process_object_interaction(
-            ObjectInteractionType.USE,
-            "complex_object",
-            None,
-            None,
-            {"player_state": {"skills": {"tool_use": 5}}},
-        )
+        original_random = random.random
 
-        assert examine_result.success is True
-        assert use_result.success is True
-        assert examine_result.interaction_type != use_result.interaction_type
+        try:
+            # Set random to always return success
+            random.random = (
+                lambda: 0.1
+            )  # Will always be < any reasonable success probability
+
+            # First interaction: examine object
+            examine_result = await interaction_system.process_object_interaction(
+                ObjectInteractionType.EXAMINE,
+                "complex_object",
+                None,
+                None,
+                {"player_state": {"skills": {}}},
+            )
+
+            # Second interaction: use object based on examination
+            use_result = await interaction_system.process_object_interaction(
+                ObjectInteractionType.USE,
+                "complex_object",
+                None,
+                None,
+                {"player_state": {"skills": {"tool_use": 5}}},
+            )
+
+            assert examine_result.success is True
+            assert use_result.success is True
+            assert examine_result.interaction_type != use_result.interaction_type
+
+        finally:
+            # Restore original random function
+            random.random = original_random
 
     @pytest.mark.asyncio
     async def test_error_handling_invalid_object(self, interaction_system):

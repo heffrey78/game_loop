@@ -41,7 +41,7 @@ class ConversationExchange:
     @classmethod
     def create_player_message(
         cls,
-        player_id: str,
+        player_id: str | uuid.UUID,
         message_text: str,
         message_type: MessageType = MessageType.STATEMENT,
         metadata: dict[str, Any] | None = None,
@@ -49,7 +49,7 @@ class ConversationExchange:
         """Create a player message exchange."""
         return cls(
             exchange_id=str(uuid.uuid4()),
-            speaker_id=player_id,
+            speaker_id=str(player_id),
             message_text=message_text,
             message_type=message_type,
             metadata=metadata or {},
@@ -58,7 +58,7 @@ class ConversationExchange:
     @classmethod
     def create_npc_message(
         cls,
-        npc_id: str,
+        npc_id: str | uuid.UUID,
         message_text: str,
         message_type: MessageType = MessageType.STATEMENT,
         emotion: str | None = None,
@@ -67,7 +67,7 @@ class ConversationExchange:
         """Create an NPC message exchange."""
         return cls(
             exchange_id=str(uuid.uuid4()),
-            speaker_id=npc_id,
+            speaker_id=str(npc_id),
             message_text=message_text,
             message_type=message_type,
             emotion=emotion,
@@ -151,8 +151,8 @@ class ConversationContext:
     @classmethod
     def create(
         cls,
-        player_id: str,
-        npc_id: str,
+        player_id: str | uuid.UUID,
+        npc_id: str | uuid.UUID,
         topic: str | None = None,
         initial_mood: str = "neutral",
         relationship_level: float = 0.0,
@@ -160,8 +160,8 @@ class ConversationContext:
         """Create a new conversation context."""
         return cls(
             conversation_id=str(uuid.uuid4()),
-            player_id=player_id,
-            npc_id=npc_id,
+            player_id=str(player_id),
+            npc_id=str(npc_id),
             topic=topic,
             mood=initial_mood,
             relationship_level=relationship_level,
@@ -205,7 +205,9 @@ class ConversationContext:
             "topic": self.topic,
             "mood": self.mood,
             "relationship_level": self.relationship_level,
-            "conversation_history": [exchange.to_dict() for exchange in self.conversation_history],
+            "conversation_history": [
+                exchange.to_dict() for exchange in self.conversation_history
+            ],
             "context_data": self.context_data,
             "status": self.status.value,
             "started_at": self.started_at,

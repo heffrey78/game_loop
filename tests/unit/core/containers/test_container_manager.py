@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from src.game_loop.core.containers.container_manager import (
+from game_loop.core.containers.container_manager import (
     ContainerManager,
     ContainerSpecification,
     ContainerType,

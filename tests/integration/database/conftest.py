@@ -41,9 +41,21 @@ async def session_factory(
 async def db_session(
     session_factory: DatabaseSessionFactory,
 ) -> AsyncGenerator[AsyncSession, None]:
-    """Create a database session for testing."""
-    async with session_factory.get_session() as session:
-        yield session
+    """Create a database session for testing with transaction rollback."""
+    # Create session directly to avoid auto-commit behavior
+    session = session_factory._session_factory()
+    try:
+        # Start a nested transaction for test isolation
+        trans = await session.begin()
+        try:
+            yield session
+        finally:
+            # Rollback if transaction is still active (not already closed by an error)
+            if trans.is_active:
+                await trans.rollback()
+    finally:
+        # Close the session
+        await session.close()
 
 
 @pytest.fixture
