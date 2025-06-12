@@ -216,7 +216,9 @@ class QueryProcessor:
             )
 
         # Generate response
-        response_text = await self._generate_response(query, information_sources, context)
+        response_text = await self._generate_response(
+            query, information_sources, context
+        )
 
         return QueryResponse.success_response(
             response_text,
@@ -256,7 +258,9 @@ class QueryProcessor:
                 confidence=0.3,
             )
 
-        response_text = await self._generate_response(query, information_sources, context)
+        response_text = await self._generate_response(
+            query, information_sources, context
+        )
 
         return QueryResponse.success_response(
             response_text,
@@ -296,7 +300,9 @@ class QueryProcessor:
                 confidence=0.3,
             )
 
-        response_text = await self._generate_response(query, information_sources, context)
+        response_text = await self._generate_response(
+            query, information_sources, context
+        )
 
         return QueryResponse.success_response(
             response_text,
@@ -335,7 +341,9 @@ class QueryProcessor:
             )
             information_sources.insert(0, source)
 
-        response_text = await self._generate_response(query, information_sources, context)
+        response_text = await self._generate_response(
+            query, information_sources, context
+        )
 
         return QueryResponse.success_response(
             response_text,
@@ -370,7 +378,9 @@ class QueryProcessor:
         """Handle player status requests."""
         try:
             # Get player state
-            player_state = await self.game_state_manager.get_player_state(query.player_id)
+            player_state = await self.game_state_manager.get_player_state(
+                query.player_id
+            )
 
             if not player_state:
                 return QueryResponse.error_response("Could not retrieve player status")
@@ -399,7 +409,9 @@ class QueryProcessor:
         """Handle inventory requests."""
         try:
             # Get player inventory from game state
-            player_state = await self.game_state_manager.get_player_state(query.player_id)
+            player_state = await self.game_state_manager.get_player_state(
+                query.player_id
+            )
 
             if not player_state:
                 return QueryResponse.error_response("Could not access inventory")
@@ -415,9 +427,7 @@ class QueryProcessor:
             )
 
         except Exception as e:
-            return QueryResponse.error_response(
-                f"Could not access inventory: {str(e)}"
-            )
+            return QueryResponse.error_response(f"Could not access inventory: {str(e)}")
 
     async def _handle_quest_info_query(self, query: QueryRequest) -> QueryResponse:
         """Handle quest information requests."""

@@ -85,7 +85,9 @@ class KnowledgeExtractor:
         except Exception:
             return False
 
-    def _format_conversation_for_analysis(self, conversation: ConversationContext) -> str:
+    def _format_conversation_for_analysis(
+        self, conversation: ConversationContext
+    ) -> str:
         """Format conversation exchanges for LLM analysis."""
         formatted_exchanges = []
 
@@ -164,9 +166,19 @@ class KnowledgeExtractor:
         lines = response.split("\n")
         for line in lines:
             line = line.strip()
-            if line and ":" in line and any(
-                category in line.lower()
-                for category in ["world", "character", "location", "object", "quest"]
+            if (
+                line
+                and ":" in line
+                and any(
+                    category in line.lower()
+                    for category in [
+                        "world",
+                        "character",
+                        "location",
+                        "object",
+                        "quest",
+                    ]
+                )
             ):
                 # Try to extract basic information
                 try:
@@ -176,13 +188,15 @@ class KnowledgeExtractor:
                         info_text = parts[1].strip()
 
                         if info_text:
-                            information.append({
-                                "category": category,
-                                "information": info_text,
-                                "confidence": "medium",
-                                "source": "unknown",
-                                "keywords": self._extract_keywords(info_text),
-                            })
+                            information.append(
+                                {
+                                    "category": category,
+                                    "information": info_text,
+                                    "confidence": "medium",
+                                    "source": "unknown",
+                                    "keywords": self._extract_keywords(info_text),
+                                }
+                            )
                 except Exception:
                     continue
 
@@ -194,13 +208,22 @@ class KnowledgeExtractor:
 
         if any(word in text_lower for word in ["world", "lore", "history", "ancient"]):
             return "world_lore"
-        elif any(word in text_lower for word in ["character", "npc", "person", "relationship"]):
+        elif any(
+            word in text_lower
+            for word in ["character", "npc", "person", "relationship"]
+        ):
             return "character_info"
-        elif any(word in text_lower for word in ["location", "place", "area", "region"]):
+        elif any(
+            word in text_lower for word in ["location", "place", "area", "region"]
+        ):
             return "location_info"
-        elif any(word in text_lower for word in ["object", "item", "artifact", "weapon"]):
+        elif any(
+            word in text_lower for word in ["object", "item", "artifact", "weapon"]
+        ):
             return "object_info"
-        elif any(word in text_lower for word in ["quest", "mission", "task", "objective"]):
+        elif any(
+            word in text_lower for word in ["quest", "mission", "task", "objective"]
+        ):
             return "quest_info"
         else:
             return "general_info"
@@ -212,16 +235,65 @@ class KnowledgeExtractor:
 
         # Remove common words and extract meaningful terms
         common_words = {
-            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-            "of", "with", "by", "is", "are", "was", "were", "been", "be", "have",
-            "has", "had", "do", "does", "did", "will", "would", "could", "should",
-            "this", "that", "these", "those", "they", "them", "their", "there",
-            "where", "when", "what", "who", "why", "how", "it", "its", "he", "she",
-            "him", "her", "we", "us", "our", "you", "your"
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+            "by",
+            "is",
+            "are",
+            "was",
+            "were",
+            "been",
+            "be",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "this",
+            "that",
+            "these",
+            "those",
+            "they",
+            "them",
+            "their",
+            "there",
+            "where",
+            "when",
+            "what",
+            "who",
+            "why",
+            "how",
+            "it",
+            "its",
+            "he",
+            "she",
+            "him",
+            "her",
+            "we",
+            "us",
+            "our",
+            "you",
+            "your",
         }
 
         # Extract words
-        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+        words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
         keywords = [word for word in words if word not in common_words]
 
         # Return unique keywords, limited to 5
@@ -244,8 +316,13 @@ class KnowledgeExtractor:
             return False
 
         if info["category"] not in [
-            "world_lore", "character_info", "location_info",
-            "object_info", "quest_info", "game_mechanic", "general_info"
+            "world_lore",
+            "character_info",
+            "location_info",
+            "object_info",
+            "quest_info",
+            "game_mechanic",
+            "general_info",
         ]:
             return False
 
@@ -267,7 +344,11 @@ class KnowledgeExtractor:
                 embedding_data = {
                     "entity_id": f"knowledge_{hash(info['information'])}",
                     "entity_type": info["category"],
-                    "name": info.get("keywords", ["unknown"])[0] if info.get("keywords") else "unknown",
+                    "name": (
+                        info.get("keywords", ["unknown"])[0]
+                        if info.get("keywords")
+                        else "unknown"
+                    ),
                     "description": info["information"],
                     "metadata": {
                         "confidence": info["confidence"],

@@ -36,17 +36,21 @@ class InformationAggregator:
             for result in world_results:
                 entity_type = result.get("entity_type", "")
                 if entity_type == "location":
-                    locations.append({
-                        "name": result.get("name", ""),
-                        "description": result.get("description", ""),
-                        "metadata": result.get("metadata", {}),
-                    })
+                    locations.append(
+                        {
+                            "name": result.get("name", ""),
+                            "description": result.get("description", ""),
+                            "metadata": result.get("metadata", {}),
+                        }
+                    )
                 elif entity_type in ["world", "lore"]:
-                    lore_entries.append({
-                        "name": result.get("name", ""),
-                        "description": result.get("description", ""),
-                        "metadata": result.get("metadata", {}),
-                    })
+                    lore_entries.append(
+                        {
+                            "name": result.get("name", ""),
+                            "description": result.get("description", ""),
+                            "metadata": result.get("metadata", {}),
+                        }
+                    )
 
             if locations:
                 world_info["locations"] = self._format_location_info(locations)
@@ -74,12 +78,14 @@ class InformationAggregator:
             # Aggregate object information
             objects = []
             for result in object_results:
-                objects.append({
-                    "name": result.get("name", ""),
-                    "description": result.get("description", ""),
-                    "type": result.get("entity_type", ""),
-                    "properties": result.get("metadata", {}),
-                })
+                objects.append(
+                    {
+                        "name": result.get("name", ""),
+                        "description": result.get("description", ""),
+                        "type": result.get("entity_type", ""),
+                        "properties": result.get("metadata", {}),
+                    }
+                )
 
             if objects:
                 object_info["objects"] = self._format_object_info(objects)
@@ -109,13 +115,15 @@ class InformationAggregator:
             # Aggregate NPC information
             npcs = []
             for result in npc_results:
-                npcs.append({
-                    "name": result.get("name", ""),
-                    "description": result.get("description", ""),
-                    "type": result.get("entity_type", ""),
-                    "background": result.get("metadata", {}).get("background", ""),
-                    "role": result.get("metadata", {}).get("role", ""),
-                })
+                npcs.append(
+                    {
+                        "name": result.get("name", ""),
+                        "description": result.get("description", ""),
+                        "type": result.get("entity_type", ""),
+                        "background": result.get("metadata", {}).get("background", ""),
+                        "role": result.get("metadata", {}).get("role", ""),
+                    }
+                )
 
             if npcs:
                 npc_info["npcs"] = self._format_npc_info(npcs)
@@ -161,14 +169,20 @@ class InformationAggregator:
             if location_results:
                 locations = []
                 for result in location_results:
-                    locations.append({
-                        "name": result.get("name", ""),
-                        "description": result.get("description", ""),
-                        "connections": result.get("metadata", {}).get("connections", []),
-                        "features": result.get("metadata", {}).get("features", []),
-                    })
+                    locations.append(
+                        {
+                            "name": result.get("name", ""),
+                            "description": result.get("description", ""),
+                            "connections": result.get("metadata", {}).get(
+                                "connections", []
+                            ),
+                            "features": result.get("metadata", {}).get("features", []),
+                        }
+                    )
 
-                location_info["related_locations"] = self._format_location_info(locations)
+                location_info["related_locations"] = self._format_location_info(
+                    locations
+                )
 
         except Exception as e:
             location_info["error"] = f"Could not gather location information: {str(e)}"

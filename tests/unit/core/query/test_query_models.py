@@ -1,12 +1,11 @@
 """Tests for query system models."""
 
-import pytest
 from game_loop.core.query.query_models import (
+    InformationSource,
+    QueryContext,
     QueryRequest,
     QueryResponse,
     QueryType,
-    InformationSource,
-    QueryContext,
 )
 
 
@@ -60,7 +59,10 @@ class TestQueryResponse:
         assert response.response_text == "The ancient temple is a mysterious place..."
         assert response.information_type == "world_info"
         assert response.sources == ["ancient_scroll", "village_elder"]
-        assert response.related_queries == ["Who built the temple?", "What's inside the temple?"]
+        assert response.related_queries == [
+            "Who built the temple?",
+            "What's inside the temple?",
+        ]
         assert response.confidence == 0.8
         assert response.errors is None
 
@@ -166,7 +168,7 @@ class TestQueryType:
         """Test that all expected query types exist."""
         expected_types = [
             "WORLD_INFO",
-            "OBJECT_INFO", 
+            "OBJECT_INFO",
             "NPC_INFO",
             "LOCATION_INFO",
             "HELP",

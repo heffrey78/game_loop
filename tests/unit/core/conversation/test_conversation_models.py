@@ -1,6 +1,5 @@
 """Tests for conversation system models."""
 
-import pytest
 from game_loop.core.conversation.conversation_models import (
     ConversationContext,
     ConversationExchange,
