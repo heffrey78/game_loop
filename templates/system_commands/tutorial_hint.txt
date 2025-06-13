@@ -1,0 +1,13 @@
+💡 **Tutorial Hint: {{ tutorial_type }}**
+
+{{ message }}
+
+{% if suggested_action %}
+**Try this:** `{{ suggested_action }}`
+{% endif %}
+
+{% if additional_info %}
+{{ additional_info }}
+{% endif %}
+
+Type `tutorial` to get more guidance or continue playing to practice!

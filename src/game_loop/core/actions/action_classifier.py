@@ -15,6 +15,7 @@ from game_loop.config.manager import ConfigManager
 from game_loop.llm.nlp_processor import NLPProcessor
 from game_loop.llm.ollama.client import OllamaClient
 
+from ..models.system_models import SystemCommandClassification, SystemCommandType
 from .exceptions import (
     ActionClassificationError,
     LLMClassificationError,
@@ -628,3 +629,144 @@ class ActionTypeClassifier:
             command_type.name if hasattr(command_type, "name") else str(command_type)
         )
         return type_mapping.get(command_name, ActionType.UNKNOWN)
+
+    async def classify_system_command(
+        self, text: str
+    ) -> SystemCommandClassification | None:
+        """Classify system/meta-game commands."""
+        try:
+            text_lower = text.lower().strip()
+
+            # Define system command patterns (order matters - more specific patterns first)
+            system_patterns = {
+                SystemCommandType.LIST_SAVES: [
+                    r"^/?list\s+saves?$",
+                    r"^/?show\s+saves?$",
+                    r"^/?save\s+files?$",
+                    r"^/?my\s+saves?$",
+                ],
+                SystemCommandType.LOAD_GAME: [
+                    r"^/?load(?:\s+game)?(?:\s+.+)?$",
+                    r"^/?restore(?:\s+save)?$",
+                    r"^/?continue(?:\s+game)?$",
+                    r"^/?quickload$",
+                ],
+                SystemCommandType.SAVE_GAME: [
+                    r"^/?save(?:\s+game)?(?:\s+.+)?$",
+                    r"^/?create\s+save\b",
+                    r"^/?save\s+state\b",
+                    r"^/?quicksave$",
+                ],
+                SystemCommandType.HELP: [
+                    r"^/?help(?:\s+.+)?$",
+                    r"^/?how\s+do\s+i\b",
+                    r"^/?what\s+can\s+i\s+do$",
+                    r"^/?commands?$",
+                    r"^/?\?$",
+                ],
+                SystemCommandType.TUTORIAL: [
+                    r"^/?tutorial$",
+                    r"^/?guide$",
+                    r"^/?show\s+me\s+how\b",
+                    r"^/?teach\s+me$",
+                    r"^/?learn$",
+                ],
+                SystemCommandType.SETTINGS: [
+                    r"^/?settings?$",
+                    r"^/?options?$",
+                    r"^/?preferences?$",
+                    r"^/?config$",
+                    r"^/?set\s+\w+\b",
+                ],
+                SystemCommandType.QUIT_GAME: [
+                    r"^/?(quit|exit)(?:\s+game)?$",
+                    r"^/?leave$",
+                    r"^/?stop$",
+                    r"^/?end\s+game$",
+                ],
+            }
+
+            import re
+
+            # Check each pattern type
+            for command_type, patterns in system_patterns.items():
+                for pattern in patterns:
+                    match = re.search(pattern, text_lower)
+                    if match:
+                        # Extract arguments from the match
+                        args = self._extract_system_command_args(
+                            text, command_type, match
+                        )
+
+                        return SystemCommandClassification(
+                            command_type=command_type,
+                            args=args,
+                            confidence=0.9,  # High confidence for pattern matches
+                            original_text=text,
+                        )
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error in system command classification: {e}")
+            return None
+
+    def _extract_system_command_args(
+        self, text: str, command_type: SystemCommandType, match
+    ) -> dict[str, Any]:
+        """Extract arguments from system command match."""
+        args = {}
+        text_lower = text.lower().strip()
+
+        if command_type == SystemCommandType.SAVE_GAME:
+            # Extract save name if provided
+            # Handle both "/save name" and "save as name" formats
+            words = text.split()
+            if "as" in text_lower:
+                parts = text_lower.split("as", 1)
+                if len(parts) > 1:
+                    save_name = parts[1].strip()
+                    args["save_name"] = save_name
+            elif len(words) > 1:
+                # Remove slash prefix if present
+                first_word = words[0].lstrip("/")
+                if first_word.lower() in ["save"]:
+                    # Get everything after "save" (skip "game" if present)
+                    save_parts = words[1:]
+                    if save_parts and save_parts[0].lower() == "game":
+                        save_parts = save_parts[1:]
+                    if save_parts:
+                        save_name = " ".join(save_parts).strip()
+                        args["save_name"] = save_name
+
+        elif command_type == SystemCommandType.LOAD_GAME:
+            # Extract save name if provided
+            words = text.split()
+            if len(words) > 1:
+                # Remove slash prefix if present
+                first_word = words[0].lstrip("/")
+                if first_word.lower() in ["load", "restore"]:
+                    save_parts = words[1:]
+                    if save_parts and save_parts[0].lower() == "game":
+                        save_parts = save_parts[1:]
+                    if save_parts:
+                        save_name = " ".join(save_parts).strip()
+                        args["save_name"] = save_name
+
+        elif command_type == SystemCommandType.HELP:
+            # Extract help topic if provided
+            words = text.split()
+            if len(words) > 1:
+                topic = " ".join(words[1:]).strip()
+                args["topic"] = topic
+
+        elif command_type == SystemCommandType.SETTINGS:
+            # Extract setting name and value if provided
+            if "set" in text_lower:
+                parts = text.split()
+                if len(parts) >= 3 and parts[0].lower() == "set":
+                    args["setting"] = parts[1]
+                    if len(parts) > 2:
+                        args["value"] = " ".join(parts[2:])
+
+        return args

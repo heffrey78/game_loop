@@ -1,0 +1,12 @@
+**Game Settings**
+
+{% for category, settings in settings_by_category.items() %}
+**{{ category.title() }}:**
+{% for setting in settings %}
+• {{ setting.name }}: {{ setting.current_value }}
+  {{ setting.description }}
+{% endfor %}
+
+{% endfor %}
+Use `set <setting_name> <value>` to change a setting.
+Type `help settings` for more information about available options.

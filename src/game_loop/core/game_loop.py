@@ -12,10 +12,13 @@ from rich.console import Console
 
 from game_loop.config.manager import ConfigManager
 from game_loop.config.models import GameConfig
+from game_loop.core.actions.action_classifier import ActionTypeClassifier
 from game_loop.core.command_handlers.factory import CommandHandlerFactory
 from game_loop.core.enhanced_input_processor import EnhancedInputProcessor
 from game_loop.core.input_processor import CommandType, InputProcessor, ParsedCommand
 from game_loop.core.location import LocationDisplay
+from game_loop.database.session_factory import DatabaseSessionFactory
+from game_loop.llm.ollama.client import OllamaClient
 from game_loop.state.manager import GameStateManager
 from game_loop.state.models import ActionResult, Location, PlayerState, WorldState
 
@@ -59,6 +62,21 @@ class GameLoop:
         # Initialize GameStateManager with the correct config manager type
         self.state_manager = GameStateManager(self.game_config_manager, self.db_pool)
 
+        # Initialize database session factory
+        self.session_factory = DatabaseSessionFactory(config.database)
+
+        # Initialize LLM client
+        self.ollama_client = OllamaClient()
+
+        # Initialize action classifier
+        self.action_classifier = ActionTypeClassifier(
+            config_manager=self.config_manager,
+            ollama_client=self.ollama_client,
+        )
+
+        # For now, initialize semantic search as None - will be set up properly later
+        self.semantic_search = None
+
         # Create enhanced input processor with NLP capabilities
         self.input_processor = EnhancedInputProcessor(
             config_manager=self.config_manager,
@@ -73,9 +91,15 @@ class GameLoop:
             game_state_manager=self.state_manager,
         )
 
-        # Initialize the command handler factory
+        # Initialize the command handler factory with all dependencies
         self.command_handler_factory = CommandHandlerFactory(
-            self.console, self.state_manager
+            console=self.console,
+            state_manager=self.state_manager,
+            session_factory=self.session_factory,
+            config_manager=self.config_manager,
+            llm_client=self.ollama_client,
+            semantic_search=self.semantic_search,
+            action_classifier=self.action_classifier,
         )
 
     async def initialize(self, session_id: UUID | None = None) -> None:
@@ -83,6 +107,9 @@ class GameLoop:
         self.console.print("[bold green]Initializing Game Loop...[/bold green]")
 
         try:
+            # Initialize database session factory
+            await self.session_factory.initialize()
+
             # Initialize the state manager, attempting to load if session_id provided
             await self.state_manager.initialize(session_id)
 
@@ -255,8 +282,13 @@ class GameLoop:
 
         # Add player information
         if player_state:
-            # Create player info with name
-            player_info = {"name": player_state.name}
+            # Create player info with name and ID
+            player_info = {
+                "name": player_state.name,
+                "player_id": (
+                    str(player_state.player_id) if player_state.player_id else None
+                ),
+            }
 
             # Add inventory
             if player_state.inventory:
@@ -286,6 +318,10 @@ class GameLoop:
                 player_info["stats"] = str(stats_dict)
 
             context["player"] = player_info
+            # Also add player_id at the top level for system commands
+            context["player_id"] = (
+                str(player_state.player_id) if player_state.player_id else None
+            )
 
         return context
 
@@ -315,6 +351,24 @@ class GameLoop:
 
         # Extract game context for NLP processing
         game_context = self._extract_game_context()
+
+        # First check if this is a system command
+        system_result = await self.command_handler_factory.handle_command(
+            user_input, game_context
+        )
+
+        if system_result:
+            # This was a system command, display the result
+            if system_result.feedback_message:
+                self.console.print(system_result.feedback_message)
+
+            # Check if this was a quit command and stop the game loop
+            if user_input.lower().strip() in ["quit", "exit", "/quit", "/exit"]:
+                self.stop()
+
+            return
+
+        # Not a system command, process normally
         command = None
 
         try:
@@ -852,7 +906,7 @@ class GameLoop:
 
     def _display_help(self) -> None:
         """Display available commands."""
-        self.console.print("[bold]Available commands:[/bold]")
+        self.console.print("\n[bold]Game Commands:[/bold]")
         self.console.print(
             "- [bold]go/move[/bold] <direction>: "
             "Move in a direction (north, south, east, west, etc.)"
@@ -869,9 +923,18 @@ class GameLoop:
             "Use an item, optionally on a target"
         )
         self.console.print("- [bold]talk[/bold] to <character>: Talk to a character")
-        self.console.print("- [bold]save[/bold>: Save your game")
-        self.console.print("- [bold]load[/bold>: Load a saved game")
-        self.console.print("- [bold]help[/bold]: Show this help")
+
+        self.console.print("\n[bold]System Commands:[/bold]")
+        self.console.print(
+            "- [bold]save[/bold] [name]: Save your game (optionally with a name)"
+        )
+        self.console.print("- [bold]load[/bold] [name]: Load a saved game")
+        self.console.print("- [bold]list saves[/bold]: Show all your saved games")
+        self.console.print("- [bold]settings[/bold]: View or modify game settings")
+        self.console.print(
+            "- [bold]help[/bold] [topic]: Show help (optionally for a specific topic)"
+        )
+        self.console.print("- [bold]tutorial[/bold]: Get tutorial guidance")
         self.console.print("- [bold]quit/exit[/bold]: Quit the game")
 
     async def _auto_save_game(self) -> None:

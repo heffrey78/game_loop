@@ -1,0 +1,32 @@
+{% if error_type == "save_failed" %}
+❌ **Save Failed**
+{{ error_message }}
+
+Please try again or check your storage space.
+
+{% elif error_type == "load_failed" %}
+❌ **Load Failed**
+{{ error_message }}
+
+Try `list saves` to see available save files.
+
+{% elif error_type == "setting_invalid" %}
+❌ **Invalid Setting**
+{{ error_message }}
+
+Type `settings` to see all available options.
+
+{% elif error_type == "help_not_found" %}
+❌ **Help Topic Not Found**
+{{ error_message }}
+
+Type `help` for a list of available topics.
+
+{% else %}
+❌ **Error**
+{{ error_message }}
+
+{% if suggestion %}
+{{ suggestion }}
+{% endif %}
+{% endif %}

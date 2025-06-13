@@ -1,0 +1,9 @@
+Game loaded successfully!
+
+**Load Details:**
+- Save Name: {{ save_name }}
+- Location: {{ location }}
+- Last Played: {{ last_played }}
+- Progress: {{ progress_summary }}
+
+Welcome back! You can continue your adventure from where you left off.

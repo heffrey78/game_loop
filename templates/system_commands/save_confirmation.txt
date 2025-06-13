@@ -1,0 +1,10 @@
+Game successfully saved!
+
+**Save Details:**
+- Name: {{ save_name }}
+- Location: {{ location }}
+- Play Time: {{ play_time }}
+- File Size: {{ file_size }}
+
+Your progress has been preserved. You can continue playing or load this save later using:
+`load {{ save_name }}`

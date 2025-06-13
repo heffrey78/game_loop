@@ -1,0 +1,24 @@
+**{{ topic_title }}**
+
+{{ content }}
+
+{% if examples %}
+**Examples:**
+{% for example in examples %}
+• {{ example }}
+{% endfor %}
+{% endif %}
+
+{% if related_topics %}
+**Related Topics:**
+{% for topic in related_topics %}
+• {{ topic }}
+{% endfor %}
+{% endif %}
+
+{% if contextual_suggestions %}
+**Suggestions for your current situation:**
+{% for suggestion in contextual_suggestions %}
+• {{ suggestion }}
+{% endfor %}
+{% endif %}
