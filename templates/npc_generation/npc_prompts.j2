@@ -1,0 +1,78 @@
+{# NPC Generation Prompt Template #}
+You are generating an NPC for a text adventure game.
+
+## Context Information
+- **Location**: {{ location.name }}
+  Description: {{ location.description }}
+- **Location Theme**: {{ location_theme.name }} - {{ location_theme.description }}
+  Atmosphere: {{ location_theme.atmosphere }}
+- **Target Archetype**: {{ archetype }}
+- **Generation Purpose**: {{ generation_purpose }}
+
+## World Context
+{% if world_snapshot %}
+- World has {{ world_snapshot.total_locations }} locations explored
+- Themes present: {{ world_snapshot.themes_present | join(', ') }}
+- Current world complexity: {{ world_snapshot.world_complexity }}
+{% endif %}
+
+## Adjacent NPCs
+{% if nearby_npcs %}
+Nearby NPCs that this character might know:
+{% for npc in nearby_npcs[:3] %}
+- {{ npc.name }}: {{ npc.description }}
+{% endfor %}
+{% else %}
+No other NPCs in the immediate area.
+{% endif %}
+
+## Constraints
+{% if constraints %}
+Generation constraints:
+{% for key, value in constraints.items() %}
+- {{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+
+## Generation Requirements
+
+Create an NPC that:
+1. **Fits the {{ archetype }} archetype** and {{ location_theme.name }} theme
+2. **Has a distinct personality** that makes sense for their role and environment
+3. **Knows appropriate information** about the area and their specialty
+4. **Has realistic motivations** that drive their actions and dialogue
+5. **Can engage meaningfully** with players through dialogue and interaction
+
+{% if generation_purpose == "quest_related" %}
+**Special Requirement**: This NPC should be capable of offering quests or important information.
+{% elif generation_purpose == "populate_location" %}
+**Special Requirement**: This NPC should enhance the location's atmosphere and provide useful services.
+{% elif generation_purpose == "random_encounter" %}
+**Special Requirement**: This NPC should be interesting but not essential to the main story.
+{% endif %}
+
+## Output Format
+
+Respond with **only** a JSON object containing these fields:
+
+```json
+{
+  "name": "NPC name (2-3 words, appropriate to theme and archetype)",
+  "description": "Physical appearance and initial impression (1-2 sentences)",
+  "personality_traits": ["trait1", "trait2", "trait3", "trait4"],
+  "motivations": ["motivation1", "motivation2", "motivation3"],
+  "fears": ["fear1", "fear2"],
+  "background": "Brief personal history and how they came to be here (2-3 sentences)",
+  "knowledge_areas": ["area1", "area2", "area3", "area4"],
+  "speech_style": "Description of how they speak (tone, vocabulary, patterns)",
+  "initial_dialogue": "What they say when first meeting the player",
+  "special_abilities": ["ability1", "ability2"] // Optional special skills or knowledge
+}
+```
+
+**Important**: 
+- Traits should be specific and memorable (not just "friendly" or "helpful")
+- Motivations should be concrete and actionable
+- Knowledge areas should relate to their archetype and location
+- Initial dialogue should immediately convey personality
+- No additional text outside the JSON object

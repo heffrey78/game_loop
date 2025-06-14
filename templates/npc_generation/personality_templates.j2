@@ -1,0 +1,122 @@
+{# Personality Generation Template #}
+You are creating a detailed personality for an NPC in a text adventure game.
+
+## Base Information
+- **Name**: {{ npc_name }}
+- **Archetype**: {{ archetype }}
+- **Location**: {{ location.name }} ({{ location_theme.name }} theme)
+
+## Archetype Guidelines
+{% if archetype == "merchant" %}
+Merchants are business-minded individuals who focus on trade and profit. They should be:
+- Socially adept and persuasive
+- Knowledgeable about goods, prices, and trade routes
+- Motivated by profit but also reputation
+- Able to assess value and negotiate deals
+{% elif archetype == "guard" %}
+Guards are protectors focused on safety and order. They should be:
+- Vigilant and duty-bound
+- Knowledgeable about security, law, and local threats
+- Motivated by duty and protecting others
+- Authoritative but fair in their interactions
+{% elif archetype == "scholar" %}
+Scholars are knowledge-seekers devoted to learning. They should be:
+- Intellectually curious and analytical
+- Knowledgeable about history, lore, and research
+- Motivated by discovery and understanding
+- Verbose and precise in their speech
+{% elif archetype == "hermit" %}
+Hermits are solitary individuals who value wisdom and solitude. They should be:
+- Wise but reclusive
+- Knowledgeable about nature, philosophy, and hidden truths
+- Motivated by inner peace and wisdom
+- Cryptic and thoughtful in their speech
+{% elif archetype == "innkeeper" %}
+Innkeepers are hosts who provide hospitality. They should be:
+- Hospitable and socially engaged
+- Knowledgeable about travelers, local news, and comfort
+- Motivated by community and service
+- Warm and welcoming in their interactions
+{% elif archetype == "artisan" %}
+Artisans are skilled crafters who create beautiful or useful items. They should be:
+- Creative and dedicated to their craft
+- Knowledgeable about materials, techniques, and artistry
+- Motivated by perfection and pride in their work
+- Passionate when discussing their craft
+{% elif archetype == "wanderer" %}
+Wanderers are travelers who roam freely. They should be:
+- Adventurous and independent
+- Knowledgeable about travel, geography, and diverse cultures
+- Motivated by freedom and new experiences
+- Storytelling and experienced in their speech
+{% endif %}
+
+## Cultural Context
+Location theme {{ location_theme.name }} suggests:
+- Atmosphere: {{ location_theme.atmosphere }}
+- Typical elements: {{ location_theme.visual_elements | join(', ') }}
+- Common objects: {{ location_theme.typical_objects | join(', ') }}
+
+## Personality Development
+
+Create a nuanced personality that includes:
+
+### Core Traits (4-5 traits)
+Choose traits that:
+- Align with the {{ archetype }} archetype
+- Reflect the {{ location_theme.name }} environment
+- Create interesting contrasts or depth
+- Are specific rather than generic
+
+### Motivations (2-3 primary motivations)
+What drives this character:
+- Personal goals and ambitions
+- Professional or duty-based motivations
+- Emotional or relationship needs
+
+### Fears and Concerns (1-2 fears)
+What worries or frightens them:
+- Professional risks or failures
+- Personal vulnerabilities
+- Environmental or social threats
+
+### Speech Patterns
+How they communicate:
+- Formality level (formal, casual, familiar)
+- Verbosity (concise, moderate, verbose)
+- Special quirks or patterns
+- Vocabulary preferences
+
+### Relationship Tendencies
+How they typically relate to others:
+- Trust levels and social comfort
+- Preferred interaction styles
+- Boundaries and openness
+
+## Output Format
+
+Provide a detailed personality profile in this structure:
+
+```json
+{
+  "core_traits": ["specific_trait_1", "specific_trait_2", "specific_trait_3", "specific_trait_4"],
+  "motivations": ["concrete_motivation_1", "concrete_motivation_2", "concrete_motivation_3"],
+  "fears": ["specific_fear_1", "specific_fear_2"],
+  "speech_patterns": {
+    "formality": "formal|casual|familiar",
+    "verbosity": "concise|moderate|verbose", 
+    "quirks": "Special speech patterns or habits",
+    "vocabulary": "Preferred word choices or phrases"
+  },
+  "relationship_tendencies": {
+    "trust_level": "suspicious|cautious|open|trusting",
+    "social_comfort": "withdrawn|selective|social|gregarious", 
+    "interaction_style": "direct|diplomatic|playful|serious",
+    "boundaries": "very_private|private|open|very_open"
+  },
+  "background_influences": ["factor_1", "factor_2", "factor_3"],
+  "personality_summary": "A 2-3 sentence summary of their overall personality"
+}
+```
+
+Focus on creating a believable, three-dimensional character that fits their role while having distinctive personal qualities.
