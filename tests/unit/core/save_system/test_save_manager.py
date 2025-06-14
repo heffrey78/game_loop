@@ -77,8 +77,8 @@ class TestSaveManager:
 
         # Mock session operations
         session = mock_session_factory.get_session.return_value.__aenter__.return_value
-        session.execute = AsyncMock()
-        session.commit = AsyncMock()
+        session.execute = AsyncMock(return_value=MagicMock())
+        session.commit = AsyncMock(return_value=None)
 
         # Mock file operations
         with (
@@ -113,8 +113,8 @@ class TestSaveManager:
         """Test automatic save name generation."""
         # Mock session operations
         session = mock_session_factory.get_session.return_value.__aenter__.return_value
-        session.execute = AsyncMock()
-        session.commit = AsyncMock()
+        session.execute = AsyncMock(return_value=MagicMock())
+        session.commit = AsyncMock(return_value=None)
 
         # Mock file operations
         with (
@@ -311,8 +311,8 @@ class TestSaveManager:
         """Test automatic save."""
         # Mock session operations
         session = mock_session_factory.get_session.return_value.__aenter__.return_value
-        session.execute = AsyncMock()
-        session.commit = AsyncMock()
+        session.execute = AsyncMock(return_value=MagicMock())
+        session.commit = AsyncMock(return_value=None)
 
         # Mock file operations
         with (
