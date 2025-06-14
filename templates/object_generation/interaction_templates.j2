@@ -1,0 +1,147 @@
+{#
+Interaction Generation Template
+
+This template creates detailed prompts for generating object interactions
+based on object properties and game context.
+#}
+
+You are designing interactive mechanics for a {{ properties.object_type }} in a fantasy game. Create comprehensive interaction possibilities that are logical, engaging, and contextually appropriate.
+
+## Object Details
+- **Name**: {{ properties.name }}
+- **Type**: {{ properties.object_type }}
+- **Material**: {{ properties.material }}
+- **Size/Weight**: {{ properties.size }}, {{ properties.weight }}
+- **Description**: {{ properties.description }}
+- **Special Properties**: {{ properties.special_properties | join(', ') if properties.special_properties else "Standard properties" }}
+
+## Current Base Interactions
+- **Available Actions**: {{ base_interactions.available_actions | join(', ') }}
+- **Portable**: {{ "Yes" if base_interactions.portable else "No" }}
+- **Consumable**: {{ "Yes" if base_interactions.consumable else "No" }}
+
+## Location Context
+- **Setting**: {{ location.name }}
+- **Theme**: {{ location_theme.name }}
+- **Purpose**: {{ purpose }}
+
+## Interaction Design Principles
+1. **Logical Consistency**: Actions must make sense for the object type and materials
+2. **Contextual Appropriateness**: Interactions should fit the location and setting
+3. **Player Agency**: Provide meaningful choices and consequences
+4. **Narrative Enhancement**: Interactions should support storytelling
+5. **Game Balance**: Effects should be proportional to effort and risk
+
+## Guidelines by Object Type
+{% if properties.object_type == "weapon" %}
+- Combat actions (attack, defend, threaten)
+- Maintenance actions (clean, sharpen, repair)
+- Display/ceremonial actions (brandish, salute, intimidate)
+- Utility actions (cut, pry, break)
+{% elif properties.object_type == "tool" %}
+- Primary function actions (specific to tool type)
+- Improvised use actions (creative applications)
+- Maintenance actions (maintain, repair, modify)
+- Teaching actions (demonstrate, instruct)
+{% elif properties.object_type == "container" %}
+- Storage actions (open, close, pack, unpack)
+- Security actions (lock, unlock, hide)
+- Organization actions (sort, arrange, inventory)
+- Transport actions (carry, drag, lift)
+{% elif properties.object_type == "knowledge" %}
+- Learning actions (read, study, memorize, research)
+- Reference actions (consult, cross-reference, quote)
+- Teaching actions (share, teach, copy, translate)
+- Preservation actions (protect, restore, preserve)
+{% elif properties.object_type == "natural" %}
+- Harvesting actions (gather, pick, extract)
+- Preparation actions (prepare, process, brew)
+- Identification actions (identify, analyze, test)
+- Application actions (apply, consume, use)
+{% elif properties.object_type == "treasure" %}
+- Evaluation actions (appraise, examine, authenticate)
+- Display actions (showcase, admire, flaunt)
+- Trade actions (sell, trade, barter, gift)
+- Hidden actions (conceal, protect, insure)
+{% endif %}
+
+## Special Property Considerations
+{% for prop in properties.special_properties %}
+{% if prop == "magical" %}
+- Consider magical activation, channeling, or resonance effects
+{% elif prop == "fragile" %}
+- Include careful handling requirements and breakage risks
+{% elif prop == "ancient" %}
+- Add historical research possibilities and age-related limitations
+{% elif prop == "valuable" %}
+- Include security concerns and economic interactions
+{% elif prop == "sharp" %}
+- Add cutting applications and safety considerations
+{% elif prop == "heavy" %}
+- Include strength requirements and leverage applications
+{% endif %}
+{% endfor %}
+
+## Response Format
+Generate a JSON object with comprehensive interaction details:
+
+```json
+{
+    "available_actions": ["action1", "action2", "action3", "action4", "action5"],
+    "use_requirements": {
+        "action1": "requirement_description",
+        "action2": "requirement_description"
+    },
+    "interaction_results": {
+        "action1": "Detailed description of what happens when this action is performed",
+        "action2": "Another detailed result description"
+    },
+    "state_changes": {
+        "action1": "How the object or world state changes",
+        "action2": "Another state change description"
+    },
+    "skill_interactions": {
+        "action1": "Optional skill requirements or bonuses",
+        "action2": "Another skill interaction"
+    },
+    "conditional_actions": {
+        "condition": "Actions available only under certain conditions",
+        "time_based": "Actions that change based on time or circumstances"
+    },
+    "failure_consequences": {
+        "action1": "What happens if the action fails or is misused",
+        "action2": "Another failure consequence"
+    },
+    "discovery_interactions": [
+        "Hidden or advanced interactions discovered through experimentation"
+    ],
+    "examination_text": "Detailed text shown when the player examines the object closely"
+}
+```
+
+## Interaction Complexity Levels
+1. **Basic**: Simple, obvious interactions (examine, take, use)
+2. **Intermediate**: Context-dependent actions requiring understanding
+3. **Advanced**: Creative or skilled applications requiring knowledge
+4. **Hidden**: Secret interactions discovered through experimentation
+
+## Context-Specific Enhancements
+{% if location_theme.name == "Village" %}
+- Include community-oriented interactions (share, demonstrate, teach)
+- Consider practical applications in daily life
+- Add social context interactions (show off, discuss, compare)
+{% elif location_theme.name == "Forest" %}
+- Include survival-oriented interactions (adapt, improvise, repair)
+- Consider environmental interactions (weather protection, trail marking)
+- Add nature harmony interactions (respect, preserve, blend)
+{% elif location_theme.name == "City" %}
+- Include commercial interactions (sell, trade, showcase)
+- Consider professional applications (craft, demonstrate skill)
+- Add social status interactions (impress, authenticate, appraise)
+{% elif location_theme.name == "Dungeon" %}
+- Include exploration interactions (probe, test, unlock)
+- Consider magical applications (activate, channel, dispel)
+- Add danger-related interactions (trap detection, safe handling)
+{% endif %}
+
+Create rich, engaging interactions that make players want to experiment with the {{ properties.name }} and discover its full potential.

@@ -1,0 +1,102 @@
+{#
+Object Generation Prompt Template
+
+This template generates comprehensive prompts for LLM-based object creation.
+The prompt guides the LLM to create contextually appropriate objects with
+detailed properties and descriptions.
+#}
+
+You are an expert game world designer tasked with creating a detailed {{ object_type }} for a {{ location_theme.name.lower() }} location. Generate a JSON response with comprehensive object details.
+
+## Context
+- **Location**: {{ location.name }}
+- **Theme**: {{ location_theme.name }} ({{ location_theme.description }})
+- **Purpose**: {{ purpose }}
+- **Location Description**: {{ location.description }}
+{% if existing_objects %}
+- **Existing Objects**: {% for obj in existing_objects %}{{ obj.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+{% endif %}
+
+## Location Characteristics
+{% for characteristic in location_theme.characteristics %}
+- {{ characteristic.title() }}
+{% endfor %}
+
+## Theme Atmosphere
+{% for tag in location_theme.atmosphere_tags %}
+- {{ tag.title() }}
+{% endfor %}
+
+## Object Requirements
+- **Type**: {{ object_type }}
+- **Base Properties**: {{ base_properties.name }} ({{ base_properties.material }}, {{ base_properties.size }})
+{% if constraints %}
+## Constraints
+{% for key, value in constraints.items() %}
+- **{{ key.title().replace('_', ' ') }}**: {{ value }}
+{% endfor %}
+{% endif %}
+
+## Instructions
+Create a {{ object_type }} that:
+1. Fits perfectly within the {{ location_theme.name.lower() }} theme and atmosphere
+2. Serves the purpose of {{ purpose }}
+3. Has appropriate materials and craftsmanship for the setting
+4. Includes interesting but realistic details
+5. Avoids modern or anachronistic elements
+6. Has logical interactions and use cases
+
+{% if location_theme.name == "Village" %}
+Focus on practical, well-used items that reflect rural life. Objects should appear handmade with local materials. Emphasize functionality over decoration.
+{% elif location_theme.name == "Forest" %}
+Focus on natural, organic items. Objects should blend with the wilderness and use materials found in nature. Emphasize survival utility and natural harmony.
+{% elif location_theme.name == "City" %}
+Focus on refined, well-crafted items that reflect urban sophistication. Objects should show professional craftsmanship and quality materials.
+{% elif location_theme.name == "Dungeon" %}
+Focus on ancient, mysterious items with possible magical properties. Objects should feel old, forgotten, and potentially dangerous or valuable.
+{% endif %}
+
+## Response Format
+Generate a JSON object with these exact fields:
+
+```json
+{
+    "name": "Specific, evocative name for the object",
+    "description": "Rich, detailed description (2-3 sentences) that captures the object's appearance, condition, and notable features",
+    "material": "Specific material appropriate for the theme (e.g., 'weathered oak', 'tarnished silver', 'rough-hewn stone')",
+    "size": "tiny|small|medium|large|huge",
+    "weight": "light|normal|heavy",
+    "durability": "fragile|delicate|sturdy|very_sturdy|indestructible",
+    "value": integer_value_in_copper_pieces,
+    "special_properties": ["property1", "property2", "property3"],
+    "cultural_significance": "common|local|regional|sacred|legendary"
+}
+```
+
+## Guidelines for Properties
+- **Name**: Should be specific and evocative, not generic
+- **Description**: Paint a vivid picture without being overly verbose
+- **Material**: Use theme-appropriate materials ({{ location_theme.typical_materials | join(', ') if location_theme.typical_materials else 'appropriate materials' }})
+- **Size**: Consider the object's function and portability
+- **Value**: Base on materials, craftsmanship, and rarity ({{ base_properties.value }} base value)
+- **Special Properties**: 2-4 properties that define the object's unique characteristics
+- **Cultural Significance**: Reflects how common or special this object is
+
+## Example Special Properties by Type
+{% if object_type == "weapon" %}
+- Examples: "sharp", "balanced", "intimidating", "ceremonial", "battle-worn", "masterwork"
+{% elif object_type == "tool" %}
+- Examples: "versatile", "well-maintained", "specialized", "worn", "efficient", "reliable"
+{% elif object_type == "container" %}
+- Examples: "spacious", "secure", "portable", "weatherproof", "lockable", "compartmentalized"
+{% elif object_type == "treasure" %}
+- Examples: "precious", "beautiful", "rare", "ancient", "magical", "cursed"
+{% elif object_type == "natural" %}
+- Examples: "medicinal", "aromatic", "edible", "toxic", "rare", "seasonal"
+{% elif object_type == "knowledge" %}
+- Examples: "scholarly", "ancient", "illustrated", "encoded", "comprehensive", "forbidden"
+{% else %}
+- Examples: "unique", "practical", "decorative", "sturdy", "valuable", "mysterious"
+{% endif %}
+
+Generate the object now, ensuring it perfectly captures the {{ location_theme.name.lower() }} atmosphere and serves its intended purpose.

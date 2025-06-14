@@ -1,0 +1,87 @@
+{#
+Property Generation Template
+
+This template creates detailed prompts for generating enhanced object properties
+based on basic object information and context.
+#}
+
+You are enhancing the properties of a {{ base_properties.object_type }} for a rich fantasy game world. Given the base information, create enhanced properties that add depth and character.
+
+## Base Object Information
+- **Name**: {{ base_properties.name }}
+- **Type**: {{ base_properties.object_type }}
+- **Material**: {{ base_properties.material }}
+- **Size**: {{ base_properties.size }}
+- **Current Description**: {{ base_properties.description or "No description provided" }}
+
+## Location Context
+- **Setting**: {{ location.name }} - {{ location.description }}
+- **Theme**: {{ location_theme.name }}
+- **Atmosphere**: {% for tag in location_theme.atmosphere_tags %}{{ tag }}{% if not loop.last %}, {% endif %}{% endfor %}
+
+## Enhancement Goals
+1. Add specific material details and craftsmanship quality
+2. Include signs of age, wear, or history appropriate to the setting
+3. Add unique identifying features or marks
+4. Enhance cultural and regional characteristics
+5. Include subtle magical or special properties if appropriate
+
+## Theme-Specific Guidelines
+{% if location_theme.name == "Village" %}
+- Emphasize practical construction and local materials
+- Show signs of regular use and care
+- Include marks of the craftsperson or user
+- Reflect rural life and simple but effective design
+{% elif location_theme.name == "Forest" %}
+- Emphasize natural materials and organic shapes
+- Include weathering from outdoor exposure
+- Show adaptation to wilderness use
+- Reflect harmony with natural environment
+{% elif location_theme.name == "City" %}
+- Emphasize refined craftsmanship and quality materials
+- Include maker's marks or guild symbols
+- Show professional construction standards
+- Reflect urban sophistication and trade influence
+{% elif location_theme.name == "Dungeon" %}
+- Emphasize age, mystery, and possible magical origin
+- Include ancient symbols or unknown materials
+- Show signs of long abandonment or preservation
+- Reflect forgotten knowledge or lost civilizations
+{% endif %}
+
+## Current Properties to Enhance
+- **Material**: {{ base_properties.material }}
+- **Special Properties**: {{ base_properties.special_properties | join(', ') if base_properties.special_properties else "None yet" }}
+- **Cultural Significance**: {{ base_properties.cultural_significance }}
+
+## Response Format
+Provide a JSON object with enhanced properties:
+
+```json
+{
+    "enhanced_description": "Rich, detailed description that builds on the base while adding specific visual details, signs of history, and character",
+    "material_details": "Specific material description with quality, origin, and notable characteristics",
+    "craftsmanship": "Description of how well-made the object is, by whom, and any maker's marks",
+    "history_signs": "Visible signs that hint at the object's age, use, or past",
+    "unique_features": ["feature1", "feature2", "feature3"],
+    "enhanced_properties": ["enhanced_property1", "enhanced_property2"],
+    "cultural_context": "How this object fits into the local culture and what it represents"
+}
+```
+
+## Enhancement Examples by Type
+{% if base_properties.object_type == "weapon" %}
+- Look for: blade condition, grip wear, balance, decorative elements, battle damage
+- Consider: maker's signature, family crests, religious symbols, campaign marks
+{% elif base_properties.object_type == "tool" %}
+- Look for: wear patterns, replacement parts, user modifications, efficiency marks
+- Consider: guild marks, owner initials, specialized adaptations, maintenance quality
+{% elif base_properties.object_type == "container" %}
+- Look for: capacity, closure quality, portability features, internal organization
+- Consider: owner markings, travel wear, security features, contents stains
+{% elif base_properties.object_type == "natural" %}
+- Look for: growth patterns, seasonal characteristics, potency indicators, harvesting signs
+- Consider: rarity markers, magical resonance, medicinal properties, preparation state
+{% endif %}
+
+Create enhanced properties that make this {{ base_properties.object_type }} memorable and immersive while staying true to the {{ location_theme.name.lower() }} setting.
