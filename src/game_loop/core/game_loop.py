@@ -17,6 +17,10 @@ from game_loop.core.command_handlers.factory import CommandHandlerFactory
 from game_loop.core.enhanced_input_processor import EnhancedInputProcessor
 from game_loop.core.input_processor import CommandType, InputProcessor, ParsedCommand
 from game_loop.core.location import LocationDisplay
+from game_loop.core.navigation.pathfinder import PathfindingService
+from game_loop.core.navigation.validator import NavigationValidator
+from game_loop.core.world.boundary_manager import WorldBoundaryManager
+from game_loop.core.world.connection_graph import LocationConnectionGraph
 from game_loop.database.session_factory import DatabaseSessionFactory
 from game_loop.llm.ollama.client import OllamaClient
 from game_loop.state.manager import GameStateManager
@@ -102,6 +106,16 @@ class GameLoop:
             action_classifier=self.action_classifier,
         )
 
+        # Initialize navigation components
+        self.connection_graph = LocationConnectionGraph()
+        self.boundary_manager = (
+            None  # Will be initialized when world state is available
+        )
+        self.navigation_validator = NavigationValidator(self.connection_graph)
+        self.pathfinding_service = (
+            None  # Will be initialized when world state is available
+        )
+
     async def initialize(self, session_id: UUID | None = None) -> None:
         """Initialize the game environment, loading or creating game state."""
         self.console.print("[bold green]Initializing Game Loop...[/bold green]")
@@ -164,6 +178,8 @@ class GameLoop:
 
         # Initial display depends on successful load/create
         if self.state_manager.get_current_session_id():
+            # Initialize navigation components with world state
+            await self._initialize_navigation_system()
             await self._display_current_location()  # Use await
         else:
             self.console.print(
@@ -175,6 +191,65 @@ class GameLoop:
         """Stop the game loop."""
         self.console.print("[bold]Farewell, adventurer! Your journey ends here.[/bold]")
         self.running = False
+
+    async def _initialize_navigation_system(self) -> None:
+        """Initialize the navigation system with current world state."""
+        try:
+            world_state = self.state_manager.world_tracker.get_state()
+            if not world_state:
+                logger.warning("No world state available for navigation initialization")
+                return
+
+            # Initialize boundary manager
+            self.boundary_manager = WorldBoundaryManager(world_state)
+
+            # Initialize pathfinding service
+            self.pathfinding_service = PathfindingService(
+                world_state, self.connection_graph
+            )
+
+            # Build the connection graph from world state
+            await self._build_connection_graph(world_state)
+
+            logger.info("Navigation system initialized successfully")
+
+        except Exception as e:
+            logger.error(f"Error initializing navigation system: {e}")
+
+    async def _build_connection_graph(self, world_state: WorldState) -> None:
+        """Build the connection graph from world state."""
+        try:
+            # Clear existing graph
+            self.connection_graph.clear()
+
+            # Add all locations to graph
+            for location_id, location in world_state.locations.items():
+                self.connection_graph.add_location(
+                    location_id,
+                    {
+                        "name": location.name,
+                        "type": location.state_flags.get("type", "generic"),
+                    },
+                )
+
+            # Add all connections
+            for location_id, location in world_state.locations.items():
+                for direction, destination_id in location.connections.items():
+                    # Check if destination exists in world state
+                    if destination_id in world_state.locations:
+                        self.connection_graph.add_connection(
+                            location_id,
+                            destination_id,
+                            direction,
+                            bidirectional=False,  # Add each direction explicitly
+                        )
+
+            logger.info(
+                f"Built connection graph with {self.connection_graph.get_location_count()} locations and {self.connection_graph.get_connection_count()} connections"
+            )
+
+        except Exception as e:
+            logger.error(f"Error building connection graph: {e}")
 
     def _get_player_name(self) -> str:
         """Get a name for the player character."""
@@ -568,6 +643,21 @@ class GameLoop:
                 success=False,
                 feedback_message=f"You cannot go {normalized_direction} from here.",
             )
+
+        # Use navigation validator if available
+        if self.navigation_validator:
+            try:
+                validation_result = await self.navigation_validator.validate_movement(
+                    player_state, current_location, destination_id, normalized_direction
+                )
+
+                if not validation_result.success:
+                    return ActionResult(
+                        success=False, feedback_message=validation_result.message
+                    )
+            except Exception as e:
+                logger.warning(f"Navigation validation failed: {e}")
+                # Continue with basic movement if validation fails
 
         # Create ActionResult with location change
         return ActionResult(
