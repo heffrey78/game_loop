@@ -1,0 +1,63 @@
+{# Theme-Specific Generation Templates #}
+
+{% macro forest_theme() %}
+Generate a forest location with:
+- Dense woodland or clearing environments
+- Natural elements like trees, streams, wildlife
+- Peaceful yet mysterious atmosphere
+- Forest creatures or hermits as potential NPCs
+- Natural objects like fallen logs, mushrooms, or stones
+{% endmacro %}
+
+{% macro village_theme() %}
+Generate a village location with:
+- Rustic buildings and community spaces
+- Warm, welcoming atmosphere
+- Village inhabitants like merchants, crafters, or children
+- Community objects like market stalls, wells, or signposts
+- Social interaction opportunities
+{% endmacro %}
+
+{% macro mountain_theme() %}
+Generate a mountain location with:
+- Rocky, elevated terrain and scenic vistas
+- Majestic and challenging atmosphere
+- Mountain dwellers or travelers as potential NPCs
+- Natural formations like boulders, caves, or viewpoints
+- Physical challenges or exploration rewards
+{% endmacro %}
+
+{% macro ruins_theme() %}
+Generate a ruins location with:
+- Ancient, crumbling structures
+- Mysterious and haunting atmosphere
+- Archaeologists, spirits, or guardians as potential NPCs
+- Ancient artifacts, inscriptions, or hidden chambers
+- Mystery and discovery elements
+{% endmacro %}
+
+{% macro riverside_theme() %}
+Generate a riverside location with:
+- Flowing water and lush vegetation
+- Tranquil and refreshing atmosphere
+- Fishermen, water spirits, or animals as potential NPCs
+- Water-related objects like fishing spots, boats, or bridges
+- Peaceful rest and reflection opportunities
+{% endmacro %}
+
+{% if theme_name == "Forest" %}
+{{ forest_theme() }}
+{% elif theme_name == "Village" %}
+{{ village_theme() }}
+{% elif theme_name == "Mountain" %}  
+{{ mountain_theme() }}
+{% elif theme_name == "Ruins" %}
+{{ ruins_theme() }}
+{% elif theme_name == "Riverside" %}
+{{ riverside_theme() }}
+{% else %}
+Generate a {{ theme_name }} location following the theme's characteristics:
+- Atmosphere: {{ theme_atmosphere }}
+- Typical elements: {{ theme_elements | join(", ") }}
+- Suitable NPCs: {{ theme_npcs | join(", ") }}
+{% endif %}

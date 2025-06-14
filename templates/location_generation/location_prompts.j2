@@ -1,0 +1,55 @@
+{# Location Generation Prompt Template #}
+You are generating a new location for a text adventure game.
+
+Context:
+- Direction from current location: {{ expansion_point.direction }}
+- Current location: {{ current_location.name }} - {{ current_location.description }}
+- World theme: {{ world_theme }}
+- Desired atmosphere: {{ desired_atmosphere }}
+
+Adjacent locations:
+{% for location in adjacent_locations %}
+- {{ location.direction }}: {{ location.name }} ({{ location.theme }}) - {{ location.short_description }}
+{% endfor %}
+
+Player preferences (based on history):
+- Preferred environments: {{ player_preferences.environments | join(", ") }}
+- Interaction style: {{ player_preferences.interaction_style }}
+- Complexity preference: {{ player_preferences.complexity_level }}
+{% if player_preferences.preferred_themes %}
+- Preferred themes: {{ player_preferences.preferred_themes | join(", ") }}
+{% endif %}
+
+{% if generation_hints %}
+Generation hints:
+{% for hint in generation_hints %}
+- {{ hint }}
+{% endfor %}
+{% endif %}
+
+{% if priority_elements %}
+Priority elements to focus on:
+{% for element in priority_elements %}
+- {{ element }}
+{% endfor %}
+{% endif %}
+
+Generate a new location that:
+1. Fits naturally with the surrounding areas
+2. Matches the {{ world_theme }} theme and {{ desired_atmosphere }} atmosphere
+3. Provides appropriate content for the player's experience level
+4. Includes 2-3 interesting features or objects
+5. Has a compelling reason for existing in this location
+
+Format your response as JSON with these fields:
+- name: Location name (2-4 words)
+- description: Full location description (2-3 paragraphs)
+- short_description: Brief description for maps/travel
+- location_type: Type of location (clearing, crossroads, cave, overlook, etc.)
+- atmosphere: Emotional tone/feeling
+- objects: List of 2-3 notable objects
+- potential_npcs: List of 1-2 potential NPCs that would fit
+- connections: Suggested connections to other directions
+- special_features: Any unique interactive elements
+
+Respond only with the JSON, no additional text.

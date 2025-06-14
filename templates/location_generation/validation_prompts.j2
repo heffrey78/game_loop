@@ -1,0 +1,40 @@
+{# Location Validation Prompt Template #}
+Evaluate if this generated location fits well with its surroundings:
+
+Generated Location:
+Name: {{ location.name }}
+Description: {{ location.description }}
+Theme: {{ location.theme.name }}
+Type: {{ location.location_type }}
+Atmosphere: {{ location.atmosphere }}
+
+Adjacent Locations:
+{% for adj in adjacent_locations %}
+- {{ adj.direction }}: {{ adj.name }} ({{ adj.theme }}) - {{ adj.short_description }}
+{% endfor %}
+
+{% if world_rules %}
+World Rules:
+{% for rule in world_rules %}
+- {{ rule }}
+{% endfor %}
+{% endif %}
+
+Rate the consistency (1-10) and explain any issues:
+1. Thematic consistency with adjacent areas
+2. Logical placement and connections  
+3. Appropriate complexity for game progression
+4. Uniqueness without being jarring
+5. Interactive potential and player interest
+
+Provide response as JSON:
+- overall_score: 1-10
+- thematic_score: 1-10
+- logical_score: 1-10
+- complexity_score: 1-10
+- uniqueness_score: 1-10
+- issues: List of problems found
+- suggestions: List of improvements
+- approval: true/false for whether to use this location
+
+Respond only with the JSON, no additional text.

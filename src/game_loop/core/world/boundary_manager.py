@@ -136,7 +136,9 @@ class WorldBoundaryManager:
                     expansion_point = ExpansionPoint(
                         location_id=location_id,
                         direction=direction,
-                        priority=self._calculate_expansion_priority(location, direction),
+                        priority=self._calculate_expansion_priority(
+                            location, direction
+                        ),
                         context=self._gather_expansion_context(location),
                     )
                     expansion_points.append(expansion_point)
