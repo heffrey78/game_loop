@@ -12,6 +12,7 @@ from game_loop.core.models.location_models import (
     GeneratedLocation,
     LocationGenerationContext,
     LocationTheme,
+    ThemeTransitionRules,
 )
 from game_loop.core.models.navigation_models import ExpansionPoint
 from game_loop.core.world.context_collector import LocationContextCollector
@@ -80,12 +81,20 @@ def world_state_with_sample_data():
 @pytest.fixture
 def mock_dependencies():
     """Create mock dependencies for the integration test."""
-    session_factory = AsyncMock()
+    # Create a proper mock session factory
+    session = AsyncMock()
+    session_factory = Mock()
+    context_manager = AsyncMock()
+    context_manager.__aenter__.return_value = session
+    context_manager.__aexit__.return_value = None
+    session_factory.get_session.return_value = context_manager
+
     embedding_manager = AsyncMock()
     ollama_client = Mock()
 
     return {
         "session_factory": session_factory,
+        "session": session,  # Also return the session for direct access
         "embedding_manager": embedding_manager,
         "ollama_client": ollama_client,
     }
@@ -483,10 +492,8 @@ class TestLocationGenerationIntegration:
     ):
         """Test database integration with mocked database responses."""
         system = integration_system
-        session_factory, session = mock_dependencies["session_factory"], AsyncMock()
-        mock_dependencies["session_factory"].return_value.__aenter__.return_value = (
-            session
-        )
+        session_factory = mock_dependencies["session_factory"]
+        session = mock_dependencies["session"]
 
         # Mock theme loading from database
         forest_theme = LocationTheme(

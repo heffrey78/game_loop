@@ -74,6 +74,7 @@ class LocationGenerator:
             llm_response_time_ms=0,
             validation_time_ms=0,
             storage_time_ms=0,
+            total_time_ms=None,  # Let __post_init__ calculate this
         )
 
         try:
@@ -93,6 +94,14 @@ class LocationGenerator:
                 logger.debug("Using cached location generation result")
                 metrics.cache_hit = True
                 metrics.generation_time_ms = int((time.time() - start_time) * 1000)
+                # Calculate total time
+                metrics.total_time_ms = (
+                    metrics.generation_time_ms
+                    + metrics.context_collection_time_ms
+                    + metrics.llm_response_time_ms
+                    + metrics.validation_time_ms
+                    + metrics.storage_time_ms
+                )
                 self._generation_metrics.append(metrics)
                 return cached_result.generated_location
 
@@ -174,6 +183,14 @@ class LocationGenerator:
 
             # Update metrics
             metrics.generation_time_ms = int((time.time() - start_time) * 1000)
+            # Calculate total time
+            metrics.total_time_ms = (
+                metrics.generation_time_ms
+                + metrics.context_collection_time_ms
+                + metrics.llm_response_time_ms
+                + metrics.validation_time_ms
+                + metrics.storage_time_ms
+            )
             self._generation_metrics.append(metrics)
 
             logger.info(f"Successfully generated location: {generated_location.name}")
@@ -182,6 +199,14 @@ class LocationGenerator:
         except Exception as e:
             logger.error(f"Error generating location: {e}")
             metrics.generation_time_ms = int((time.time() - start_time) * 1000)
+            # Calculate total time
+            metrics.total_time_ms = (
+                metrics.generation_time_ms
+                + metrics.context_collection_time_ms
+                + metrics.llm_response_time_ms
+                + metrics.validation_time_ms
+                + metrics.storage_time_ms
+            )
             self._generation_metrics.append(metrics)
             raise
 
