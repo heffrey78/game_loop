@@ -4,7 +4,6 @@ NPC Dialogue Manager for dynamic dialogue generation and conversation state.
 
 import json
 import logging
-import re
 import time
 from typing import Any
 from uuid import UUID
@@ -16,7 +15,6 @@ from ...llm.config import LLMConfig
 from ..models.npc_models import (
     DialogueContext,
     DialogueResponse,
-    GeneratedNPC,
 )
 from ..world.npc_storage import NPCStorage
 

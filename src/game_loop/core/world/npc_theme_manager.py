@@ -3,14 +3,11 @@ NPC Theme and Archetype Manager for contextual NPC generation.
 """
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from ...database.session_factory import DatabaseSessionFactory
 from ...state.models import Location, WorldState
-from ..models.location_models import LocationTheme
-from typing import TYPE_CHECKING
-
 from ..models.npc_models import GeneratedNPC, NPCArchetype, NPCPersonality
 
 if TYPE_CHECKING:

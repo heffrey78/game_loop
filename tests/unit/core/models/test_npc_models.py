@@ -2,26 +2,25 @@
 Unit tests for NPC data models.
 """
 
-import pytest
 from datetime import datetime
 from uuid import uuid4
 
+from game_loop.core.models.location_models import LocationTheme
 from game_loop.core.models.npc_models import (
-    NPCPersonality,
-    NPCKnowledge,
-    NPCDialogueState,
-    NPCGenerationContext,
-    GeneratedNPC,
-    NPCStorageResult,
-    NPCValidationResult,
-    NPCGenerationMetrics,
-    NPCArchetype,
     DialogueContext,
     DialogueResponse,
+    GeneratedNPC,
+    NPCArchetype,
+    NPCDialogueState,
+    NPCGenerationContext,
+    NPCGenerationMetrics,
+    NPCKnowledge,
+    NPCPersonality,
     NPCSearchCriteria,
+    NPCStorageResult,
+    NPCValidationResult,
 )
-from game_loop.core.models.location_models import LocationTheme
-from game_loop.state.models import Location, NonPlayerCharacter, WorldObject
+from game_loop.state.models import Location, NonPlayerCharacter
 
 
 class TestNPCPersonality:
@@ -36,9 +35,9 @@ class TestNPCPersonality:
             motivations=["profit", "reputation"],
             fears=["theft"],
             speech_patterns={"formality": "casual"},
-            relationship_tendencies={"trusting": 0.7}
+            relationship_tendencies={"trusting": 0.7},
         )
-        
+
         assert personality.name == "Test NPC"
         assert personality.archetype == "merchant"
         assert "friendly" in personality.traits
@@ -48,7 +47,7 @@ class TestNPCPersonality:
     def test_default_values(self):
         """Test default values are properly set."""
         personality = NPCPersonality(name="Test", archetype="guard")
-        
+
         assert personality.traits == []
         assert personality.motivations == []
         assert personality.fears == []
@@ -67,9 +66,9 @@ class TestNPCKnowledge:
             personal_history=["born here", "became merchant"],
             relationships={"john": {"type": "friend", "trust": 0.8}},
             secrets=["knows hidden passage"],
-            expertise_areas=["trading", "appraisal"]
+            expertise_areas=["trading", "appraisal"],
         )
-        
+
         assert knowledge.world_knowledge["general"] == "some info"
         assert "born here" in knowledge.personal_history
         assert "trading" in knowledge.expertise_areas
@@ -78,7 +77,7 @@ class TestNPCKnowledge:
     def test_default_values(self):
         """Test default values are properly set."""
         knowledge = NPCKnowledge()
-        
+
         assert knowledge.world_knowledge == {}
         assert knowledge.local_knowledge == {}
         assert knowledge.personal_history == []
@@ -99,9 +98,9 @@ class TestNPCDialogueState:
             active_topics=["greeting", "weather"],
             available_quests=["find_item"],
             interaction_count=5,
-            last_interaction=datetime.now()
+            last_interaction=datetime.now(),
         )
-        
+
         assert state.current_mood == "happy"
         assert state.relationship_level == 0.5
         assert len(state.conversation_history) == 1
@@ -111,7 +110,7 @@ class TestNPCDialogueState:
     def test_default_values(self):
         """Test default values are properly set."""
         state = NPCDialogueState()
-        
+
         assert state.current_mood == "neutral"
         assert state.relationship_level == 0.0
         assert state.conversation_history == []
@@ -133,9 +132,9 @@ class TestNPCGenerationContext:
             connections={},
             objects={},
             npcs={},
-            state_flags={"theme": "Forest"}
+            state_flags={"theme": "Forest"},
         )
-        
+
         theme = LocationTheme(
             name="Forest",
             description="Woodland area",
@@ -143,9 +142,9 @@ class TestNPCGenerationContext:
             atmosphere="peaceful",
             typical_objects=["log"],
             typical_npcs=["hermit"],
-            generation_parameters={}
+            generation_parameters={},
         )
-        
+
         context = NPCGenerationContext(
             location=location,
             location_theme=theme,
@@ -153,9 +152,9 @@ class TestNPCGenerationContext:
             world_state_snapshot={"total_locations": 5},
             player_level=3,
             generation_purpose="populate_location",
-            constraints={"max_npcs": 2}
+            constraints={"max_npcs": 2},
         )
-        
+
         assert context.location.name == "Test Location"
         assert context.location_theme.name == "Forest"
         assert context.player_level == 3
@@ -169,34 +168,28 @@ class TestGeneratedNPC:
     def test_complete_npc_creation(self):
         """Test complete NPC with all components."""
         base_npc = NonPlayerCharacter(
-            npc_id=uuid4(),
-            name="Test Merchant",
-            description="A friendly trader"
+            npc_id=uuid4(), name="Test Merchant", description="A friendly trader"
         )
-        
+
         personality = NPCPersonality(
             name="Test Merchant",
             archetype="merchant",
-            traits=["friendly", "business-minded"]
+            traits=["friendly", "business-minded"],
         )
-        
-        knowledge = NPCKnowledge(
-            expertise_areas=["trading", "appraisal"]
-        )
-        
-        dialogue_state = NPCDialogueState(
-            current_mood="neutral"
-        )
-        
+
+        knowledge = NPCKnowledge(expertise_areas=["trading", "appraisal"])
+
+        dialogue_state = NPCDialogueState(current_mood="neutral")
+
         generated_npc = GeneratedNPC(
             base_npc=base_npc,
             personality=personality,
             knowledge=knowledge,
             dialogue_state=dialogue_state,
             generation_metadata={"created_by": "test"},
-            embedding_vector=[0.1, 0.2, 0.3]
+            embedding_vector=[0.1, 0.2, 0.3],
         )
-        
+
         assert generated_npc.base_npc.name == "Test Merchant"
         assert generated_npc.personality.archetype == "merchant"
         assert "trading" in generated_npc.knowledge.expertise_areas
@@ -216,9 +209,9 @@ class TestNPCGenerationMetrics:
             llm_response_time_ms=500,
             validation_time_ms=100,
             storage_time_ms=150,
-            cache_hit=False
+            cache_hit=False,
         )
-        
+
         assert metrics.generation_time_ms == 1000
         assert metrics.context_collection_time_ms == 200
         assert metrics.llm_response_time_ms == 500
@@ -233,9 +226,9 @@ class TestNPCGenerationMetrics:
             context_collection_time_ms=200,
             llm_response_time_ms=500,
             validation_time_ms=100,
-            storage_time_ms=150
+            storage_time_ms=150,
         )
-        
+
         # total_time_ms should be sum of all components
         expected_total = 200 + 500 + 100 + 150
         assert metrics.total_time_ms == expected_total
@@ -243,7 +236,7 @@ class TestNPCGenerationMetrics:
     def test_default_values(self):
         """Test default values are properly set."""
         metrics = NPCGenerationMetrics()
-        
+
         assert metrics.generation_time_ms == 0
         assert metrics.context_collection_time_ms == 0
         assert metrics.llm_response_time_ms == 0
@@ -265,9 +258,9 @@ class TestNPCArchetype:
             typical_motivations=["profit", "reputation"],
             speech_patterns={"formality": "polite"},
             location_affinities={"Village": 0.9, "Forest": 0.2},
-            archetype_id=uuid4()
+            archetype_id=uuid4(),
         )
-        
+
         assert archetype.name == "test_merchant"
         assert archetype.description == "A trader of goods"
         assert "persuasive" in archetype.typical_traits
@@ -281,31 +274,29 @@ class TestDialogueContext:
     def test_basic_creation(self):
         """Test basic dialogue context creation."""
         base_npc = NonPlayerCharacter(
-            npc_id=uuid4(),
-            name="Test NPC",
-            description="A test character"
+            npc_id=uuid4(), name="Test NPC", description="A test character"
         )
-        
+
         personality = NPCPersonality(name="Test", archetype="guard")
         knowledge = NPCKnowledge()
         dialogue_state = NPCDialogueState()
-        
+
         generated_npc = GeneratedNPC(
             base_npc=base_npc,
             personality=personality,
             knowledge=knowledge,
-            dialogue_state=dialogue_state
+            dialogue_state=dialogue_state,
         )
-        
+
         context = DialogueContext(
             npc=generated_npc,
             player_input="Hello there",
             conversation_history=[],
             current_location=None,
             world_context={"time": "day"},
-            interaction_type="casual"
+            interaction_type="casual",
         )
-        
+
         assert context.npc.base_npc.name == "Test NPC"
         assert context.player_input == "Hello there"
         assert context.interaction_type == "casual"
@@ -324,9 +315,9 @@ class TestDialogueResponse:
             new_topics=["travel", "weather"],
             quest_offered="find_herbs",
             knowledge_shared={"local_area": "info"},
-            response_metadata={"generated": True}
+            response_metadata={"generated": True},
         )
-        
+
         assert response.response_text == "Hello, traveler!"
         assert response.mood_change == "friendly"
         assert response.relationship_change == 0.1
@@ -337,7 +328,7 @@ class TestDialogueResponse:
     def test_default_values(self):
         """Test default values are properly set."""
         response = DialogueResponse(response_text="Hello")
-        
+
         assert response.response_text == "Hello"
         assert response.mood_change is None
         assert response.relationship_change == 0.0
@@ -360,9 +351,9 @@ class TestNPCSearchCriteria:
             knowledge_areas=["trading"],
             relationship_level_min=0.0,
             relationship_level_max=1.0,
-            max_results=5
+            max_results=5,
         )
-        
+
         assert criteria.query_text == "friendly merchant"
         assert criteria.archetype == "merchant"
         assert criteria.location_id is not None
@@ -373,7 +364,7 @@ class TestNPCSearchCriteria:
     def test_default_values(self):
         """Test default values are properly set."""
         criteria = NPCSearchCriteria()
-        
+
         assert criteria.query_text is None
         assert criteria.archetype is None
         assert criteria.location_id is None
@@ -390,12 +381,9 @@ class TestNPCStorageResult:
     def test_successful_storage(self):
         """Test successful storage result."""
         result = NPCStorageResult(
-            success=True,
-            npc_id=uuid4(),
-            storage_time_ms=500,
-            embedding_generated=True
+            success=True, npc_id=uuid4(), storage_time_ms=500, embedding_generated=True
         )
-        
+
         assert result.success
         assert result.npc_id is not None
         assert result.storage_time_ms == 500
@@ -407,9 +395,9 @@ class TestNPCStorageResult:
         result = NPCStorageResult(
             success=False,
             storage_time_ms=100,
-            error_message="Database connection failed"
+            error_message="Database connection failed",
         )
-        
+
         assert not result.success
         assert result.npc_id is None
         assert result.storage_time_ms == 100
@@ -430,9 +418,9 @@ class TestNPCValidationResult:
             personality_score=7.0,
             knowledge_score=6.5,
             consistency_score=8.0,
-            approval=True
+            approval=True,
         )
-        
+
         assert result.is_valid
         assert result.issues == []
         assert len(result.suggestions) == 1
@@ -445,9 +433,9 @@ class TestNPCValidationResult:
             is_valid=False,
             issues=["Missing description", "No personality traits"],
             suggestions=["Add description", "Define traits"],
-            confidence_score=0.3
+            confidence_score=0.3,
         )
-        
+
         assert not result.is_valid
         assert len(result.issues) == 2
         assert "Missing description" in result.issues

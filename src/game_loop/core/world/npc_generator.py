@@ -15,14 +15,12 @@ from jinja2 import Environment, FileSystemLoader
 from ...llm.config import LLMConfig
 from ...state.models import Location, NonPlayerCharacter, WorldState
 from ..models.npc_models import (
-    DialogueContext,
     GeneratedNPC,
     NPCDialogueState,
     NPCGenerationContext,
     NPCGenerationMetrics,
     NPCKnowledge,
     NPCPersonality,
-    NPCValidationResult,
 )
 from .npc_context_collector import NPCContextCollector
 from .npc_storage import NPCStorage

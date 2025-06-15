@@ -30,7 +30,7 @@ class ObjectProperties:
     cultural_significance: str = "common"
     description: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate object properties after initialization."""
         if not self.name:
             raise ValueError("Object name cannot be empty")
@@ -51,7 +51,7 @@ class ObjectInteractions:
     examination_text: str = ""
     hidden_properties: dict[str, str] = field(default_factory=dict)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Set default actions if none provided."""
         if not self.available_actions:
             self.available_actions = ["examine"]
@@ -72,7 +72,7 @@ class ObjectGenerationContext:
     world_state_snapshot: dict[str, Any] = field(default_factory=dict)
     generation_timestamp: datetime = field(default_factory=datetime.now)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate generation context."""
         if self.player_level < 1:
             raise ValueError("Player level must be at least 1")
@@ -102,7 +102,7 @@ class ObjectPlacement:
     discovery_difficulty: int = 1  # 1-10 scale
     placement_metadata: dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate placement information."""
         valid_types = [
             "floor",
@@ -132,7 +132,7 @@ class GeneratedObject:
     embedding_vector: list[float] = field(default_factory=list)
     placement_info: ObjectPlacement | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure generated object consistency."""
         if self.base_object.name != self.properties.name:
             self.base_object.name = self.properties.name
@@ -153,7 +153,7 @@ class ObjectArchetype:
     cultural_variations: dict[str, dict[str, Any]] = field(default_factory=dict)
     rarity: str = "common"  # "common", "uncommon", "rare", "legendary"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate archetype definition."""
         if not self.name:
             raise ValueError("Archetype name cannot be empty")
@@ -177,7 +177,7 @@ class ObjectSearchCriteria:
     max_results: int = 10
     similarity_threshold: float = 0.7
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate search criteria."""
         if self.max_results <= 0:
             raise ValueError("Max results must be positive")
@@ -197,7 +197,7 @@ class ObjectValidationResult:
     theme_alignment: float = 1.0
     placement_suitability: float = 1.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Set validity based on presence of errors."""
         if self.validation_errors:
             self.is_valid = False
@@ -214,7 +214,7 @@ class ObjectStorageResult:
     placement_stored: bool = False
     storage_duration_ms: float = 0.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate storage result."""
         if self.success and not self.object_id:
             raise ValueError("Successful storage must include object_id")
@@ -256,7 +256,7 @@ class ObjectTheme:
     style_descriptors: list[str] = field(default_factory=list)
     forbidden_elements: list[str] = field(default_factory=list)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate theme definition."""
         if not self.name:
             raise ValueError("Theme name cannot be empty")
@@ -274,7 +274,7 @@ class ObjectGenerationRequest:
     priority: str = "normal"  # "low", "normal", "high", "urgent"
     requester: str = "system"  # "system", "player", "npc", "quest"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate generation request."""
         if self.quantity <= 0:
             raise ValueError("Quantity must be positive")
