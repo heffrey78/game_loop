@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS npc_archetypes (
 -- NPC Personalities
 CREATE TABLE IF NOT EXISTS npc_personalities (
     personality_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    npc_id UUID NOT NULL REFERENCES npcs(npc_id) ON DELETE CASCADE,
-    archetype_id UUID REFERENCES npc_archetypes(archetype_id),
+    npc_id UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
+    archetype_id UUID,
     traits JSONB NOT NULL DEFAULT '[]',
     motivations JSONB NOT NULL DEFAULT '[]',
     fears JSONB NOT NULL DEFAULT '[]',
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS npc_personalities (
 -- NPC Knowledge Base
 CREATE TABLE IF NOT EXISTS npc_knowledge (
     knowledge_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    npc_id UUID NOT NULL REFERENCES npcs(npc_id) ON DELETE CASCADE,
+    npc_id UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
     world_knowledge JSONB DEFAULT '{}',
     local_knowledge JSONB DEFAULT '{}',
     personal_history JSONB DEFAULT '[]',
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS npc_knowledge (
 -- NPC Dialogue States
 CREATE TABLE IF NOT EXISTS npc_dialogue_states (
     dialogue_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    npc_id UUID NOT NULL REFERENCES npcs(npc_id) ON DELETE CASCADE,
+    npc_id UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
     current_mood VARCHAR(50) DEFAULT 'neutral',
     relationship_level FLOAT DEFAULT 0.0,
     conversation_history JSONB DEFAULT '[]',
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS npc_dialogue_states (
 -- NPC Generation History
 CREATE TABLE IF NOT EXISTS npc_generation_history (
     generation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    npc_id UUID NOT NULL REFERENCES npcs(npc_id) ON DELETE CASCADE,
+    npc_id UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
     generation_context JSONB NOT NULL,
     generated_content JSONB NOT NULL,
     validation_result JSONB,
@@ -78,7 +78,7 @@ ALTER TABLE npcs ADD COLUMN IF NOT EXISTS last_generated_at TIMESTAMP;
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS npc_personalities_npc_id_idx ON npc_personalities(npc_id);
-CREATE INDEX IF NOT EXISTS npc_personalities_archetype_id_idx ON npc_personalities(archetype_id);
+-- Index will be created after foreign key constraint is added
 CREATE INDEX IF NOT EXISTS npc_knowledge_npc_id_idx ON npc_knowledge(npc_id);
 CREATE INDEX IF NOT EXISTS npc_dialogue_states_npc_id_idx ON npc_dialogue_states(npc_id);
 CREATE INDEX IF NOT EXISTS npc_dialogue_states_last_interaction_idx ON npc_dialogue_states(last_interaction);
@@ -94,43 +94,43 @@ CREATE INDEX IF NOT EXISTS npc_dialogue_active_topics_gin_idx ON npc_dialogue_st
 
 -- Insert default archetypes
 INSERT INTO npc_archetypes (name, description, typical_traits, typical_motivations, speech_patterns, location_affinities)
-VALUES 
-    ('merchant', 'A trader who buys and sells goods', 
-     '["persuasive", "business-minded", "social"]', 
+VALUES
+    ('merchant', 'A trader who buys and sells goods',
+     '["persuasive", "business-minded", "social"]',
      '["profit", "reputation", "trade_routes"]',
      '{"formality": "polite", "verbosity": "moderate"}',
      '{"Village": 0.9, "City": 0.8, "Town": 0.7, "Crossroads": 0.6, "Forest": 0.2}'),
-    
+
     ('guard', 'A protector of people and places',
      '["vigilant", "dutiful", "protective"]',
      '["duty", "safety", "order"]',
      '{"formality": "formal", "verbosity": "concise"}',
      '{"City": 0.9, "Town": 0.8, "Village": 0.7, "Castle": 0.9, "Forest": 0.3}'),
-    
+
     ('scholar', 'A learned person devoted to study and research',
      '["knowledgeable", "curious", "analytical"]',
      '["knowledge", "discovery", "teaching"]',
      '{"formality": "formal", "verbosity": "verbose"}',
      '{"Library": 0.9, "Academy": 0.9, "City": 0.6, "Tower": 0.8, "Forest": 0.4}'),
-    
+
     ('hermit', 'A solitary person who lives apart from society',
      '["wise", "reclusive", "self-sufficient"]',
      '["solitude", "wisdom", "nature"]',
      '{"formality": "casual", "verbosity": "cryptic"}',
      '{"Forest": 0.9, "Mountain": 0.8, "Cave": 0.7, "Wilderness": 0.9, "City": 0.1}'),
-    
+
     ('innkeeper', 'A host who provides food, drink, and lodging',
      '["hospitable", "social", "practical"]',
      '["hospitality", "community", "stories"]',
      '{"formality": "casual", "verbosity": "moderate"}',
      '{"Inn": 0.9, "Tavern": 0.9, "Village": 0.7, "Town": 0.8, "Forest": 0.2}'),
-    
+
     ('artisan', 'A skilled craftsperson who creates goods',
      '["skilled", "creative", "dedicated"]',
      '["craftsmanship", "beauty", "utility"]',
      '{"formality": "casual", "verbosity": "moderate"}',
      '{"Workshop": 0.9, "Village": 0.7, "Town": 0.8, "City": 0.6, "Forest": 0.3}'),
-    
+
     ('wanderer', 'A traveler who roams from place to place',
      '["adventurous", "experienced", "independent"]',
      '["exploration", "freedom", "stories"]',
@@ -170,17 +170,41 @@ CREATE TRIGGER update_npc_knowledge_last_updated
     FOR EACH ROW
     EXECUTE FUNCTION update_knowledge_last_updated();
 
--- Create view for complete NPC data
+-- Create view for complete NPC data (after foreign key constraint is added)
+-- Will be created after the foreign key constraint is successfully added
+
+-- Add foreign key constraint for archetype_id after archetypes table is created
+DO $$
+BEGIN
+    -- Check if both tables and columns exist before adding constraint
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'npc_personalities' AND column_name = 'archetype_id'
+    ) AND EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'npc_archetypes' AND column_name = 'archetype_id'
+    ) THEN
+        ALTER TABLE npc_personalities
+            ADD CONSTRAINT fk_npc_personalities_archetype_id
+            FOREIGN KEY (archetype_id) REFERENCES npc_archetypes(archetype_id);
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    -- Ignore constraint creation errors
+    NULL;
+END $$;
+
+-- Create index on archetype_id after constraint is added
+CREATE INDEX IF NOT EXISTS npc_personalities_archetype_id_idx ON npc_personalities(archetype_id);
+
+-- Create view for complete NPC data after all constraints are added
 CREATE OR REPLACE VIEW npc_complete_data AS
-SELECT 
-    n.npc_id,
+SELECT
+    n.id as npc_id,
     n.name,
-    n.description,
-    n.dialogue,
-    n.archetype,
-    n.generation_metadata,
-    n.last_generated_at,
-    n.embedding_vector,
+    n.short_desc,
+    n.full_desc,
+    n.npc_type,
+    n.npc_embedding,
     p.personality_id,
     p.traits,
     p.motivations,
@@ -206,10 +230,10 @@ SELECT
     a.name as archetype_name,
     a.description as archetype_description
 FROM npcs n
-LEFT JOIN npc_personalities p ON n.npc_id = p.npc_id
-LEFT JOIN npc_knowledge k ON n.npc_id = k.npc_id
-LEFT JOIN npc_dialogue_states d ON n.npc_id = d.npc_id
-LEFT JOIN npc_archetypes a ON p.archetype_id = a.archetype_id OR n.archetype = a.name;
+LEFT JOIN npc_personalities p ON n.id = p.npc_id
+LEFT JOIN npc_knowledge k ON n.id = k.npc_id
+LEFT JOIN npc_dialogue_states d ON n.id = d.npc_id
+LEFT JOIN npc_archetypes a ON p.archetype_id = a.archetype_id;
 
 -- Grant appropriate permissions (adjust as needed for your user setup)
 -- GRANT SELECT, INSERT, UPDATE, DELETE ON npc_archetypes TO game_user;

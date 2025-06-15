@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS object_properties (
     interactions JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_object_properties_object_id 
-        FOREIGN KEY (object_id) REFERENCES world_objects(object_id) 
+    CONSTRAINT fk_object_properties_object_id
+        FOREIGN KEY (object_id) REFERENCES objects(id)
         ON DELETE CASCADE
 );
 
@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS object_generation_history (
     location_theme VARCHAR(50),
     player_level INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_object_generation_object_id 
-        FOREIGN KEY (object_id) REFERENCES world_objects(object_id) 
+    CONSTRAINT fk_object_generation_object_id
+        FOREIGN KEY (object_id) REFERENCES objects(id)
         ON DELETE CASCADE
 );
 
@@ -58,13 +58,13 @@ CREATE TABLE IF NOT EXISTS object_placements (
     spatial_description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_object_placements_object_id 
-        FOREIGN KEY (object_id) REFERENCES world_objects(object_id) 
+    CONSTRAINT fk_object_placements_object_id
+        FOREIGN KEY (object_id) REFERENCES objects(id)
         ON DELETE CASCADE,
-    CONSTRAINT fk_object_placements_location_id 
-        FOREIGN KEY (location_id) REFERENCES locations(location_id) 
+    CONSTRAINT fk_object_placements_location_id
+        FOREIGN KEY (location_id) REFERENCES locations(id)
         ON DELETE CASCADE,
-    CONSTRAINT check_discovery_difficulty 
+    CONSTRAINT check_discovery_difficulty
         CHECK (discovery_difficulty >= 1 AND discovery_difficulty <= 10)
 );
 
@@ -91,45 +91,34 @@ CREATE TABLE IF NOT EXISTS object_discoveries (
     discovery_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     search_query TEXT,
     context_data JSONB DEFAULT '{}',
-    CONSTRAINT fk_object_discoveries_object_id 
-        FOREIGN KEY (object_id) REFERENCES world_objects(object_id) 
+    CONSTRAINT fk_object_discoveries_object_id
+        FOREIGN KEY (object_id) REFERENCES objects(id)
         ON DELETE CASCADE,
-    CONSTRAINT fk_object_discoveries_location_id 
-        FOREIGN KEY (location_id) REFERENCES locations(location_id) 
+    CONSTRAINT fk_object_discoveries_location_id
+        FOREIGN KEY (location_id) REFERENCES locations(id)
         ON DELETE CASCADE
 );
 
--- Add embedding column to world_objects if not exists
+-- Add embedding column to objects if not exists
 -- This supports semantic search capabilities
-DO $$ 
+DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'world_objects' AND column_name = 'embedding'
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'objects' AND column_name = 'embedding'
     ) THEN
-        ALTER TABLE world_objects ADD COLUMN embedding vector(1536);
+        ALTER TABLE objects ADD COLUMN embedding vector(1536);
     END IF;
 END $$;
 
--- Add object_type column to world_objects for easier querying
-DO $$ 
+-- Add value column to objects for economic modeling
+DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'world_objects' AND column_name = 'object_type'
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'objects' AND column_name = 'value'
     ) THEN
-        ALTER TABLE world_objects ADD COLUMN object_type VARCHAR(50);
-    END IF;
-END $$;
-
--- Add value column to world_objects for economic modeling
-DO $$ 
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'world_objects' AND column_name = 'value'
-    ) THEN
-        ALTER TABLE world_objects ADD COLUMN value INTEGER DEFAULT 0;
+        ALTER TABLE objects ADD COLUMN value INTEGER DEFAULT 0;
     END IF;
 END $$;
 
@@ -143,16 +132,16 @@ CREATE INDEX IF NOT EXISTS idx_object_placements_location_id ON object_placement
 CREATE INDEX IF NOT EXISTS idx_object_placements_visibility ON object_placements(visibility);
 CREATE INDEX IF NOT EXISTS idx_object_discoveries_object_id ON object_discoveries(object_id);
 CREATE INDEX IF NOT EXISTS idx_object_discoveries_player_id ON object_discoveries(player_id);
-CREATE INDEX IF NOT EXISTS idx_world_objects_object_type ON world_objects(object_type);
-CREATE INDEX IF NOT EXISTS idx_world_objects_value ON world_objects(value);
+CREATE INDEX IF NOT EXISTS idx_objects_object_type ON objects(object_type);
+CREATE INDEX IF NOT EXISTS idx_objects_value ON objects(value);
 
 -- Vector similarity search index (requires pgvector extension)
 -- This enables fast semantic search of objects
-DO $$ 
+DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
-        CREATE INDEX IF NOT EXISTS idx_world_objects_embedding 
-        ON world_objects USING ivfflat (embedding vector_cosine_ops)
+        CREATE INDEX IF NOT EXISTS idx_objects_embedding
+        ON objects USING ivfflat (embedding vector_cosine_ops)
         WITH (lists = 100);
     END IF;
 EXCEPTION
@@ -168,51 +157,51 @@ CREATE INDEX IF NOT EXISTS idx_object_generation_metadata_gin ON object_generati
 CREATE INDEX IF NOT EXISTS idx_object_placements_placement_data_gin ON object_placements USING gin(placement_data);
 
 -- Functional indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_object_properties_object_type 
+CREATE INDEX IF NOT EXISTS idx_object_properties_object_type
 ON object_properties((properties->>'object_type'));
 
-CREATE INDEX IF NOT EXISTS idx_object_properties_material 
+CREATE INDEX IF NOT EXISTS idx_object_properties_material
 ON object_properties((properties->>'material'));
 
-CREATE INDEX IF NOT EXISTS idx_object_properties_size 
+CREATE INDEX IF NOT EXISTS idx_object_properties_size
 ON object_properties((properties->>'size'));
 
-CREATE INDEX IF NOT EXISTS idx_object_properties_portable 
+CREATE INDEX IF NOT EXISTS idx_object_properties_portable
 ON object_properties((interactions->>'portable'));
 
 -- Insert default object archetypes
 INSERT INTO object_archetypes (name, description, typical_properties, location_affinities, interaction_templates, rarity)
-VALUES 
-    ('sword', 'A bladed weapon for combat and ceremony', 
+VALUES
+    ('sword', 'A bladed weapon for combat and ceremony',
      '{"object_type": "weapon", "material": "iron", "size": "medium", "weight": "heavy", "special_properties": ["sharp", "balanced", "weapon"]}',
      '{"Village": 0.6, "City": 0.8, "Castle": 0.9, "Battlefield": 0.95}',
      '{"combat": ["attack", "parry", "flourish"], "utility": ["cut", "pry"]}',
      'uncommon'),
-     
+
     ('hammer', 'A tool for building and crafting',
      '{"object_type": "tool", "material": "iron_and_wood", "size": "medium", "weight": "heavy", "special_properties": ["blunt", "tool", "crafting"]}',
      '{"Village": 0.8, "City": 0.7, "Forge": 0.95, "Workshop": 0.9}',
      '{"crafting": ["hammer", "forge", "shape"], "combat": ["bludgeon"]}',
      'common'),
-     
+
     ('chest', 'A storage container for valuables',
      '{"object_type": "container", "material": "wood", "size": "large", "weight": "heavy", "special_properties": ["storage", "lockable", "container"]}',
      '{"Village": 0.7, "City": 0.6, "Dungeon": 0.8, "Treasure_Room": 0.95}',
      '{"storage": ["open", "close", "lock", "unlock"], "utility": ["examine", "search"]}',
      'common'),
-     
+
     ('book', 'A collection of written knowledge',
      '{"object_type": "knowledge", "material": "parchment_and_leather", "size": "small", "weight": "light", "special_properties": ["readable", "knowledge", "fragile"]}',
      '{"Library": 0.95, "Study": 0.9, "City": 0.7, "School": 0.85}',
      '{"knowledge": ["read", "study", "research"], "utility": ["examine", "carry"]}',
      'uncommon'),
-     
+
     ('herb', 'A natural plant with medicinal or culinary properties',
      '{"object_type": "natural", "material": "plant", "size": "tiny", "weight": "light", "special_properties": ["medicinal", "consumable", "natural"]}',
      '{"Forest": 0.9, "Garden": 0.8, "Meadow": 0.85, "Wilderness": 0.7}',
      '{"healing": ["consume", "brew", "apply"], "utility": ["gather", "examine"]}',
      'common'),
-     
+
     ('gem', 'A precious stone of value and beauty',
      '{"object_type": "treasure", "material": "crystal", "size": "tiny", "weight": "light", "special_properties": ["precious", "beautiful", "magical_conduit"], "value": 200}',
      '{"Mine": 0.7, "Cave": 0.6, "Treasure_Room": 0.9, "Jewelry_Shop": 0.8}',
@@ -222,28 +211,28 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Insert default object themes
 INSERT INTO object_themes (name, description, typical_materials, common_object_types, cultural_elements, style_descriptors, forbidden_elements)
-VALUES 
+VALUES
     ('Village', 'Simple, practical objects suited for rural life',
      '["wood", "iron", "cloth", "leather", "ceramic"]',
      '["tool", "furniture", "container", "weapon", "clothing"]',
      '{"style": "rustic", "craftsmanship": "local", "decoration": "simple"}',
      '["weathered", "handmade", "practical", "sturdy", "well-used"]',
      '["luxury", "ornate", "magical", "exotic"]'),
-     
+
     ('Forest', 'Natural objects and items suited for wilderness',
      '["wood", "stone", "bone", "plant", "hide"]',
      '["natural", "tool", "weapon", "container", "survival_gear"]',
      '{"style": "natural", "craftsmanship": "primitive", "decoration": "carved"}',
      '["organic", "rough", "primitive", "weathered", "natural"]',
      '["metal", "refined", "delicate", "manufactured"]'),
-     
+
     ('City', 'Refined objects reflecting urban sophistication',
      '["steel", "brass", "silk", "marble", "glass"]',
      '["tool", "furniture", "art", "weapon", "luxury"]',
      '{"style": "refined", "craftsmanship": "professional", "decoration": "detailed"}',
      '["polished", "elegant", "sophisticated", "ornate", "quality"]',
      '["crude", "primitive", "temporary", "makeshift"]'),
-     
+
     ('Dungeon', 'Ancient, mystical, or abandoned objects',
      '["stone", "ancient_metal", "crystal", "bone", "unknown"]',
      '["treasure", "trap", "relic", "weapon", "mystery"]',
@@ -286,7 +275,7 @@ DO $$
 BEGIN
     RAISE NOTICE 'Object Generation System migration completed successfully';
     RAISE NOTICE 'Created tables: object_archetypes, object_properties, object_generation_history, object_placements, object_themes, object_discoveries';
-    RAISE NOTICE 'Added columns to world_objects: embedding, object_type, value';
+    RAISE NOTICE 'Added columns to objects: embedding, object_type, value';
     RAISE NOTICE 'Created indexes for performance optimization';
     RAISE NOTICE 'Inserted default archetypes and themes';
 END $$;

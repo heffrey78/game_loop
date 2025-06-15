@@ -2,10 +2,10 @@
 -- Creates tables and indexes for world connections, connection metadata, and connectivity graph
 
 -- Connection management tables
-CREATE TABLE world_connections (
+CREATE TABLE IF NOT EXISTS world_connections (
     connection_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    source_location_id UUID NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
-    target_location_id UUID NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
+    source_location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+    target_location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
     connection_type VARCHAR(50) NOT NULL,
     difficulty INTEGER NOT NULL CHECK (difficulty >= 1 AND difficulty <= 10),
     travel_time INTEGER NOT NULL CHECK (travel_time > 0),
@@ -26,7 +26,7 @@ CREATE TABLE world_connections (
 );
 
 -- Connection generation metadata
-CREATE TABLE connection_generation_metadata (
+CREATE TABLE IF NOT EXISTS connection_generation_metadata (
     metadata_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     connection_id UUID NOT NULL REFERENCES world_connections(connection_id) ON DELETE CASCADE,
     generation_purpose VARCHAR(50) NOT NULL CHECK (generation_purpose IN ('expand_world', 'quest_path', 'exploration', 'narrative_enhancement', 'player_request')),
@@ -40,10 +40,10 @@ CREATE TABLE connection_generation_metadata (
 );
 
 -- World connectivity graph for pathfinding and analysis
-CREATE TABLE world_connectivity_graph (
+CREATE TABLE IF NOT EXISTS world_connectivity_graph (
     graph_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    location_id UUID NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
-    connected_location_id UUID NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
+    location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+    connected_location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
     connection_id UUID NOT NULL REFERENCES world_connections(connection_id) ON DELETE CASCADE,
     path_distance INTEGER DEFAULT 1,
     traversal_cost INTEGER DEFAULT 1,
@@ -54,7 +54,7 @@ CREATE TABLE world_connectivity_graph (
 );
 
 -- Connection archetypes for theme management
-CREATE TABLE connection_archetypes (
+CREATE TABLE IF NOT EXISTS connection_archetypes (
     archetype_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE connection_archetypes (
 );
 
 -- Connection validation history for quality tracking
-CREATE TABLE connection_validation_history (
+CREATE TABLE IF NOT EXISTS connection_validation_history (
     validation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     connection_id UUID NOT NULL REFERENCES world_connections(connection_id) ON DELETE CASCADE,
     validation_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -84,37 +84,37 @@ CREATE TABLE connection_validation_history (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_world_connections_source_location ON world_connections(source_location_id);
-CREATE INDEX idx_world_connections_target_location ON world_connections(target_location_id);
-CREATE INDEX idx_world_connections_type ON world_connections(connection_type);
-CREATE INDEX idx_world_connections_difficulty ON world_connections(difficulty);
-CREATE INDEX idx_world_connections_visibility ON world_connections(visibility);
-CREATE INDEX idx_world_connections_reversible ON world_connections(reversible);
-CREATE INDEX idx_world_connections_created_at ON world_connections(created_at);
+CREATE INDEX IF NOT EXISTS idx_world_connections_source_location ON world_connections(source_location_id);
+CREATE INDEX IF NOT EXISTS idx_world_connections_target_location ON world_connections(target_location_id);
+CREATE INDEX IF NOT EXISTS idx_world_connections_type ON world_connections(connection_type);
+CREATE INDEX IF NOT EXISTS idx_world_connections_difficulty ON world_connections(difficulty);
+CREATE INDEX IF NOT EXISTS idx_world_connections_visibility ON world_connections(visibility);
+CREATE INDEX IF NOT EXISTS idx_world_connections_reversible ON world_connections(reversible);
+CREATE INDEX IF NOT EXISTS idx_world_connections_created_at ON world_connections(created_at);
 
 -- Vector similarity index for embeddings
-CREATE INDEX idx_world_connections_embedding ON world_connections USING ivfflat (embedding_vector vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_world_connections_embedding ON world_connections USING ivfflat (embedding_vector vector_cosine_ops);
 
 -- Generation metadata indexes
-CREATE INDEX idx_connection_generation_metadata_connection ON connection_generation_metadata(connection_id);
-CREATE INDEX idx_connection_generation_metadata_purpose ON connection_generation_metadata(generation_purpose);
-CREATE INDEX idx_connection_generation_metadata_created_at ON connection_generation_metadata(created_at);
+CREATE INDEX IF NOT EXISTS idx_connection_generation_metadata_connection ON connection_generation_metadata(connection_id);
+CREATE INDEX IF NOT EXISTS idx_connection_generation_metadata_purpose ON connection_generation_metadata(generation_purpose);
+CREATE INDEX IF NOT EXISTS idx_connection_generation_metadata_created_at ON connection_generation_metadata(created_at);
 
 -- Connectivity graph indexes
-CREATE INDEX idx_connectivity_graph_location ON world_connectivity_graph(location_id);
-CREATE INDEX idx_connectivity_graph_connected_location ON world_connectivity_graph(connected_location_id);
-CREATE INDEX idx_connectivity_graph_connection ON world_connectivity_graph(connection_id);
-CREATE INDEX idx_connectivity_graph_path_distance ON world_connectivity_graph(path_distance);
-CREATE INDEX idx_connectivity_graph_traversal_cost ON world_connectivity_graph(traversal_cost);
+CREATE INDEX IF NOT EXISTS idx_connectivity_graph_location ON world_connectivity_graph(location_id);
+CREATE INDEX IF NOT EXISTS idx_connectivity_graph_connected_location ON world_connectivity_graph(connected_location_id);
+CREATE INDEX IF NOT EXISTS idx_connectivity_graph_connection ON world_connectivity_graph(connection_id);
+CREATE INDEX IF NOT EXISTS idx_connectivity_graph_path_distance ON world_connectivity_graph(path_distance);
+CREATE INDEX IF NOT EXISTS idx_connectivity_graph_traversal_cost ON world_connectivity_graph(traversal_cost);
 
 -- Archetype indexes
-CREATE INDEX idx_connection_archetypes_type ON connection_archetypes(connection_type);
-CREATE INDEX idx_connection_archetypes_rarity ON connection_archetypes(rarity);
+CREATE INDEX IF NOT EXISTS idx_connection_archetypes_type ON connection_archetypes(connection_type);
+CREATE INDEX IF NOT EXISTS idx_connection_archetypes_rarity ON connection_archetypes(rarity);
 
 -- Validation history indexes
-CREATE INDEX idx_connection_validation_history_connection ON connection_validation_history(connection_id);
-CREATE INDEX idx_connection_validation_history_timestamp ON connection_validation_history(validation_timestamp);
-CREATE INDEX idx_connection_validation_history_is_valid ON connection_validation_history(is_valid);
+CREATE INDEX IF NOT EXISTS idx_connection_validation_history_connection ON connection_validation_history(connection_id);
+CREATE INDEX IF NOT EXISTS idx_connection_validation_history_timestamp ON connection_validation_history(validation_timestamp);
+CREATE INDEX IF NOT EXISTS idx_connection_validation_history_is_valid ON connection_validation_history(is_valid);
 
 -- Trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_world_connections_updated_at()
@@ -143,28 +143,28 @@ BEGIN
         -- Add forward connection to graph
         INSERT INTO world_connectivity_graph (location_id, connected_location_id, connection_id, path_distance, traversal_cost)
         VALUES (NEW.source_location_id, NEW.target_location_id, NEW.connection_id, 1, NEW.travel_time);
-        
+
         -- Add reverse connection if reversible
         IF NEW.reversible THEN
             INSERT INTO world_connectivity_graph (location_id, connected_location_id, connection_id, path_distance, traversal_cost)
             VALUES (NEW.target_location_id, NEW.source_location_id, NEW.connection_id, 1, NEW.travel_time);
         END IF;
-        
+
         RETURN NEW;
     END IF;
-    
+
     IF TG_OP = 'UPDATE' THEN
         -- Update existing graph entries
-        UPDATE world_connectivity_graph 
+        UPDATE world_connectivity_graph
         SET traversal_cost = NEW.travel_time, last_updated = NOW()
         WHERE connection_id = NEW.connection_id;
-        
+
         -- Handle reversibility changes
         IF OLD.reversible AND NOT NEW.reversible THEN
             -- Remove reverse connection
-            DELETE FROM world_connectivity_graph 
-            WHERE connection_id = NEW.connection_id 
-            AND location_id = NEW.target_location_id 
+            DELETE FROM world_connectivity_graph
+            WHERE connection_id = NEW.connection_id
+            AND location_id = NEW.target_location_id
             AND connected_location_id = NEW.source_location_id;
         ELSIF NOT OLD.reversible AND NEW.reversible THEN
             -- Add reverse connection
@@ -172,16 +172,16 @@ BEGIN
             VALUES (NEW.target_location_id, NEW.source_location_id, NEW.connection_id, 1, NEW.travel_time)
             ON CONFLICT DO NOTHING;
         END IF;
-        
+
         RETURN NEW;
     END IF;
-    
+
     IF TG_OP = 'DELETE' THEN
         -- Remove all graph entries for this connection
         DELETE FROM world_connectivity_graph WHERE connection_id = OLD.connection_id;
         RETURN OLD;
     END IF;
-    
+
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -192,8 +192,8 @@ CREATE TRIGGER trigger_maintain_connectivity_graph
     EXECUTE FUNCTION maintain_connectivity_graph();
 
 -- View for connection analytics
-CREATE VIEW connection_analytics AS
-SELECT 
+CREATE OR REPLACE VIEW connection_analytics AS
+SELECT
     c.connection_type,
     COUNT(*) as total_connections,
     AVG(c.difficulty) as avg_difficulty,
@@ -206,25 +206,25 @@ GROUP BY c.connection_type
 ORDER BY total_connections DESC;
 
 -- View for location connectivity summary
-CREATE VIEW location_connectivity AS
-SELECT 
-    l.location_id,
+CREATE OR REPLACE VIEW location_connectivity AS
+SELECT
+    l.id as location_id,
     l.name as location_name,
     COUNT(DISTINCT wc1.connection_id) as outgoing_connections,
     COUNT(DISTINCT wc2.connection_id) as incoming_connections,
-    COUNT(DISTINCT 
-        CASE WHEN wc1.connection_id IS NOT NULL OR wc2.connection_id IS NOT NULL 
+    COUNT(DISTINCT
+        CASE WHEN wc1.connection_id IS NOT NULL OR wc2.connection_id IS NOT NULL
         THEN COALESCE(wc1.connection_id, wc2.connection_id) END
     ) as total_unique_connections
 FROM locations l
-LEFT JOIN world_connections wc1 ON l.location_id = wc1.source_location_id
-LEFT JOIN world_connections wc2 ON l.location_id = wc2.target_location_id
-GROUP BY l.location_id, l.name
+LEFT JOIN world_connections wc1 ON l.id = wc1.source_location_id
+LEFT JOIN world_connections wc2 ON l.id = wc2.target_location_id
+GROUP BY l.id, l.name
 ORDER BY total_unique_connections DESC;
 
 -- Insert default connection archetypes
 INSERT INTO connection_archetypes (name, description, connection_type, typical_difficulty, typical_travel_time, terrain_affinities, theme_compatibility, rarity) VALUES
-('Basic Passage', 'A simple passage connecting two areas', 'passage', 2, 30, 
+('Basic Passage', 'A simple passage connecting two areas', 'passage', 2, 30,
  '{"underground": 0.9, "indoor": 0.8, "mountain": 0.7}',
  '{"Dungeon": 0.9, "Cave": 0.9, "Castle": 0.7}', 'common'),
 
@@ -246,13 +246,14 @@ INSERT INTO connection_archetypes (name, description, connection_type, typical_d
 
 ('Paved Road', 'A constructed road for easy travel', 'road', 1, 45,
  '{"urban": 0.9, "grassland": 0.8, "plains": 0.9}',
- '{"City": 0.9, "Town": 0.9, "Village": 0.9}', 'common');
+ '{"City": 0.9, "Town": 0.9, "Village": 0.9}', 'common')
+ON CONFLICT (name) DO NOTHING;
 
 -- Create indexes on JSONB fields for faster queries
-CREATE INDEX idx_world_connections_requirements_gin ON world_connections USING GIN (requirements);
-CREATE INDEX idx_world_connections_condition_flags_gin ON world_connections USING GIN (condition_flags);
-CREATE INDEX idx_world_connections_special_features_gin ON world_connections USING GIN (special_features);
-CREATE INDEX idx_world_connections_metadata_gin ON world_connections USING GIN (metadata);
+CREATE INDEX IF NOT EXISTS idx_world_connections_requirements_gin ON world_connections USING GIN (requirements);
+CREATE INDEX IF NOT EXISTS idx_world_connections_condition_flags_gin ON world_connections USING GIN (condition_flags);
+CREATE INDEX IF NOT EXISTS idx_world_connections_special_features_gin ON world_connections USING GIN (special_features);
+CREATE INDEX IF NOT EXISTS idx_world_connections_metadata_gin ON world_connections USING GIN (metadata);
 
 -- Function to find shortest path between two locations
 CREATE OR REPLACE FUNCTION find_shortest_path(start_location UUID, end_location UUID)
@@ -264,7 +265,7 @@ DECLARE
 BEGIN
     -- Simple pathfinding implementation (in practice, would use more sophisticated algorithm)
     -- This is a basic example - real implementation would use Dijkstra's or A* algorithm
-    
+
     -- Direct connection check
     FOR location_id, connection_id IN
         SELECT wcg.connected_location_id, wcg.connection_id
@@ -276,11 +277,11 @@ BEGIN
         SELECT wcg.traversal_cost INTO total_traversal_cost
         FROM world_connectivity_graph wcg
         WHERE wcg.connection_id = find_shortest_path.connection_id;
-        
+
         RETURN QUERY SELECT location_id, connection_id, step_count, total_traversal_cost;
         RETURN;
     END LOOP;
-    
+
     -- If no direct connection found, return empty result
     -- (Real implementation would find multi-hop paths)
     RETURN;
@@ -299,7 +300,7 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         COUNT(*) as total_connections,
         jsonb_object_agg(connection_type, type_count) as connection_types,
         AVG(difficulty) as avg_difficulty,
@@ -307,7 +308,7 @@ BEGIN
         (COUNT(CASE WHEN reversible THEN 1 END)::NUMERIC / COUNT(*)::NUMERIC * 100) as reversible_percentage,
         (COUNT(CASE WHEN visibility = 'hidden' THEN 1 END)::NUMERIC / COUNT(*)::NUMERIC * 100) as hidden_percentage
     FROM (
-        SELECT 
+        SELECT
             connection_type,
             COUNT(*) as type_count,
             difficulty,

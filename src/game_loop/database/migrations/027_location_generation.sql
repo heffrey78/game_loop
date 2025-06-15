@@ -3,7 +3,7 @@
 -- Creates tables for location themes, generation history, theme transitions, and caching
 
 -- Location themes table
-CREATE TABLE location_themes (
+CREATE TABLE IF NOT EXISTS location_themes (
     theme_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT NOT NULL,
@@ -17,9 +17,9 @@ CREATE TABLE location_themes (
 );
 
 -- Location generation history
-CREATE TABLE location_generation_history (
+CREATE TABLE IF NOT EXISTS location_generation_history (
     generation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    location_id UUID NOT NULL REFERENCES locations(location_id),
+    location_id UUID NOT NULL REFERENCES locations(id),
     generation_context JSONB NOT NULL,
     generated_content JSONB NOT NULL,
     validation_result JSONB,
@@ -28,19 +28,19 @@ CREATE TABLE location_generation_history (
 );
 
 -- Theme transitions for consistency
-CREATE TABLE theme_transitions (
+CREATE TABLE IF NOT EXISTS theme_transitions (
     transition_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     from_theme_id UUID NOT NULL REFERENCES location_themes(theme_id),
     to_theme_id UUID NOT NULL REFERENCES location_themes(theme_id),
     transition_rules JSONB NOT NULL,
     compatibility_score FLOAT CHECK (compatibility_score >= 0 AND compatibility_score <= 1),
     is_valid BOOLEAN DEFAULT true,
-    
+
     CONSTRAINT unique_theme_transition UNIQUE(from_theme_id, to_theme_id)
 );
 
 -- Location generation cache
-CREATE TABLE location_generation_cache (
+CREATE TABLE IF NOT EXISTS location_generation_cache (
     cache_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     context_hash VARCHAR(64) NOT NULL UNIQUE,
     generated_location JSONB NOT NULL,
@@ -56,12 +56,12 @@ ADD COLUMN IF NOT EXISTS generation_metadata JSONB DEFAULT '{}',
 ADD COLUMN IF NOT EXISTS last_generated_at TIMESTAMP;
 
 -- Indexes for performance
-CREATE INDEX idx_location_themes_parent ON location_themes(parent_theme_id);
-CREATE INDEX idx_generation_history_location ON location_generation_history(location_id);
-CREATE INDEX idx_theme_transitions_themes ON theme_transitions(from_theme_id, to_theme_id);
-CREATE INDEX idx_generation_cache_hash ON location_generation_cache(context_hash);
-CREATE INDEX idx_generation_cache_expires ON location_generation_cache(cache_expires_at);
-CREATE INDEX idx_locations_theme ON locations(theme_id);
+CREATE INDEX IF NOT EXISTS idx_location_themes_parent ON location_themes(parent_theme_id);
+CREATE INDEX IF NOT EXISTS idx_generation_history_location ON location_generation_history(location_id);
+CREATE INDEX IF NOT EXISTS idx_theme_transitions_themes ON theme_transitions(from_theme_id, to_theme_id);
+CREATE INDEX IF NOT EXISTS idx_generation_cache_hash ON location_generation_cache(context_hash);
+CREATE INDEX IF NOT EXISTS idx_generation_cache_expires ON location_generation_cache(cache_expires_at);
+CREATE INDEX IF NOT EXISTS idx_locations_theme ON locations(theme_id);
 
 -- Insert default location themes
 INSERT INTO location_themes (name, description, visual_elements, atmosphere, typical_objects, typical_npcs, generation_parameters) VALUES
@@ -109,4 +109,5 @@ INSERT INTO location_themes (name, description, visual_elements, atmosphere, typ
     '["fishing spots", "water plants", "smooth pebbles", "driftwood", "wildlife"]',
     '["fishermen", "water spirits", "travelers", "animals coming to drink"]',
     '{"complexity": "low", "danger_level": "very_low", "relaxation": "high"}'
-);
+)
+ON CONFLICT (name) DO NOTHING;

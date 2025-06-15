@@ -1,5 +1,5 @@
 -- Migration 031: Dynamic World Integration
--- 
+--
 -- This migration adds comprehensive database schema for tracking dynamic world generation,
 -- player behavior analysis, content discovery, and quality monitoring.
 
@@ -7,7 +7,7 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Generation trigger tracking
-CREATE TABLE generation_triggers (
+CREATE TABLE IF NOT EXISTS generation_triggers (
     trigger_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     player_id UUID NOT NULL,
     session_id UUID NOT NULL,
@@ -27,19 +27,19 @@ CREATE TABLE generation_triggers (
 );
 
 -- Indexes for generation triggers
-CREATE INDEX idx_generation_triggers_player_session 
+CREATE INDEX IF NOT EXISTS idx_generation_triggers_player_session
 ON generation_triggers(player_id, session_id);
-CREATE INDEX idx_generation_triggers_type_priority 
+CREATE INDEX IF NOT EXISTS idx_generation_triggers_type_priority
 ON generation_triggers(trigger_type, priority_score DESC);
-CREATE INDEX idx_generation_triggers_location 
+CREATE INDEX IF NOT EXISTS idx_generation_triggers_location
 ON generation_triggers(location_id) WHERE location_id IS NOT NULL;
-CREATE INDEX idx_generation_triggers_triggered_at 
+CREATE INDEX IF NOT EXISTS idx_generation_triggers_triggered_at
 ON generation_triggers(triggered_at);
-CREATE INDEX idx_generation_triggers_processing_status 
+CREATE INDEX IF NOT EXISTS idx_generation_triggers_processing_status
 ON generation_triggers(processed_at) WHERE processed_at IS NULL;
 
 -- Player behavior patterns
-CREATE TABLE player_behavior_patterns (
+CREATE TABLE IF NOT EXISTS player_behavior_patterns (
     pattern_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     player_id UUID NOT NULL,
     pattern_type VARCHAR(50) NOT NULL CHECK (pattern_type IN (
@@ -56,17 +56,17 @@ CREATE TABLE player_behavior_patterns (
 );
 
 -- Indexes for player behavior patterns
-CREATE INDEX idx_player_behavior_patterns_player 
+CREATE INDEX idx_player_behavior_patterns_player
 ON player_behavior_patterns(player_id);
-CREATE INDEX idx_player_behavior_patterns_type 
+CREATE INDEX idx_player_behavior_patterns_type
 ON player_behavior_patterns(pattern_type);
-CREATE INDEX idx_player_behavior_patterns_confidence 
+CREATE INDEX idx_player_behavior_patterns_confidence
 ON player_behavior_patterns(confidence_score DESC);
-CREATE INDEX idx_player_behavior_patterns_updated 
+CREATE INDEX idx_player_behavior_patterns_updated
 ON player_behavior_patterns(last_updated);
 
 -- Content discovery events
-CREATE TABLE content_discovery_events (
+CREATE TABLE IF NOT EXISTS content_discovery_events (
     discovery_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     player_id UUID NOT NULL,
     session_id UUID NOT NULL,
@@ -86,19 +86,19 @@ CREATE TABLE content_discovery_events (
 );
 
 -- Indexes for content discovery events
-CREATE INDEX idx_content_discovery_events_player 
+CREATE INDEX idx_content_discovery_events_player
 ON content_discovery_events(player_id);
-CREATE INDEX idx_content_discovery_events_content 
+CREATE INDEX idx_content_discovery_events_content
 ON content_discovery_events(content_id, content_type);
-CREATE INDEX idx_content_discovery_events_method 
+CREATE INDEX idx_content_discovery_events_method
 ON content_discovery_events(discovery_method);
-CREATE INDEX idx_content_discovery_events_location 
+CREATE INDEX idx_content_discovery_events_location
 ON content_discovery_events(location_id) WHERE location_id IS NOT NULL;
-CREATE INDEX idx_content_discovery_events_discovered_at 
+CREATE INDEX idx_content_discovery_events_discovered_at
 ON content_discovery_events(discovered_at);
 
 -- Content interaction tracking
-CREATE TABLE content_interactions (
+CREATE TABLE IF NOT EXISTS content_interactions (
     interaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     player_id UUID NOT NULL,
     content_id UUID NOT NULL,
@@ -118,19 +118,19 @@ CREATE TABLE content_interactions (
 );
 
 -- Indexes for content interactions
-CREATE INDEX idx_content_interactions_player 
+CREATE INDEX idx_content_interactions_player
 ON content_interactions(player_id);
-CREATE INDEX idx_content_interactions_content 
+CREATE INDEX idx_content_interactions_content
 ON content_interactions(content_id, content_type);
-CREATE INDEX idx_content_interactions_type_outcome 
+CREATE INDEX idx_content_interactions_type_outcome
 ON content_interactions(interaction_type, interaction_outcome);
-CREATE INDEX idx_content_interactions_satisfaction 
+CREATE INDEX idx_content_interactions_satisfaction
 ON content_interactions(satisfaction_score) WHERE satisfaction_score IS NOT NULL;
-CREATE INDEX idx_content_interactions_interacted_at 
+CREATE INDEX idx_content_interactions_interacted_at
 ON content_interactions(interacted_at);
 
 -- Generation quality metrics
-CREATE TABLE generation_quality_metrics (
+CREATE TABLE IF NOT EXISTS generation_quality_metrics (
     metric_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content_id UUID NOT NULL,
     content_type VARCHAR(50) NOT NULL,
@@ -149,23 +149,23 @@ CREATE TABLE generation_quality_metrics (
 );
 
 -- Indexes for generation quality metrics
-CREATE INDEX idx_generation_quality_metrics_content 
+CREATE INDEX idx_generation_quality_metrics_content
 ON generation_quality_metrics(content_id, content_type);
-CREATE INDEX idx_generation_quality_metrics_dimension 
+CREATE INDEX idx_generation_quality_metrics_dimension
 ON generation_quality_metrics(quality_dimension);
-CREATE INDEX idx_generation_quality_metrics_score 
+CREATE INDEX idx_generation_quality_metrics_score
 ON generation_quality_metrics(quality_score DESC);
-CREATE INDEX idx_generation_quality_metrics_method 
+CREATE INDEX idx_generation_quality_metrics_method
 ON generation_quality_metrics(measurement_method);
-CREATE INDEX idx_generation_quality_metrics_measured_at 
+CREATE INDEX idx_generation_quality_metrics_measured_at
 ON generation_quality_metrics(measured_at);
 
 -- World generation status
-CREATE TABLE world_generation_status (
+CREATE TABLE IF NOT EXISTS world_generation_status (
     status_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     world_region VARCHAR(100),
     generation_system VARCHAR(50) NOT NULL CHECK (generation_system IN (
-        'location_generator', 'npc_generator', 'object_generator', 
+        'location_generator', 'npc_generator', 'object_generator',
         'connection_manager', 'pipeline_coordinator', 'quality_monitor'
     )),
     status VARCHAR(20) NOT NULL CHECK (status IN (
@@ -183,21 +183,21 @@ CREATE TABLE world_generation_status (
 );
 
 -- Indexes for world generation status
-CREATE INDEX idx_world_generation_status_system 
+CREATE INDEX idx_world_generation_status_system
 ON world_generation_status(generation_system);
-CREATE INDEX idx_world_generation_status_status 
+CREATE INDEX idx_world_generation_status_status
 ON world_generation_status(status);
-CREATE INDEX idx_world_generation_status_region 
+CREATE INDEX idx_world_generation_status_region
 ON world_generation_status(world_region) WHERE world_region IS NOT NULL;
-CREATE INDEX idx_world_generation_status_updated 
+CREATE INDEX idx_world_generation_status_updated
 ON world_generation_status(updated_at);
 
 -- Player preference learning
-CREATE TABLE player_preferences (
+CREATE TABLE IF NOT EXISTS player_preferences (
     preference_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     player_id UUID NOT NULL,
     preference_category VARCHAR(50) NOT NULL CHECK (preference_category IN (
-        'content_type', 'theme', 'difficulty', 'interaction_style', 
+        'content_type', 'theme', 'difficulty', 'interaction_style',
         'exploration_style', 'narrative_style'
     )),
     preference_key VARCHAR(100) NOT NULL,
@@ -211,17 +211,17 @@ CREATE TABLE player_preferences (
 );
 
 -- Indexes for player preferences
-CREATE INDEX idx_player_preferences_player 
+CREATE INDEX idx_player_preferences_player
 ON player_preferences(player_id);
-CREATE INDEX idx_player_preferences_category_key 
+CREATE INDEX idx_player_preferences_category_key
 ON player_preferences(preference_category, preference_key);
-CREATE INDEX idx_player_preferences_confidence 
+CREATE INDEX idx_player_preferences_confidence
 ON player_preferences(confidence DESC);
-CREATE UNIQUE INDEX idx_player_preferences_unique 
+CREATE UNIQUE INDEX idx_player_preferences_unique
 ON player_preferences(player_id, preference_category, preference_key);
 
 -- Content generation history
-CREATE TABLE content_generation_history (
+CREATE TABLE IF NOT EXISTS content_generation_history (
     generation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content_id UUID NOT NULL,
     content_type VARCHAR(50) NOT NULL,
@@ -241,24 +241,24 @@ CREATE TABLE content_generation_history (
 );
 
 -- Indexes for content generation history
-CREATE INDEX idx_content_generation_history_content 
+CREATE INDEX idx_content_generation_history_content
 ON content_generation_history(content_id, content_type);
-CREATE INDEX idx_content_generation_history_trigger 
+CREATE INDEX idx_content_generation_history_trigger
 ON content_generation_history(generation_trigger_id) WHERE generation_trigger_id IS NOT NULL;
-CREATE INDEX idx_content_generation_history_generator 
+CREATE INDEX idx_content_generation_history_generator
 ON content_generation_history(generator_system);
-CREATE INDEX idx_content_generation_history_player 
+CREATE INDEX idx_content_generation_history_player
 ON content_generation_history(player_id) WHERE player_id IS NOT NULL;
-CREATE INDEX idx_content_generation_history_generated_at 
+CREATE INDEX idx_content_generation_history_generated_at
 ON content_generation_history(generated_at);
-CREATE INDEX idx_content_generation_history_success 
+CREATE INDEX idx_content_generation_history_success
 ON content_generation_history(success);
 
 -- Quality improvement tracking
-CREATE TABLE quality_improvements (
+CREATE TABLE IF NOT EXISTS quality_improvements (
     improvement_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     improvement_type VARCHAR(50) NOT NULL CHECK (improvement_type IN (
-        'parameter_adjustment', 'template_update', 'algorithm_change', 
+        'parameter_adjustment', 'template_update', 'algorithm_change',
         'validation_enhancement', 'feedback_integration'
     )),
     target_system VARCHAR(50) NOT NULL,
@@ -276,17 +276,17 @@ CREATE TABLE quality_improvements (
 );
 
 -- Indexes for quality improvements
-CREATE INDEX idx_quality_improvements_type 
+CREATE INDEX idx_quality_improvements_type
 ON quality_improvements(improvement_type);
-CREATE INDEX idx_quality_improvements_system 
+CREATE INDEX idx_quality_improvements_system
 ON quality_improvements(target_system);
-CREATE INDEX idx_quality_improvements_impact 
+CREATE INDEX idx_quality_improvements_impact
 ON quality_improvements(actual_impact DESC) WHERE actual_impact IS NOT NULL;
-CREATE INDEX idx_quality_improvements_implemented 
+CREATE INDEX idx_quality_improvements_implemented
 ON quality_improvements(implemented_at) WHERE implemented_at IS NOT NULL;
 
 -- Content clusters tracking
-CREATE TABLE content_clusters (
+CREATE TABLE IF NOT EXISTS content_clusters (
     cluster_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cluster_theme VARCHAR(100) NOT NULL,
     anchor_location_id UUID NOT NULL,
@@ -299,7 +299,7 @@ CREATE TABLE content_clusters (
 );
 
 -- Content cluster membership
-CREATE TABLE content_cluster_members (
+CREATE TABLE IF NOT EXISTS content_cluster_members (
     membership_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cluster_id UUID NOT NULL REFERENCES content_clusters(cluster_id) ON DELETE CASCADE,
     content_id UUID NOT NULL,
@@ -310,21 +310,21 @@ CREATE TABLE content_cluster_members (
 );
 
 -- Indexes for content clusters
-CREATE INDEX idx_content_clusters_theme 
+CREATE INDEX idx_content_clusters_theme
 ON content_clusters(cluster_theme);
-CREATE INDEX idx_content_clusters_anchor 
+CREATE INDEX idx_content_clusters_anchor
 ON content_clusters(anchor_location_id);
-CREATE INDEX idx_content_clusters_coherence 
+CREATE INDEX idx_content_clusters_coherence
 ON content_clusters(coherence_score DESC);
-CREATE INDEX idx_content_cluster_members_cluster 
+CREATE INDEX idx_content_cluster_members_cluster
 ON content_cluster_members(cluster_id);
-CREATE INDEX idx_content_cluster_members_content 
+CREATE INDEX idx_content_cluster_members_content
 ON content_cluster_members(content_id, content_type);
-CREATE UNIQUE INDEX idx_content_cluster_members_unique 
+CREATE UNIQUE INDEX idx_content_cluster_members_unique
 ON content_cluster_members(cluster_id, content_id);
 
 -- Generation performance analytics
-CREATE TABLE generation_performance_logs (
+CREATE TABLE IF NOT EXISTS generation_performance_logs (
     log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     operation_type VARCHAR(50) NOT NULL,
     operation_parameters JSONB DEFAULT '{}'::jsonb,
@@ -340,20 +340,20 @@ CREATE TABLE generation_performance_logs (
 );
 
 -- Indexes for performance logs
-CREATE INDEX idx_generation_performance_logs_operation 
+CREATE INDEX idx_generation_performance_logs_operation
 ON generation_performance_logs(operation_type);
-CREATE INDEX idx_generation_performance_logs_timestamp 
+CREATE INDEX idx_generation_performance_logs_timestamp
 ON generation_performance_logs(timestamp);
-CREATE INDEX idx_generation_performance_logs_execution_time 
+CREATE INDEX idx_generation_performance_logs_execution_time
 ON generation_performance_logs(execution_time_ms);
-CREATE INDEX idx_generation_performance_logs_success 
+CREATE INDEX idx_generation_performance_logs_success
 ON generation_performance_logs(success);
 
 -- Views for common queries
 
 -- Player behavior summary view
-CREATE VIEW player_behavior_summary AS
-SELECT 
+CREATE OR REPLACE VIEW player_behavior_summary AS
+SELECT
     player_id,
     COUNT(*) as total_patterns,
     AVG(confidence_score) as avg_confidence,
@@ -363,8 +363,8 @@ FROM player_behavior_patterns
 GROUP BY player_id;
 
 -- Content discovery analytics view
-CREATE VIEW content_discovery_analytics AS
-SELECT 
+CREATE OR REPLACE VIEW content_discovery_analytics AS
+SELECT
     content_type,
     discovery_method,
     COUNT(*) as discovery_count,
@@ -376,8 +376,8 @@ WHERE discovered_at >= NOW() - INTERVAL '30 days'
 GROUP BY content_type, discovery_method;
 
 -- Quality trends view
-CREATE VIEW quality_trends AS
-SELECT 
+CREATE OR REPLACE VIEW quality_trends AS
+SELECT
     content_type,
     quality_dimension,
     DATE_TRUNC('day', measured_at) as measurement_date,
@@ -390,11 +390,11 @@ GROUP BY content_type, quality_dimension, DATE_TRUNC('day', measured_at)
 ORDER BY measurement_date;
 
 -- Generation efficiency view
-CREATE VIEW generation_efficiency AS
-SELECT 
+CREATE OR REPLACE VIEW generation_efficiency AS
+SELECT
     generation_system,
     COUNT(*) as total_generations,
-    AVG(generation_time_ms) as avg_generation_time,
+    AVG(average_generation_time_ms) as avg_generation_time,
     AVG(average_quality_score) as avg_quality,
     SUM(error_count) as total_errors,
     MAX(updated_at) as last_activity
@@ -435,9 +435,9 @@ RETURNS INTEGER AS $$
 DECLARE
     deleted_count INTEGER;
 BEGIN
-    DELETE FROM generation_performance_logs 
+    DELETE FROM generation_performance_logs
     WHERE timestamp < NOW() - (days_to_keep || ' days')::INTERVAL;
-    
+
     GET DIAGNOSTICS deleted_count = ROW_COUNT;
     RETURN deleted_count;
 END;
