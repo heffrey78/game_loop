@@ -124,7 +124,7 @@ class EnhancedInputProcessor(InputProcessor):
 
         # Try pattern matching for simple commands
         pattern_command, is_simple_command = self._try_pattern_matching(
-            normalized_input
+            normalized_input, game_context
         )
 
         # If pattern matching yields a definitive result for a simple command, use it
@@ -178,13 +178,14 @@ class EnhancedInputProcessor(InputProcessor):
             return pattern_command
 
     def _try_pattern_matching(
-        self, normalized_input: str
+        self, normalized_input: str, game_context: dict[str, Any] | None = None
     ) -> tuple[ParsedCommand, bool]:
         """
         Try to match input using pattern matching approach.
 
         Args:
             normalized_input: Normalized input text
+            game_context: Optional game context for pattern matching
 
         Returns:
             Tuple of (parsed command, whether it's a simple command)
@@ -192,8 +193,8 @@ class EnhancedInputProcessor(InputProcessor):
         # Detect if this is a simple command (e.g., single word commands like "look")
         is_simple_command = len(normalized_input.split()) <= 2
 
-        # Use the parent class's pattern matching
-        command = super()._match_command_pattern(normalized_input)
+        # Use the parent class's pattern matching with context
+        command = super()._match_command_pattern(normalized_input, game_context)
 
         return command, is_simple_command
 

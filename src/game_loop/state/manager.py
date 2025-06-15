@@ -136,7 +136,7 @@ class GameStateManager:
                     reception_id,
                     "Abandoned Reception Area",
                     "A dusty reception desk sits in this once-bustling office entrance.",  # noqa: E501
-                    "Fluorescent lights flicker weakly overhead, casting eerie shadows across the reception area. A thick layer of dust covers the once-polished desk where visitors would check in. Torn posters about workplace productivity hang crooked on the walls. The faint sound of a phone ringing somewhere deep in the building sends chills down your spine, though the lines should be long dead. Paper name tags are scattered on the floor, remnants of employees who disappeared without warning when the company mysteriously shut down.",  # noqa: E501
+                    "Fluorescent lights flicker weakly overhead, casting eerie shadows across the reception area. A thick layer of dust covers the once-polished desk where visitors would check in. Torn posters about workplace productivity hang crooked on the walls. The faint sound of a phone ringing somewhere deep in the building sends chills down your spine, though the lines should be long dead. Paper name tags are scattered on the floor, remnants of employees who disappeared without warning when the company mysteriously shut down. Behind the reception desk, you can see a corridor leading down toward what appears to be the main building lobby and the outside world. The distant sound of wind through broken windows suggests there might be a way out that direction.",  # noqa: E501
                     "indoor",
                     False,
                     "system",
@@ -155,7 +155,7 @@ class GameStateManager:
                     north_id,
                     "Executive Suite",
                     "Luxurious but abandoned offices of former executives.",
-                    "Unlike the rest of the office, these rooms once housed the company elites. Mahogany desks are now warped with moisture, and plush leather chairs are cracked and moldy. A large portrait of the CEO hangs on one wall, the eyes seemingly following you around the room. Someone has scratched out the face with what looks like fingernails. The calendar on the central desk is still open to the date of the 'incident.' Expensive pens have rolled into corners, and a half-empty bottle of whiskey sits on a credenza, its contents long evaporated. A newspaper clipping about 'experimental corporate wellness programs' lies partially burned in a wastepaper basket.",  # noqa: E501
+                    "Unlike the rest of the office, these rooms once housed the company elites. Mahogany desks are now warped with moisture, and plush leather chairs are cracked and moldy. A large portrait of the CEO hangs on one wall, the eyes seemingly following you around the room. Someone has scratched out the face with what looks like fingernails. The calendar on the central desk is still open to the date of the 'incident.' Expensive pens have rolled into corners, and a half-empty bottle of whiskey sits on a credenza, its contents long evaporated. A newspaper clipping about 'experimental corporate wellness programs' lies partially burned in a wastepaper basket. An executive washroom door stands ajar, revealing a stairwell access that leads to the upper floors of the building. Strange sounds echo from above - mechanical whirring and the occasional thud, as if something large is moving around up there.",  # noqa: E501
                     "indoor",
                     False,
                     "system",
@@ -174,7 +174,7 @@ class GameStateManager:
                     east_id,
                     "Server Room",
                     "Rows of old servers hum ominously in this cold room.",
-                    "The temperature drops noticeably as you enter the server room. Against all logic, some of the ancient servers are still running, blinking with cryptic patterns of lights. Thick cables snake across the floor like dormant serpents. The constant hum has an almost hypnotic quality, occasionally interrupted by clicks and whirs from machines that should have died years ago. A terminal screen flickers in the corner, displaying fragmented code and what might be employee records. One section of the wall has been torn open, revealing unusual modifications to the building's electrical system. Something about the arrangement of wires reminds you of a neural network, as if the building itself had been turned into some kind of crude brain.",  # noqa: E501
+                    "The temperature drops noticeably as you enter the server room. Against all logic, some of the ancient servers are still running, blinking with cryptic patterns of lights. Thick cables snake across the floor like dormant serpents. The constant hum has an almost hypnotic quality, occasionally interrupted by clicks and whirs from machines that should have died years ago. A terminal screen flickers in the corner, displaying fragmented code and what might be employee records. One section of the wall has been torn open, revealing unusual modifications to the building's electrical system. Something about the arrangement of wires reminds you of a neural network, as if the building itself had been turned into some kind of crude brain. A maintenance corridor behind the server racks leads downward, where you can hear the distant echo of footsteps and the hum of industrial equipment. The air currents from that direction carry the scent of motor oil and concrete, suggesting it leads to some kind of garage or loading area.",  # noqa: E501
                     "indoor",
                     False,
                     "system",
@@ -220,6 +220,65 @@ class GameStateManager:
                 )
                 logger.info(f"Created west location {west_id}")
 
+                # EXPANSION LOCATIONS - Adding natural expansion points
+
+                # Building Exit/Lobby - extends from Reception (down/exit direction)
+                exit_lobby_id = uuid4()
+                location_ids["exit_lobby"] = exit_lobby_id
+                await conn.execute(
+                    """
+                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, is_dynamic, created_by, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    """,
+                    exit_lobby_id,
+                    "Building Lobby",
+                    "A grand entrance lobby with revolving doors leading outside.",
+                    "This impressive lobby was designed to impress visitors with its marble floors and high ceilings. Multiple elevator banks line the walls, their brass call buttons now dark and unresponsive. The information directory lists dozens of companies that once occupied this building, but many names have been scratched out or covered with ominous warnings. Through the tall windows, you can see the parking garage and what appears to be an industrial district beyond. The revolving doors to the outside world tantalizingly close, but they seem to be locked or jammed. Emergency exit signs point toward stairwells that lead deeper into the building's basement levels. A maintenance corridor branches off toward what looks like utility areas and loading docks.",
+                    "indoor",
+                    False,
+                    "system",
+                    "{}",
+                )
+                logger.info(f"Created exit lobby {exit_lobby_id}")
+
+                # Stairwell/Upper Floors - extends from Executive Suite (up direction)
+                stairwell_id = uuid4()
+                location_ids["stairwell"] = stairwell_id
+                await conn.execute(
+                    """
+                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, is_dynamic, created_by, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    """,
+                    stairwell_id,
+                    "Emergency Stairwell",
+                    "A concrete stairwell with access to multiple floors.",
+                    "The emergency stairwell echoes with your footsteps as you climb the concrete steps. Floor numbers are painted on the walls, but some have been crossed out and replaced with cryptic symbols. This building apparently has more floors than seemed possible from the outside - the numbers go up to at least 15, though you started on what you thought was the ground floor. Windows on each landing have been painted black from the inside, blocking any view of the outside world. Warning signs are posted everywhere: 'AUTHORIZED PERSONNEL ONLY ABOVE FLOOR 7' and 'CONTAINMENT BREACH PROTOCOLS IN EFFECT.' The air grows colder as you go higher, and you can hear strange mechanical sounds coming from the floors above. A service corridor leads to what appears to be maintenance areas and possibly an industrial cooling system.",
+                    "indoor",
+                    False,
+                    "system",
+                    "{}",
+                )
+                logger.info(f"Created stairwell {stairwell_id}")
+
+                # Parking Garage - extends from Server Room (through a maintenance corridor)
+                parking_garage_id = uuid4()
+                location_ids["parking_garage"] = parking_garage_id
+                await conn.execute(
+                    """
+                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, is_dynamic, created_by, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    """,
+                    parking_garage_id,
+                    "Underground Parking Garage",
+                    "A dimly lit parking garage with abandoned vehicles.",
+                    "The underground parking garage stretches into darkness, filled with vehicles covered in years of dust. Most cars have their windows cracked or completely shattered, and some have been stripped of parts. The fluorescent lights flicker sporadically, casting dancing shadows between the concrete support pillars. Strange cable conduits run along the ceiling, connecting to junction boxes that weren't part of the original construction. Some vehicles appear to have been modified with unusual equipment - antennas, extra batteries, and electronics that don't belong in normal cars. At the far end, a ramp leads up toward what appears to be street level and an industrial district beyond. Loading dock doors line one wall, and you can see a freight elevator that might connect to upper levels of the building. The air smells of oil, rust, and something else - something organic and unpleasant.",
+                    "indoor",
+                    False,
+                    "system",
+                    "{}",
+                )
+                logger.info(f"Created parking garage {parking_garage_id}")
+
                 # Now add connections between locations
                 # Connect reception to all four directions
                 await self._create_bidirectional_connection(
@@ -233,6 +292,22 @@ class GameStateManager:
                 )
                 await self._create_bidirectional_connection(
                     conn, reception_id, west_id, "west", "east"
+                )
+
+                # EXPANSION CONNECTIONS
+                # Connect Reception to Building Lobby (exit direction)
+                await self._create_bidirectional_connection(
+                    conn, reception_id, exit_lobby_id, "exit", "enter"
+                )
+
+                # Connect Executive Suite to Stairwell (up direction)
+                await self._create_bidirectional_connection(
+                    conn, north_id, stairwell_id, "up", "down"
+                )
+
+                # Connect Server Room to Parking Garage (through maintenance corridor)
+                await self._create_bidirectional_connection(
+                    conn, east_id, parking_garage_id, "maintenance", "server"
                 )
 
                 # Add items to the world
@@ -407,6 +482,113 @@ class GameStateManager:
                     "document",
                     True,
                     west_id,
+                    "{}",
+                    "{}",
+                )
+
+                # EXPANSION LOCATION OBJECTS
+
+                # Building Lobby items
+                building_directory_id = uuid4()
+                await conn.execute(
+                    """
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    """,
+                    building_directory_id,
+                    "Building Directory",
+                    "A large directory listing all the companies in the building.",
+                    "The building directory is a massive board covered in company names and suite numbers. Most names have been scratched out or covered with graffiti, but you can make out: 'Monolith Corp - Floors 1-7,' 'Industrial Solutions Inc - Basement Levels,' 'Apex Research - Floors 8-15.' Someone has written 'THEY'RE ALL CONNECTED' across the top in red marker. At the bottom, recent additions include warnings: 'AVOID SUBLEVEL 3' and 'THE MACHINES IN THE GARAGE ARE STILL ACTIVE.'",
+                    "document",
+                    False,  # Too large to take
+                    exit_lobby_id,
+                    "{}",
+                    "{}",
+                )
+
+                broken_phone_id = uuid4()
+                await conn.execute(
+                    """
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    """,
+                    broken_phone_id,
+                    "Broken Emergency Phone",
+                    "A red emergency phone with its receiver dangling.",
+                    "The emergency phone's receiver hangs by its cord, swaying gently. When you pick it up, you hear not a dial tone but a faint whisper: 'The parking garage... level B3... they're still down there...' The voice cuts out with static. The phone's housing is cracked, and strange organic-looking growths have formed around the wiring, as if the building itself is trying to communicate.",
+                    "electronic",
+                    False,  # Mounted to wall
+                    exit_lobby_id,
+                    "{}",
+                    "{}",
+                )
+
+                # Stairwell items
+                warning_sign_id = uuid4()
+                await conn.execute(
+                    """
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    """,
+                    warning_sign_id,
+                    "Containment Warning Sign",
+                    "An official-looking warning sign about containment protocols.",
+                    "This laminated sign is posted prominently on the stairwell wall: 'CONTAINMENT BREACH PROTOCOL 7 IN EFFECT. AUTHORIZED PERSONNEL ONLY BEYOND THIS POINT. Any personnel experiencing: unusual fatigue, skin discoloration, or compulsive behaviors should report to Medical Level C immediately. Industrial cooling systems on upper floors may pose respiratory hazards. Maintenance crews report paranormal activity between floors 10-12.' The bottom of the sign has been torn off.",
+                    "document",
+                    True,
+                    stairwell_id,
+                    "{}",
+                    "{}",
+                )
+
+                maintenance_tool_id = uuid4()
+                await conn.execute(
+                    """
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    """,
+                    maintenance_tool_id,
+                    "Maintenance Wrench",
+                    "A heavy wrench left behind by maintenance staff.",
+                    "This industrial-grade wrench is larger than normal maintenance tools, designed for the building's specialized equipment. It's surprisingly heavy and warm to the touch. Etched along the handle are markings that don't look like standard industrial codes: strange symbols that hurt your eyes when you look at them directly. The metal has an unusual iridescent quality, as if it's been exposed to something that changed its molecular structure.",
+                    "tool",
+                    True,
+                    stairwell_id,
+                    "{}",
+                    "{}",
+                )
+
+                # Parking Garage items
+                modified_car_id = uuid4()
+                await conn.execute(
+                    """
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    """,
+                    modified_car_id,
+                    "Modified Vehicle",
+                    "A sedan covered with unusual electronic equipment.",
+                    "This ordinary sedan has been extensively modified with equipment that definitely wasn't factory-installed. Antenna arrays cover the roof, extra battery packs are visible through the windows, and cables run from the car into junction boxes mounted on the garage pillars. The license plate reads 'EXP-071.' A logbook on the dashboard records strange readings: 'Neural pattern detected - Subject 47 successfully integrated. Vehicle now responds to biological commands. Range: 2.7 miles from central server.' The seats have been replaced with something that looks disturbingly organic.",
+                    "vehicle",
+                    False,  # Too large to take
+                    parking_garage_id,
+                    "{}",
+                    "{}",
+                )
+
+                car_battery_id = uuid4()
+                await conn.execute(
+                    """
+                    INSERT INTO objects (id, name, short_desc, full_desc, object_type, is_takeable, location_id, properties_json, state_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    """,
+                    car_battery_id,
+                    "Industrial Battery",
+                    "A heavy-duty battery with unusual modifications.",
+                    "This isn't a normal car battery. It's much larger and heavier, with additional terminals and what appear to be biological components integrated into the casing. Fluid-filled tubes connect different sections, and the whole assembly pulses with a faint rhythm, almost like a heartbeat. A warning label reads: 'Prototype Bio-Electric Storage Unit - Handle with extreme caution. May cause neural interference within 10-foot radius.' The liquid inside glows faintly green.",
+                    "electronic",
+                    True,
+                    parking_garage_id,
                     "{}",
                     "{}",
                 )

@@ -1,0 +1,340 @@
+{# Quality Assessment Templates for Dynamic World Generation #}
+
+{# Template for assessing content quality #}
+{% macro content_quality_assessment_prompt(content, generation_context, quality_dimensions) -%}
+Assess the quality of the following generated content across multiple dimensions.
+
+## Content Details
+**Type**: {{ content.content_type | title }}
+**Name**: {{ content.content_data.name }}
+**Description**: {{ content.content_data.description }}
+
+{% if content.content_type == "location" %}
+**Theme**: {{ content.content_data.get('theme', 'Unspecified') }}
+**Atmosphere**: {{ content.content_data.get('atmosphere', 'Neutral') }}
+**Connections**: {{ content.content_data.get('connections', []) | length }}
+{% elif content.content_type == "npc" %}
+**Role**: {{ content.content_data.get('role', 'Unspecified') }}
+**Personality**: {{ content.content_data.get('personality', 'Neutral') }}
+**Dialogue Style**: {{ content.content_data.get('dialogue_style', 'Standard') }}
+{% elif content.content_type == "object" %}
+**Object Type**: {{ content.content_data.get('object_type', 'Unspecified') }}
+**Functionality**: {{ content.content_data.get('functionality', 'Decorative') }}
+**Rarity**: {{ content.content_data.get('rarity', 'Common') }}
+{% elif content.content_type == "connection" %}
+**Connection Type**: {{ content.content_data.get('connection_type', 'Unspecified') }}
+**Difficulty**: {{ content.content_data.get('difficulty', 'Medium') }}
+**Travel Time**: {{ content.content_data.get('travel_time', 'Unknown') }}
+{% endif %}
+
+## Generation Context
+- **Purpose**: {{ generation_context.get('generation_purpose', 'General') }}
+- **Player Preferences**: {{ generation_context.get('player_preferences', {}) }}
+- **World Theme**: {{ generation_context.get('world_theme', 'Fantasy') }}
+- **Location Context**: {{ generation_context.get('location_context', 'Standalone') }}
+
+## Quality Dimensions to Assess
+{% for dimension in quality_dimensions %}
+**{{ dimension.name | title }}** ({{ dimension.weight }}): {{ dimension.description }}
+{% endfor %}
+
+## Assessment Guidelines
+- Rate each dimension from 0.0 (poor) to 1.0 (excellent)
+- Consider both absolute quality and contextual appropriateness
+- Identify specific strengths and areas for improvement
+- Suggest concrete improvements where quality is lacking
+
+## Response Format
+```json
+{
+  "quality_scores": {
+    "consistency": 0.85,
+    "creativity": 0.75,
+    "relevance": 0.90,
+    "engagement": 0.80,
+    "technical": 0.95
+  },
+  "overall_quality": 0.85,
+  "strengths": [
+    "Excellent thematic consistency with world",
+    "Vivid and engaging description"
+  ],
+  "weaknesses": [
+    "Could use more unique elements",
+    "Description might be too verbose"
+  ],
+  "improvement_suggestions": [
+    "Add one distinctive feature to enhance memorability",
+    "Condense description while maintaining vivid imagery"
+  ],
+  "contextual_assessment": {
+    "fits_generation_purpose": true,
+    "matches_player_preferences": 0.8,
+    "world_integration_score": 0.9
+  }
+}
+```
+{%- endmacro %}
+
+{# Template for comparative quality analysis #}
+{% macro comparative_quality_prompt(content_batch, quality_standards, benchmark_content) -%}
+Compare the quality of a batch of generated content against established standards and benchmarks.
+
+## Content Batch
+{% for content in content_batch %}
+**{{ loop.index }}. {{ content.content_type | title }}: {{ content.content_data.name }}**
+- Generated: {{ content.generated_at.strftime("%Y-%m-%d %H:%M") }}
+- Individual Quality: {{ "%.2f" | format(content.quality_score) if content.quality_score else "Not assessed" }}
+- Generation Time: {{ content.generation_metadata.get('generation_time', 'Unknown') }}
+{% endfor %}
+
+## Quality Standards
+{% for standard, threshold in quality_standards.items() %}
+- **{{ standard | title }}**: Minimum {{ "%.2f" | format(threshold) }}
+{% endfor %}
+
+## Benchmark Content (High Quality Examples)
+{% for benchmark in benchmark_content %}
+**{{ benchmark.content_type | title }}: {{ benchmark.name }}**
+- Quality Score: {{ "%.2f" | format(benchmark.quality_score) }}
+- Key Strengths: {{ benchmark.strengths | join(", ") }}
+{% endfor %}
+
+## Comparative Analysis Goals
+1. Identify content that meets/exceeds quality standards
+2. Detect patterns in quality variations across content types
+3. Compare against high-quality benchmarks
+4. Recommend batch-level improvements
+
+## Response Format
+```json
+{
+  "batch_analysis": {
+    "average_quality": 0.78,
+    "quality_range": {"min": 0.65, "max": 0.92},
+    "standards_compliance": {
+      "consistency": {"passed": 8, "failed": 2, "threshold": 0.7},
+      "creativity": {"passed": 6, "failed": 4, "threshold": 0.6},
+      "engagement": {"passed": 9, "failed": 1, "threshold": 0.75}
+    }
+  },
+  "quality_patterns": [
+    {
+      "pattern": "NPCs consistently score higher than objects",
+      "impact": "May indicate object generation needs improvement"
+    }
+  ],
+  "benchmark_comparison": {
+    "above_benchmark": ["content_id_1", "content_id_3"],
+    "below_benchmark": ["content_id_2", "content_id_5"],
+    "improvement_gaps": {
+      "creativity": 0.15,
+      "engagement": 0.08
+    }
+  },
+  "batch_improvements": [
+    "Enhance object generation templates for better creativity",
+    "Add more engagement elements to low-scoring items"
+  ]
+}
+```
+{%- endmacro %}
+
+{# Template for player satisfaction correlation #}
+{% macro satisfaction_correlation_prompt(content_quality_data, player_satisfaction_data, interaction_patterns) -%}
+Analyze the correlation between content quality metrics and player satisfaction to improve quality assessment.
+
+## Content Quality Data
+{% for item in content_quality_data %}
+**{{ item.content_type | title }}: {{ item.name }}**
+- Quality Scores: {{ item.quality_scores }}
+- Generation Method: {{ item.generation_method }}
+- Creation Date: {{ item.created_at.strftime("%Y-%m-%d") }}
+{% endfor %}
+
+## Player Satisfaction Data
+{% for satisfaction in player_satisfaction_data %}
+**Content: {{ satisfaction.content_name }}**
+- Player Rating: {{ satisfaction.rating }}/5
+- Interaction Duration: {{ satisfaction.interaction_duration }}s
+- Completion Status: {{ satisfaction.completion_status }}
+- Feedback: "{{ satisfaction.feedback_text[:100] if satisfaction.feedback_text else 'No feedback' }}"
+{% endfor %}
+
+## Interaction Patterns
+{% for pattern in interaction_patterns %}
+- **{{ pattern.content_type }}**: {{ pattern.interaction_count }} interactions, {{ "%.1f" | format(pattern.avg_satisfaction) }} avg satisfaction
+{% endfor %}
+
+## Analysis Objectives
+1. Identify which quality dimensions best predict player satisfaction
+2. Find quality thresholds that correlate with high satisfaction
+3. Detect quality metrics that don't align with player preferences
+4. Recommend quality assessment improvements
+
+## Response Format
+```json
+{
+  "correlation_analysis": {
+    "strongest_predictors": [
+      {"dimension": "engagement", "correlation": 0.87},
+      {"dimension": "relevance", "correlation": 0.76}
+    ],
+    "weakest_predictors": [
+      {"dimension": "technical", "correlation": 0.23}
+    ],
+    "satisfaction_thresholds": {
+      "high_satisfaction": {"overall_quality": 0.8, "engagement": 0.85},
+      "acceptable_satisfaction": {"overall_quality": 0.65, "engagement": 0.7}
+    }
+  },
+  "quality_insights": [
+    "Technical quality has minimal impact on player satisfaction",
+    "Engagement score is the strongest predictor of player enjoyment",
+    "Players prefer content with relevance score above 0.75"
+  ],
+  "assessment_improvements": [
+    "Increase weight of engagement dimension in overall quality",
+    "Reduce emphasis on technical perfection",
+    "Add player experience prediction to quality assessment"
+  ],
+  "generation_recommendations": [
+    "Prioritize engagement over technical complexity",
+    "Focus on player-relevant content generation",
+    "Test content with target audience before deployment"
+  ]
+}
+```
+{%- endmacro %}
+
+{# Template for quality trend analysis #}
+{% macro quality_trend_analysis_prompt(historical_quality_data, system_changes, performance_metrics) -%}
+Analyze quality trends over time to identify improvements and degradations in the generation system.
+
+## Historical Quality Data
+{% for period in historical_quality_data %}
+**{{ period.period_name }}** ({{ period.start_date }} to {{ period.end_date }})
+- Average Quality: {{ "%.2f" | format(period.avg_quality) }}
+- Content Generated: {{ period.content_count }}
+- Top Performing: {{ period.top_content_type }} ({{ "%.2f" | format(period.top_score) }})
+- Lowest Performing: {{ period.bottom_content_type }} ({{ "%.2f" | format(period.bottom_score) }})
+{% endfor %}
+
+## System Changes
+{% for change in system_changes %}
+**{{ change.date }}**: {{ change.description }}
+- Type: {{ change.change_type }}
+- Affected Systems: {{ change.affected_systems | join(", ") }}
+- Expected Impact: {{ change.expected_impact }}
+{% endfor %}
+
+## Performance Metrics
+{% for metric in performance_metrics %}
+- **{{ metric.name }}**: {{ metric.value }} ({{ metric.trend }})
+{% endfor %}
+
+## Trend Analysis Goals
+1. Identify overall quality trends (improving/declining/stable)
+2. Correlate system changes with quality impacts
+3. Predict future quality trajectories
+4. Recommend proactive quality measures
+
+## Response Format
+```json
+{
+  "trend_analysis": {
+    "overall_trend": "improving",
+    "trend_strength": 0.65,
+    "quality_velocity": 0.02,
+    "key_inflection_points": [
+      {
+        "date": "2024-01-15",
+        "change": "Template system upgrade",
+        "impact": "+0.15 quality improvement"
+      }
+    ]
+  },
+  "performance_correlations": [
+    {
+      "metric": "generation_time",
+      "correlation_with_quality": -0.23,
+      "insight": "Faster generation slightly reduces quality"
+    }
+  ],
+  "quality_predictions": {
+    "next_week": {"expected_quality": 0.82, "confidence": 0.75},
+    "next_month": {"expected_quality": 0.85, "confidence": 0.60},
+    "risk_factors": ["increasing generation volume", "template fatigue"]
+  },
+  "recommendations": [
+    "Monitor template diversity to prevent quality plateaus",
+    "Invest in generation speed optimizations that preserve quality",
+    "Implement early warning system for quality degradation"
+  ]
+}
+```
+{%- endmacro %}
+
+{# Template for real-time quality monitoring #}
+{% macro realtime_quality_monitoring_prompt(recent_content, quality_alerts, system_status) -%}
+Monitor real-time quality metrics and provide immediate feedback for quality control.
+
+## Recent Content (Last Hour)
+{% for content in recent_content %}
+**{{ content.timestamp.strftime("%H:%M") }} - {{ content.content_type | title }}**: {{ content.name }}
+- Quality: {{ "%.2f" | format(content.quality_score) }}
+- Generation Time: {{ content.generation_time }}ms
+- Issues: {{ content.detected_issues | length }} detected
+{% endfor %}
+
+## Quality Alerts
+{% for alert in quality_alerts %}
+**{{ alert.severity | upper }}** - {{ alert.timestamp.strftime("%H:%M") }}
+- Issue: {{ alert.description }}
+- Affected Content: {{ alert.content_count }} items
+- Recommended Action: {{ alert.recommended_action }}
+{% endfor %}
+
+## System Status
+- **Generation Queue**: {{ system_status.queue_size }} items
+- **Active Generators**: {{ system_status.active_generators | join(", ") }}
+- **Average Quality (1h)**: {{ "%.2f" | format(system_status.avg_quality_1h) }}
+- **System Health**: {{ system_status.health_status }}
+
+## Monitoring Objectives
+1. Detect quality degradation in real-time
+2. Identify immediate corrective actions
+3. Prevent low-quality content from reaching players
+4. Maintain system performance standards
+
+## Response Format
+```json
+{
+  "quality_status": {
+    "current_level": "excellent|good|acceptable|concerning|poor",
+    "trend_direction": "improving|stable|declining",
+    "immediate_risk": "none|low|medium|high",
+    "action_required": true
+  },
+  "immediate_actions": [
+    {
+      "priority": "high",
+      "action": "Review recent NPC generation parameters",
+      "reason": "NPC quality dropped below threshold",
+      "timeline": "immediate"
+    }
+  ],
+  "quality_metrics": {
+    "generation_success_rate": 0.95,
+    "average_quality_score": 0.78,
+    "quality_consistency": 0.82,
+    "player_satisfaction_prediction": 0.75
+  },
+  "preventive_measures": [
+    "Increase quality thresholds for next 2 hours",
+    "Enable enhanced validation for object generation",
+    "Queue high-risk content for manual review"
+  ]
+}
+```
+{%- endmacro %}

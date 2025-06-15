@@ -1,0 +1,279 @@
+{# World Generation Coordination Templates #}
+
+{# Template for coordinating multiple content generation #}
+{% macro coordinate_generation_prompt(opportunities, player_context, world_state) -%}
+You are coordinating the generation of multiple pieces of content for a text adventure game world. Your task is to ensure all generated content works together cohesively and maintains world consistency.
+
+## Generation Context
+**Player Location**: {{ player_context.current_location.name if player_context.current_location else "Unknown" }}
+**Player Theme Preference**: {{ player_context.preferred_themes | join(", ") if player_context.preferred_themes else "Balanced" }}
+**World Theme**: {{ world_state.global_flags.theme if world_state.global_flags.theme else "Fantasy" }}
+**Current World Mood**: {{ world_state.global_flags.mood if world_state.global_flags.mood else "Neutral" }}
+
+## Content to Generate
+{% for opportunity in opportunities %}
+**{{ loop.index }}. {{ opportunity.content_type | title }}**
+- Opportunity Score: {{ "%.2f" | format(opportunity.opportunity_score) }}
+- Context: {{ opportunity.generation_context.get('purpose', 'General enhancement') }}
+- Requirements: {{ opportunity.prerequisites | join(", ") if opportunity.prerequisites else "None" }}
+{% endfor %}
+
+## Coordination Guidelines
+1. **Thematic Consistency**: Ensure all content shares consistent themes and atmosphere
+2. **Narrative Coherence**: Content should feel like it belongs in the same world
+3. **Player Engagement**: Align with player preferences while introducing variety
+4. **World Balance**: Maintain appropriate difficulty and reward distribution
+5. **Cultural Consistency**: Respect established world lore and cultural elements
+
+## Response Format
+Provide a coordination plan in JSON format:
+```json
+{
+  "generation_strategy": "sequential|parallel|mixed",
+  "theme_override": "optional unified theme",
+  "content_priorities": [
+    {
+      "content_type": "type",
+      "priority": 1.0,
+      "coordination_notes": "specific guidance"
+    }
+  ],
+  "consistency_requirements": {
+    "theme": "requirement description",
+    "mood": "requirement description",
+    "difficulty": "requirement description"
+  },
+  "success_criteria": [
+    "criterion 1",
+    "criterion 2"
+  ]
+}
+```
+{%- endmacro %}
+
+{# Template for quality assessment coordination #}
+{% macro quality_assessment_prompt(generated_content, coordination_plan) -%}
+Assess the quality and coordination of the following generated content batch.
+
+## Generated Content
+{% for content in generated_content %}
+**{{ loop.index }}. {{ content.content_type | title }}: {{ content.content_data.name }}**
+- Description: {{ content.content_data.description[:100] }}...
+- Theme: {{ content.generation_metadata.get('theme', 'Unknown') }}
+- Quality Score: {{ "%.2f" | format(content.quality_score) if content.quality_score else "Not assessed" }}
+{% endfor %}
+
+## Original Coordination Plan
+- Strategy: {{ coordination_plan.generation_strategy }}
+- Theme Override: {{ coordination_plan.theme_override if coordination_plan.theme_override else "None" }}
+- Success Criteria: {{ coordination_plan.success_criteria | join(", ") }}
+
+## Assessment Criteria
+1. **Thematic Consistency** (0-1): Do all pieces share consistent themes?
+2. **Narrative Coherence** (0-1): Do pieces tell a cohesive story together?
+3. **Quality Harmony** (0-1): Are quality levels consistent across pieces?
+4. **Player Relevance** (0-1): Does content match player interests and context?
+5. **World Integration** (0-1): Does content fit naturally into the existing world?
+
+## Response Format
+```json
+{
+  "overall_coordination_score": 0.85,
+  "dimension_scores": {
+    "thematic_consistency": 0.9,
+    "narrative_coherence": 0.8,
+    "quality_harmony": 0.85,
+    "player_relevance": 0.9,
+    "world_integration": 0.8
+  },
+  "coordination_issues": [
+    "issue description if any"
+  ],
+  "improvement_suggestions": [
+    "suggestion for future coordination"
+  ],
+  "success_criteria_met": [
+    "criterion 1: met/not met with explanation"
+  ]
+}
+```
+{%- endmacro %}
+
+{# Template for player behavior analysis #}
+{% macro player_analysis_prompt(player_actions, content_interactions, preferences) -%}
+Analyze the player's behavior patterns to inform future content generation.
+
+## Recent Player Actions
+{% for action in player_actions %}
+- **{{ action.timestamp.strftime("%H:%M") }}**: {{ action.command }} - {{ action.outcome }}
+{% endfor %}
+
+## Content Interactions
+{% for interaction in content_interactions %}
+- **{{ interaction.content_type }}**: {{ interaction.interaction_type }} (Satisfaction: {{ interaction.satisfaction_score }}/5)
+{% endfor %}
+
+## Current Preferences
+{% for category, value in preferences.items() %}
+- **{{ category | title }}**: {{ "%.2f" | format(value) }}
+{% endfor %}
+
+## Analysis Goals
+1. Identify preferred content types and interaction styles
+2. Detect engagement patterns and satisfaction drivers
+3. Predict likely interests for future content
+4. Recommend generation priorities
+
+## Response Format
+```json
+{
+  "behavior_profile": {
+    "exploration_style": "thorough|direct|random",
+    "interaction_preference": "social|combat|puzzle|balanced",
+    "content_preferences": {
+      "locations": 0.8,
+      "npcs": 0.6,
+      "objects": 0.7,
+      "connections": 0.5
+    },
+    "engagement_drivers": [
+      "mystery", "discovery", "social_interaction"
+    ]
+  },
+  "generation_recommendations": [
+    {
+      "content_type": "npc",
+      "priority": 0.9,
+      "reasoning": "High social interaction preference"
+    }
+  ],
+  "satisfaction_predictions": {
+    "next_npc": 0.85,
+    "next_location": 0.7,
+    "next_object": 0.6
+  }
+}
+```
+{%- endmacro %}
+
+{# Template for content discovery optimization #}
+{% macro discovery_optimization_prompt(content_data, discovery_patterns, player_context) -%}
+Analyze content discovery patterns and suggest optimizations for better player engagement.
+
+## Content Analysis
+{% for content in content_data %}
+**{{ content.content_type | title }}: {{ content.name }}**
+- Discovery Rate: {{ "%.1f" | format(content.discovery_rate * 100) }}%
+- Average Discovery Time: {{ content.avg_discovery_time }} seconds
+- Player Satisfaction: {{ "%.1f" | format(content.avg_satisfaction) }}/5
+- Common Discovery Method: {{ content.primary_discovery_method }}
+{% endfor %}
+
+## Discovery Patterns
+{% for pattern in discovery_patterns %}
+- **{{ pattern.content_type | title }}**: {{ pattern.success_rate | round(1) }}% success rate, {{ pattern.avg_time }} avg time
+{% endfor %}
+
+## Player Context
+- **Exploration Style**: {{ player_context.exploration_style }}
+- **Discovery Thoroughness**: {{ "%.1f" | format(player_context.discovery_thoroughness * 100) }}%
+- **Preferred Discovery Methods**: {{ player_context.preferred_discovery_methods | join(", ") }}
+
+## Optimization Goals
+1. Improve discovery rates for underperforming content
+2. Reduce discovery times for overly hidden content
+3. Enhance player satisfaction through better discovery experiences
+4. Adapt discovery difficulty to player skill level
+
+## Response Format
+```json
+{
+  "discovery_analysis": {
+    "well_performing_content": [
+      {"type": "npc", "reason": "high satisfaction and reasonable discovery time"}
+    ],
+    "problematic_content": [
+      {"type": "object", "issue": "too hidden", "discovery_rate": 0.3}
+    ]
+  },
+  "optimization_recommendations": [
+    {
+      "content_type": "object",
+      "current_issue": "low discovery rate",
+      "suggested_changes": [
+        "Add more visual cues",
+        "Reduce hiding complexity"
+      ],
+      "expected_improvement": "30% increase in discovery rate"
+    }
+  ],
+  "player_specific_adjustments": {
+    "difficulty_adjustment": "easier|harder|maintain",
+    "discovery_hints": "more|fewer|adaptive",
+    "preferred_methods": ["exploration", "hints"]
+  }
+}
+```
+{%- endmacro %}
+
+{# Template for generation failure recovery #}
+{% macro generation_recovery_prompt(failed_request, error_context, fallback_options) -%}
+A content generation request has failed. Analyze the failure and recommend a recovery strategy.
+
+## Failed Request
+- **Content Type**: {{ failed_request.content_type }}
+- **Generation Context**: {{ failed_request.generation_context }}
+- **Priority**: {{ failed_request.priority }}
+- **Dependencies**: {{ failed_request.dependencies | join(", ") if failed_request.dependencies else "None" }}
+
+## Failure Details
+- **Error Type**: {{ error_context.error_type }}
+- **Error Message**: {{ error_context.error_message }}
+- **Failure Stage**: {{ error_context.failure_stage }}
+- **Previous Attempts**: {{ error_context.retry_count }}
+
+## Available Recovery Options
+{% for option in fallback_options %}
+- **{{ option.name }}**: {{ option.description }}
+  - Complexity: {{ option.complexity }}
+  - Success Probability: {{ "%.1f" | format(option.success_probability * 100) }}%
+{% endfor %}
+
+## Recovery Goals
+1. Minimize impact on player experience
+2. Maintain world consistency and quality
+3. Learn from failure to prevent recurrence
+4. Provide acceptable alternative content if needed
+
+## Response Format
+```json
+{
+  "recovery_strategy": {
+    "primary_approach": "retry|fallback|skip|manual",
+    "reasoning": "explanation of choice",
+    "modifications": [
+      "specific changes to make for retry"
+    ]
+  },
+  "fallback_content": {
+    "type": "simple|template|cached",
+    "description": "basic fallback description",
+    "quality_estimate": 0.6
+  },
+  "failure_analysis": {
+    "root_cause": "identified cause",
+    "prevention_measures": [
+      "measure to prevent similar failures"
+    ],
+    "system_improvements": [
+      "suggested system enhancement"
+    ]
+  },
+  "impact_assessment": {
+    "player_experience": "minimal|moderate|significant",
+    "world_consistency": "maintained|slightly_affected|compromised",
+    "generation_pipeline": "unaffected|slowed|blocked"
+  }
+}
+```
+{%- endmacro %}

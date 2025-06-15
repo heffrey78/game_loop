@@ -80,6 +80,7 @@ class InputProcessor:
             "west": ["west", "w", "go west"],
             "up": ["up", "u", "go up"],
             "down": ["down", "d", "go down"],
+            # Note: "exit" is handled specially - it can be movement or quit depending on context
         }
 
         # Flattened list of all movement command variants
@@ -133,7 +134,7 @@ class InputProcessor:
             )
 
         # Try to match to known command patterns
-        return self._match_command_pattern(normalized_input)
+        return self._match_command_pattern(normalized_input, game_context)
 
     async def process(
         self, user_input: str, context: dict[str, Any] | None = None
@@ -307,12 +308,13 @@ class InputProcessor:
         """
         return " ".join(user_input.lower().strip().split())
 
-    def _match_command_pattern(self, input_text: str) -> ParsedCommand:
+    def _match_command_pattern(self, input_text: str, game_context: dict[str, Any] | None = None) -> ParsedCommand:
         """
         Match the input text against known command patterns.
 
         Args:
             input_text: The normalized input text
+            game_context: Optional game context for contextual decisions
 
         Returns:
             A ParsedCommand object representing the processed input
@@ -336,14 +338,25 @@ class InputProcessor:
         if input_text in self.help_commands:
             return ParsedCommand(command_type=CommandType.HELP, action="help")
 
-        # Check for quit commands
-        if input_text in self.quit_commands:
+        # Check for quit commands - but skip "exit" for now as it might be a movement
+        if input_text in self.quit_commands and input_text != "exit":
             return ParsedCommand(command_type=CommandType.QUIT, action="quit")
 
         # Check for more complex commands
         complex_command = self._parse_complex_command(input_text)
         if complex_command:
             return complex_command
+            
+        # Special handling for "exit" - check if it's a movement direction
+        if input_text == "exit":
+            # Check if "exit" is a valid movement direction in current context
+            if self._is_exit_a_valid_direction(game_context):
+                return ParsedCommand(
+                    command_type=CommandType.MOVEMENT, action="go", subject="exit"
+                )
+            else:
+                # Otherwise treat it as a quit command
+                return ParsedCommand(command_type=CommandType.QUIT, action="quit")
 
         # Default to unknown command
         return ParsedCommand(
@@ -527,6 +540,44 @@ class InputProcessor:
                 return remaining, None
 
         return None, None
+
+    def _is_exit_a_valid_direction(self, game_context: dict[str, Any] | None = None) -> bool:
+        """
+        Check if 'exit' is a valid movement direction in the current context.
+        
+        Args:
+            game_context: Optional game context to check
+        
+        Returns:
+            True if 'exit' is a valid direction, False otherwise
+        """
+        # If context is provided, use it
+        if game_context and "connections" in game_context:
+            return "exit" in game_context["connections"]
+            
+        # If we don't have a game state manager, we can't check context
+        if not self.game_state_manager:
+            return False
+            
+        try:
+            # Get current game context synchronously
+            import asyncio
+            loop = asyncio.new_event_loop()
+            try:
+                context = loop.run_until_complete(self._get_current_context())
+            finally:
+                loop.close()
+                
+            # Check if we have connections in the context
+            if "connections" in context and context["connections"]:
+                # Check if "exit" is one of the available directions
+                return "exit" in context["connections"]
+                
+        except Exception:
+            # If we can't get context, assume exit is not a direction
+            pass
+            
+        return False
 
     def generate_command_suggestions(self, partial_input: str) -> list[str]:
         """

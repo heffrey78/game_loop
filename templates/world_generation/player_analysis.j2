@@ -1,0 +1,406 @@
+{# Player Analysis Templates for Dynamic World Generation #}
+
+{# Template for analyzing player behavior patterns #}
+{% macro player_behavior_analysis_prompt(action_history, interaction_data, session_metrics) -%}
+Analyze player behavior patterns to inform intelligent content generation and world adaptation.
+
+## Player Action History (Last {{ action_history | length }} actions)
+{% for action in action_history %}
+**{{ action.timestamp.strftime("%H:%M") }}**: {{ action.command }}
+- Location: {{ action.location_name }}
+- Outcome: {{ action.outcome }}
+- Duration: {{ action.duration }}s
+- Success: {{ "Yes" if action.success else "No" }}
+{% endfor %}
+
+## Content Interaction Data
+{% for interaction in interaction_data %}
+**{{ interaction.content_type | title }}**: {{ interaction.content_name }}
+- Interaction Type: {{ interaction.interaction_type }}
+- Duration: {{ interaction.duration }}s
+- Satisfaction: {{ interaction.satisfaction_score }}/5
+- Outcome: {{ interaction.outcome }}
+- Repeated: {{ "Yes" if interaction.repeat_count > 1 else "No" }}
+{% endfor %}
+
+## Session Metrics
+- **Total Play Time**: {{ session_metrics.total_duration }} minutes
+- **Actions Per Minute**: {{ "%.1f" | format(session_metrics.actions_per_minute) }}
+- **Locations Visited**: {{ session_metrics.unique_locations }}
+- **Content Discovered**: {{ session_metrics.content_discovered }}
+- **Quest Progress**: {{ session_metrics.quest_completion_rate }}%
+
+## Analysis Objectives
+1. Identify player's preferred activities and content types
+2. Determine exploration and interaction patterns
+3. Assess engagement levels and satisfaction drivers
+4. Predict future interests and content needs
+
+## Response Format
+```json
+{
+  "behavior_profile": {
+    "play_style": "explorer|achiever|socializer|killer",
+    "exploration_pattern": "systematic|random|goal_directed",
+    "interaction_preference": {
+      "npcs": 0.8,
+      "objects": 0.6,
+      "locations": 0.9,
+      "quests": 0.7
+    },
+    "engagement_indicators": {
+      "session_length": "long|medium|short",
+      "action_frequency": "high|medium|low",
+      "content_thoroughness": 0.75
+    }
+  },
+  "discovered_patterns": [
+    {
+      "pattern": "Prefers detailed location exploration",
+      "evidence": "Spends 3+ minutes in each new location",
+      "confidence": 0.85
+    },
+    {
+      "pattern": "Avoids complex object interactions",
+      "evidence": "Skips container objects, prefers simple items",
+      "confidence": 0.72
+    }
+  ],
+  "content_preferences": {
+    "themes": {"fantasy": 0.9, "mystery": 0.7, "urban": 0.3},
+    "difficulty": 0.6,
+    "narrative_depth": 0.8,
+    "world_complexity": 0.7
+  },
+  "generation_recommendations": [
+    {
+      "content_type": "location",
+      "priority": 0.9,
+      "characteristics": ["rich_description", "exploration_rewards"],
+      "reasoning": "Player shows strong location exploration preference"
+    }
+  ]
+}
+```
+{%- endmacro %}
+
+{# Template for predicting player interests #}
+{% macro interest_prediction_prompt(player_profile, current_context, available_content_types) -%}
+Predict player interests based on their profile and current game context to guide content generation.
+
+## Player Profile
+**Play Style**: {{ player_profile.play_style }}
+**Experience Level**: {{ player_profile.experience_level }}
+**Preferred Themes**: {{ player_profile.preferred_themes | join(", ") }}
+**Difficulty Preference**: {{ "%.1f" | format(player_profile.difficulty_preference) }}/1.0
+**Social Interaction**: {{ "%.1f" | format(player_profile.social_preference) }}/1.0
+
+## Current Context
+- **Current Location**: {{ current_context.location_name }} ({{ current_context.location_theme }})
+- **Recent Activities**: {{ current_context.recent_activities | join(", ") }}
+- **Time in Session**: {{ current_context.session_duration }} minutes
+- **Current Goals**: {{ current_context.active_goals | join(", ") if current_context.active_goals else "None active" }}
+- **World State**: {{ current_context.world_flags }}
+
+## Available Content Types
+{% for content_type in available_content_types %}
+- **{{ content_type.name }}**: {{ content_type.description }}
+  - Generation Complexity: {{ content_type.complexity }}
+  - Player Impact: {{ content_type.impact_level }}
+{% endfor %}
+
+## Prediction Objectives
+1. Rank content types by predicted player interest
+2. Identify optimal timing for content introduction
+3. Suggest content characteristics likely to engage player
+4. Predict player satisfaction with different content options
+
+## Response Format
+```json
+{
+  "interest_predictions": [
+    {
+      "content_type": "npc",
+      "interest_score": 0.85,
+      "confidence": 0.78,
+      "reasoning": [
+        "Player has high social interaction preference",
+        "Current location supports NPC presence",
+        "Player recently asked about local inhabitants"
+      ],
+      "optimal_characteristics": [
+        "knowledgeable about local area",
+        "friendly disposition",
+        "quest-giving potential"
+      ]
+    },
+    {
+      "content_type": "hidden_object",
+      "interest_score": 0.72,
+      "confidence": 0.65,
+      "reasoning": [
+        "Player shows thorough exploration behavior",
+        "Enjoys discovery-based rewards"
+      ],
+      "optimal_characteristics": [
+        "discovery-based reveal",
+        "meaningful reward",
+        "lore connection"
+      ]
+    }
+  ],
+  "timing_recommendations": {
+    "immediate": ["npc"],
+    "short_term": ["hidden_object", "connection"],
+    "medium_term": ["location"],
+    "avoid_now": ["complex_puzzle"]
+  },
+  "engagement_optimization": {
+    "introduce_gradually": true,
+    "provide_clear_value": true,
+    "align_with_goals": true,
+    "respect_pacing": true
+  },
+  "satisfaction_predictions": {
+    "npc_interaction": 0.85,
+    "object_discovery": 0.75,
+    "new_location": 0.68,
+    "quest_content": 0.82
+  }
+}
+```
+{%- endmacro %}
+
+{# Template for adaptive difficulty assessment #}
+{% macro adaptive_difficulty_prompt(player_performance, challenge_history, current_content_difficulty) -%}
+Assess and recommend adaptive difficulty adjustments based on player performance and engagement.
+
+## Player Performance Metrics
+{% for metric in player_performance %}
+**{{ metric.category }}**:
+- Success Rate: {{ "%.1f" | format(metric.success_rate * 100) }}%
+- Average Completion Time: {{ metric.avg_completion_time }}s
+- Retry Frequency: {{ metric.retry_frequency }}
+- Help Requests: {{ metric.help_requests }}
+{% endfor %}
+
+## Challenge History
+{% for challenge in challenge_history %}
+**{{ challenge.type }}** ({{ challenge.difficulty }}/10):
+- Outcome: {{ challenge.outcome }}
+- Time Taken: {{ challenge.completion_time }}s
+- Player Satisfaction: {{ challenge.satisfaction }}/5
+- Attempts: {{ challenge.attempts }}
+{% endfor %}
+
+## Current Content Difficulty
+- **Overall Level**: {{ current_content_difficulty.overall }}/10
+- **Combat**: {{ current_content_difficulty.combat }}/10
+- **Puzzles**: {{ current_content_difficulty.puzzles }}/10
+- **Social**: {{ current_content_difficulty.social }}/10
+- **Exploration**: {{ current_content_difficulty.exploration }}/10
+
+## Assessment Objectives
+1. Determine if current difficulty is appropriately challenging
+2. Identify areas where difficulty should be adjusted
+3. Predict optimal difficulty for maximum engagement
+4. Recommend specific difficulty modifications
+
+## Response Format
+```json
+{
+  "difficulty_assessment": {
+    "current_appropriateness": "too_easy|just_right|too_hard",
+    "engagement_level": 0.75,
+    "frustration_indicators": ["frequent_retries", "help_seeking"],
+    "flow_state_indicators": ["consistent_progress", "sustained_engagement"]
+  },
+  "performance_analysis": {
+    "strongest_areas": [
+      {"skill": "exploration", "performance": 0.9, "confidence": "high"}
+    ],
+    "growth_areas": [
+      {"skill": "puzzles", "performance": 0.4, "needs_support": true}
+    ],
+    "optimal_challenge_level": 0.7
+  },
+  "difficulty_recommendations": {
+    "immediate_adjustments": [
+      {
+        "category": "puzzles",
+        "current": 6,
+        "recommended": 4,
+        "reasoning": "Player struggling, reduce to build confidence"
+      }
+    ],
+    "gradual_progressions": [
+      {
+        "category": "exploration",
+        "progression": "increase by 0.5 every 3 successful completions",
+        "target": 8
+      }
+    ]
+  },
+  "engagement_optimization": {
+    "provide_hints": true,
+    "offer_alternatives": true,
+    "celebrate_progress": true,
+    "maintain_variety": true
+  }
+}
+```
+{%- endmacro %}
+
+{# Template for session pacing analysis #}
+{% macro session_pacing_analysis_prompt(session_timeline, energy_levels, content_transitions) -%}
+Analyze session pacing and energy levels to optimize content introduction timing and flow.
+
+## Session Timeline
+{% for event in session_timeline %}
+**{{ event.timestamp.strftime("%H:%M") }}** - {{ event.event_type }}:
+- Activity: {{ event.description }}
+- Duration: {{ event.duration }}s
+- Energy Impact: {{ event.energy_change }}
+- Player Response: {{ event.player_response }}
+{% endfor %}
+
+## Energy Level Tracking
+{% for reading in energy_levels %}
+**{{ reading.timestamp.strftime("%H:%M") }}**: {{ reading.energy_level }}/10
+- Indicators: {{ reading.indicators | join(", ") }}
+- Trend: {{ reading.trend }}
+- Predicted Next: {{ reading.predicted_next }}
+{% endfor %}
+
+## Content Transitions
+{% for transition in content_transitions %}
+**{{ transition.from_type }} → {{ transition.to_type }}**:
+- Transition Quality: {{ transition.smoothness }}/10
+- Player Adaptation Time: {{ transition.adaptation_time }}s
+- Engagement Change: {{ transition.engagement_delta }}
+{% endfor %}
+
+## Pacing Analysis Objectives
+1. Identify optimal times for introducing new content
+2. Detect pacing issues and energy management problems
+3. Recommend content sequencing for better flow
+4. Predict when player needs variety or rest
+
+## Response Format
+```json
+{
+  "pacing_analysis": {
+    "overall_flow": "excellent|good|choppy|poor",
+    "energy_management": "well_managed|declining|erratic",
+    "optimal_session_length": 45,
+    "current_energy_trend": "rising|stable|declining",
+    "fatigue_indicators": ["decreased_interaction", "shorter_responses"]
+  },
+  "timing_recommendations": {
+    "best_content_introduction_times": [
+      {"minute": 15, "content_type": "npc", "reasoning": "energy peak, social readiness"},
+      {"minute": 30, "content_type": "discovery", "reasoning": "sustained engagement period"}
+    ],
+    "avoid_periods": [
+      {"start": 45, "end": 50, "reason": "energy decline, need recovery"}
+    ],
+    "break_suggestions": [
+      {"minute": 40, "type": "light_content", "duration": "5-10 minutes"}
+    ]
+  },
+  "content_sequencing": {
+    "next_recommended": "low_energy_discovery",
+    "sequence_optimization": [
+      "Start with familiar content",
+      "Introduce complexity gradually",
+      "Provide variety every 15-20 minutes",
+      "End session on positive note"
+    ]
+  },
+  "flow_improvements": [
+    "Reduce content density during minutes 35-40",
+    "Add transitional content between major discoveries",
+    "Implement adaptive pacing based on energy levels"
+  ]
+}
+```
+{%- endmacro %}
+
+{# Template for long-term player progression #}
+{% macro progression_analysis_prompt(historical_sessions, skill_development, preference_evolution) -%}
+Analyze long-term player progression and evolution to inform strategic content planning.
+
+## Historical Sessions (Last {{ historical_sessions | length }})
+{% for session in historical_sessions %}
+**Session {{ loop.index }}** ({{ session.date.strftime("%Y-%m-%d") }}):
+- Duration: {{ session.duration }} minutes
+- Content Engaged: {{ session.content_types | join(", ") }}
+- Satisfaction: {{ session.avg_satisfaction }}/5
+- Progress Made: {{ session.progress_indicators | join(", ") }}
+{% endfor %}
+
+## Skill Development Tracking
+{% for skill in skill_development %}
+**{{ skill.name }}**:
+- Initial Level: {{ skill.initial_level }}/10
+- Current Level: {{ skill.current_level }}/10
+- Growth Rate: {{ "%.2f" | format(skill.growth_rate) }}/session
+- Plateau Indicators: {{ skill.plateau_risk }}%
+{% endfor %}
+
+## Preference Evolution
+{% for period in preference_evolution %}
+**{{ period.timeframe }}**:
+- Dominant Preferences: {{ period.top_preferences | join(", ") }}
+- Emerging Interests: {{ period.emerging | join(", ") }}
+- Declining Interests: {{ period.declining | join(", ") }}
+- Stability Score: {{ "%.2f" | format(period.stability) }}
+{% endfor %}
+
+## Progression Analysis Objectives
+1. Identify player's developmental trajectory and needs
+2. Predict future content requirements and interests
+3. Recommend content introduction strategies
+4. Plan for skill plateau prevention
+
+## Response Format
+```json
+{
+  "progression_profile": {
+    "overall_trajectory": "rapid_growth|steady_progress|plateauing|declining",
+    "development_stage": "beginner|intermediate|advanced|expert",
+    "growth_momentum": 0.75,
+    "mastery_areas": ["exploration", "social_interaction"],
+    "development_needs": ["puzzle_solving", "strategic_thinking"]
+  },
+  "skill_analysis": {
+    "fastest_growing": [
+      {"skill": "exploration", "rate": 0.3, "next_milestone": "advanced_tracking"}
+    ],
+    "plateau_risks": [
+      {"skill": "combat", "risk": 0.8, "intervention_needed": true}
+    ],
+    "emerging_abilities": ["pattern_recognition", "strategic_planning"]
+  },
+  "strategic_recommendations": {
+    "content_introduction_strategy": "gradual_complexity_increase",
+    "skill_development_focus": [
+      "Introduce puzzle elements to develop logical thinking",
+      "Add strategic choice scenarios for decision-making skills"
+    ],
+    "plateau_prevention": [
+      "Introduce advanced exploration challenges",
+      "Provide mentor NPC for skill guidance"
+    ]
+  },
+  "long_term_planning": {
+    "next_4_weeks": "Focus on puzzle skill development",
+    "next_3_months": "Introduce complex narrative choices",
+    "content_pipeline": [
+      {"week": 1, "focus": "logic_puzzles", "difficulty": 4},
+      {"week": 2, "focus": "social_complexity", "difficulty": 5}
+    ]
+  }
+}
+```
+{%- endmacro %}

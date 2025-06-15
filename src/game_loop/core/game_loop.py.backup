@@ -21,6 +21,8 @@ from game_loop.core.navigation.pathfinder import PathfindingService
 from game_loop.core.navigation.validator import NavigationValidator
 from game_loop.core.world.boundary_manager import WorldBoundaryManager
 from game_loop.core.world.connection_graph import LocationConnectionGraph
+from game_loop.core.world.dynamic_world_coordinator import DynamicWorldCoordinator
+from game_loop.core.world.world_generation_pipeline import WorldGenerationPipeline
 from game_loop.database.session_factory import DatabaseSessionFactory
 from game_loop.llm.ollama.client import OllamaClient
 from game_loop.state.manager import GameStateManager
@@ -108,13 +110,13 @@ class GameLoop:
 
         # Initialize navigation components
         self.connection_graph = LocationConnectionGraph()
-        self.boundary_manager = (
-            None  # Will be initialized when world state is available
-        )
+        self.boundary_manager: WorldBoundaryManager | None = None  # Will be initialized when world state is available
         self.navigation_validator = NavigationValidator(self.connection_graph)
-        self.pathfinding_service = (
-            None  # Will be initialized when world state is available
-        )
+        self.pathfinding_service: PathfindingService | None = None  # Will be initialized when world state is available
+        
+        # Initialize dynamic world generation system
+        self.dynamic_world_coordinator: DynamicWorldCoordinator | None = None
+        self.world_generation_pipeline: WorldGenerationPipeline | None = None
 
     async def initialize(self, session_id: UUID | None = None) -> None:
         """Initialize the game environment, loading or creating game state."""
@@ -180,6 +182,10 @@ class GameLoop:
         if self.state_manager.get_current_session_id():
             # Initialize navigation components with world state
             await self._initialize_navigation_system()
+            
+            # Initialize dynamic world generation system
+            await self._initialize_dynamic_world_system()
+            
             await self._display_current_location()  # Use await
         else:
             self.console.print(
@@ -215,6 +221,44 @@ class GameLoop:
 
         except Exception as e:
             logger.error(f"Error initializing navigation system: {e}")
+            
+    async def _initialize_dynamic_world_system(self) -> None:
+        """Initialize the dynamic world generation system."""
+        try:
+            world_state = self.state_manager.world_tracker.get_state()
+            if not world_state:
+                logger.warning("No world state available for dynamic world initialization")
+                return
+
+            # Initialize Jinja2 template environment for LLM prompts
+            from jinja2 import Environment, FileSystemLoader
+            from pathlib import Path
+            
+            template_dir = Path(__file__).parent.parent.parent / "templates" / "world_generation"
+            template_env = Environment(loader=FileSystemLoader(str(template_dir)))
+
+            # Initialize world generation pipeline
+            # For now, we'll skip full pipeline initialization and use a placeholder
+            # TODO: Initialize individual generators (LocationGenerator, NPCGenerator, etc.)
+            self.world_generation_pipeline = None  # Temporarily disabled
+
+            # Initialize dynamic world coordinator
+            self.dynamic_world_coordinator = DynamicWorldCoordinator(
+                world_state=world_state,
+                session_factory=self.session_factory,
+                llm_client=self.ollama_client,
+                template_env=template_env
+            )
+            
+            # Set the generation pipeline in the coordinator
+            # Currently disabled until we implement individual generators
+            # if self.dynamic_world_coordinator and self.world_generation_pipeline:
+            #     self.dynamic_world_coordinator.set_generation_pipeline(self.world_generation_pipeline)
+
+            logger.info("Dynamic world generation system initialized successfully")
+
+        except Exception as e:
+            logger.error(f"Error initializing dynamic world system: {e}")
 
     async def _build_connection_graph(self, world_state: WorldState) -> None:
         """Build the connection graph from world state."""
@@ -427,21 +471,32 @@ class GameLoop:
         # Extract game context for NLP processing
         game_context = self._extract_game_context()
 
-        # First check if this is a system command
-        system_result = await self.command_handler_factory.handle_command(
-            user_input, game_context
-        )
+        # First check if this might be a movement command before checking system commands
+        # This prevents "exit" from being treated as a quit command when it's a valid direction
+        is_potential_movement = await self._is_potential_movement_command(user_input)
+        
+        
+        if not is_potential_movement:
+            # Check if this is a system command only if it's not a potential movement
+            system_result = await self.command_handler_factory.handle_command(
+                user_input, game_context
+            )
 
-        if system_result:
-            # This was a system command, display the result
-            if system_result.feedback_message:
-                self.console.print(system_result.feedback_message)
+            if system_result:
+                # This was a system command, display the result
+                if system_result.feedback_message:
+                    self.console.print(system_result.feedback_message)
 
-            # Check if this was a quit command and stop the game loop
-            if user_input.lower().strip() in ["quit", "exit", "/quit", "/exit"]:
-                self.stop()
+                # Check if this was a quit command and stop the game loop
+                # But NOT if user typed "exit" and there's an exit direction available
+                if user_input.lower().strip() in ["quit", "/quit", "/exit"] and user_input.lower().strip() != "exit":
+                    self.stop()
 
-            return
+                return
+        else:
+            # This is a potential movement command, so skip system command processing
+            # and proceed directly to normal game command processing
+            pass
 
         # Not a system command, process normally
         command = None
@@ -476,6 +531,17 @@ class GameLoop:
         await self.state_manager.player_tracker.get_current_location_id()
         current_location = await self.state_manager.get_current_location_details()
         world_state = self.state_manager.world_tracker.get_state()
+
+        # Special handling: Convert QUIT to MOVEMENT if "exit" is a valid direction
+        if (command.command_type == CommandType.QUIT and 
+            current_location and 
+            "exit" in current_location.connections):
+            # Convert this quit command to a movement command
+            command = ParsedCommand(
+                command_type=CommandType.MOVEMENT,
+                action="go",
+                subject="exit"
+            )
 
         # Verify required state exists before proceeding
         if not player_state:
@@ -611,6 +677,27 @@ class GameLoop:
             )
         ):
             await self.state_manager.update_after_action(action_result)
+            
+            # Process dynamic world generation based on player action
+            if self.dynamic_world_coordinator and player_state:
+                try:
+                    world_generation_response = await self.dynamic_world_coordinator.process_player_action(
+                        action_result, player_state
+                    )
+                    
+                    # Handle any generated content
+                    if world_generation_response.has_new_content:
+                        # Integrate generated content into the world
+                        await self._integrate_generated_content(world_generation_response)
+                        
+                        # Inform player about new content discovery
+                        if world_generation_response.generated_content:
+                            content_count = len(world_generation_response.generated_content)
+                            self.console.print(f"[dim cyan]The world around you seems to shift and change... ({content_count} new elements discovered)[/dim cyan]")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing dynamic world generation: {e}")
+                    # Don't interrupt gameplay for generation errors
 
             # If the location changed, display the new location
             if action_result.location_change:
@@ -1050,15 +1137,138 @@ class GameLoop:
         self.console.print("- [bold]tutorial[/bold]: Get tutorial guidance")
         self.console.print("- [bold]quit/exit[/bold]: Quit the game")
 
-    async def _auto_save_game(self) -> None:
-        """Auto-save the current game state."""
-        if self.state_manager.get_current_session_id():
-            try:
-                await self.state_manager.save_game()
-                self.console.print("[dim]Game auto-saved.[/dim]")
-            except Exception as e:
-                logger.error(f"Auto-save failed: {e}")
-                # Don't show error to user as this is automatic
+    async def _integrate_generated_content(self, world_generation_response: Any) -> None:
+        """Integrate generated content into the world state."""
+        try:
+            from game_loop.state.models import Location, NonPlayerCharacter, WorldObject
+            
+            world_state = self.state_manager.world_tracker.get_state()
+            if not world_state:
+                logger.warning("No world state available for content integration")
+                return
+            
+            for content_data in world_generation_response.generated_content:
+                content_type = content_data.get("type", "unknown")
+                content = content_data.get("content", {})
+                
+                if content_type == "location":
+                    # Create new location from generated content
+                    new_location = Location(
+                        name=content.get("name", "Mysterious Place"),
+                        description=content.get("description", "A place of mystery."),
+                        state_flags=content.get("state_flags", {})
+                    )
+                    world_state.locations[new_location.location_id] = new_location
+                    
+                elif content_type == "npc":
+                    # Add NPC to appropriate location
+                    location_id = content.get("location_id")
+                    if location_id and location_id in world_state.locations:
+                        new_npc = NonPlayerCharacter(
+                            name=content.get("name", "Mysterious Figure"),
+                            description=content.get("description", "A mysterious figure."),
+                            dialogue_state=content.get("dialogue_state", "neutral")
+                        )
+                        world_state.locations[location_id].npcs[new_npc.npc_id] = new_npc
+                        
+                elif content_type == "object":
+                    # Add object to appropriate location
+                    location_id = content.get("location_id")
+                    if location_id and location_id in world_state.locations:
+                        new_object = WorldObject(
+                            name=content.get("name", "Mysterious Object"),
+                            description=content.get("description", "A mysterious object."),
+                            is_takeable=content.get("is_takeable", False),
+                            is_container=content.get("is_container", False)
+                        )
+                        world_state.locations[location_id].objects[new_object.object_id] = new_object
+                        
+                elif content_type == "connection":
+                    # Add connection between locations
+                    from_location_id = content.get("from_location_id")
+                    to_location_id = content.get("to_location_id")
+                    direction = content.get("direction")
+                    
+                    if (from_location_id and to_location_id and direction and 
+                        from_location_id in world_state.locations and 
+                        to_location_id in world_state.locations):
+                        
+                        world_state.locations[from_location_id].connections[direction] = to_location_id
+                        
+                        # Add reverse connection if specified
+                        reverse_direction = content.get("reverse_direction")
+                        if reverse_direction:
+                            world_state.locations[to_location_id].connections[reverse_direction] = from_location_id
+            
+            # Update the world state in the state manager
+            # Note: Need to implement set_state method in WorldStateTracker
+            # For now, we'll just log that we integrated content
+            logger.info("Content integrated successfully")
+            
+            # Rebuild connection graph for navigation
+            if self.connection_graph:
+                await self._build_connection_graph(world_state)
+                
+            logger.info(f"Integrated {len(world_generation_response.generated_content)} pieces of generated content")
+            
+        except Exception as e:
+            logger.error(f"Error integrating generated content: {e}")
+
+    async def _is_potential_movement_command(self, user_input: str) -> bool:
+        """
+        Check if the user input could be a movement command.
+        
+        Args:
+            user_input: The user's input string
+            
+        Returns:
+            True if this could be a movement command, False otherwise
+        """
+        try:
+            # Get current location to check available directions
+            current_location = await self.state_manager.get_current_location_details()
+            if not current_location:
+                return False
+            
+            # Parse the input to extract potential direction
+            input_lower = user_input.lower().strip()
+            
+            # Handle movement patterns: "go <direction>", "move <direction>", or just "<direction>"
+            potential_directions = []
+            
+            if input_lower.startswith(("go ", "move ", "walk ", "head ")):
+                # Extract direction after movement verb
+                parts = input_lower.split()
+                if len(parts) > 1:
+                    potential_directions.append(parts[1])
+            else:
+                # Direct direction command
+                potential_directions.append(input_lower)
+            
+            # Check if any potential direction matches available connections
+            available_directions = set(current_location.connections.keys())
+            
+            for direction in potential_directions:
+                if direction in available_directions:
+                    return True
+                    
+                # Also check direction abbreviations
+                direction_map = {
+                    "n": "north", "s": "south", "e": "east", "w": "west",
+                    "ne": "northeast", "nw": "northwest", "se": "southeast", "sw": "southwest",
+                    "u": "up", "d": "down"
+                }
+                
+                full_direction = direction_map.get(direction, direction)
+                if full_direction in available_directions:
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            # If there's any error, err on the side of allowing normal processing
+            logger.warning(f"Error checking movement command: {e}")
+            return False
 
     async def _attempt_dynamic_expansion(
         self, current_location: Location, direction: str, player_state: PlayerState
@@ -1110,186 +1320,31 @@ class GameLoop:
             logger.error(f"Error attempting dynamic expansion: {e}")
             return None
 
-    async def _can_location_expand(self, location: Location, direction: str) -> bool:
-        """
-        Check if a location can expand in the given direction.
-        
-        Args:
-            location: The location to check
-            direction: The direction of expansion
-            
-        Returns:
-            True if expansion is possible, False otherwise
-        """
-        try:
-            # Check for predefined expansion opportunities
-            expansion_opportunities = {
-                "Building Lobby": ["outside", "north", "south", "loading"],
-                "Emergency Stairwell": ["up", "north", "south"],
-                "Underground Parking Garage": ["down", "east", "maintenance"],
-                "Office": ["east", "west", "north", "south"],
-                "Conference Room": ["east", "west", "north", "south"],
-                "Reception Area": ["east", "west", "north", "south"],
-                "Break Room": ["east", "west", "north", "south"],
-                "Storage Room": ["east", "west", "north", "south"]
-            }
-            
-            # Check if this is a predefined boundary location
-            location_name = location.name
-            if location_name in expansion_opportunities:
-                return direction in expansion_opportunities[location_name]
-            
-            # Check if this is a dynamically generated location that can expand
-            # Look for expansion metadata in location state
-            expansion_depth = location.state_flags.get("expansion_depth", 0)
-            max_expansion_depth = 5  # Prevent infinite expansion
-            
-            if expansion_depth < max_expansion_depth:
-                # Check if location has expandable characteristics
-                location_type = location.state_flags.get("location_type", "unknown")
-                
-                # Dynamic locations can generally expand in logical directions
-                if location.state_flags.get("is_dynamic", False):
-                    return self._is_logical_direction(location_type, direction)
-            
-            return False
-            
-        except Exception as e:
-            logger.error(f"Error checking if location can expand: {e}")
-            return False
-    
-    def _is_logical_direction(self, location_type: str, direction: str) -> bool:
-        """
-        Check if a direction makes logical sense for a location type.
-        
-        Args:
-            location_type: The type of location
-            direction: The direction to check
-            
-        Returns:
-            True if the direction is logical, False otherwise
-        """
-        logical_directions = {
-            "urban_street": ["north", "south", "east", "west", "inside"],
-            "industrial_district": ["north", "south", "east", "west", "inside", "down"],
-            "basement_access": ["north", "south", "east", "west", "down"],
-            "upper_floor": ["north", "south", "east", "west", "up", "down"],
-            "mechanical_room": ["north", "south", "east", "west", "maintenance"],
-            "sublevel": ["north", "south", "east", "west", "down", "maintenance"],
-            "industrial_zone": ["north", "south", "east", "west", "loading"],
-            "loading_dock": ["north", "south", "east", "west", "outside"],
-            "utility_tunnels": ["north", "south", "east", "west", "maintenance", "up"],
-            "roof_access": ["north", "south", "east", "west", "down"]
-        }
-        
-        return direction in logical_directions.get(location_type, ["north", "south", "east", "west"])
-    
-    async def _determine_location_type(self, source_location: Location, direction: str) -> str | None:
-        """
-        Determine what type of location should be generated.
-        
-        Args:
-            source_location: The location expanding from
-            direction: The direction of expansion
-            
-        Returns:
-            The type of location to generate, or None if no suitable type
-        """
-        try:
-            # Predefined expansion mapping
-            expansion_mapping = {
-                "Building Lobby": {
-                    "outside": "urban_street",
-                    "north": "industrial_district", 
-                    "south": "basement_access",
-                    "loading": "loading_dock"
-                },
-                "Emergency Stairwell": {
-                    "up": "upper_floor",
-                    "north": "mechanical_room",
-                    "south": "roof_access"
-                },
-                "Underground Parking Garage": {
-                    "down": "sublevel",
-                    "east": "industrial_zone",
-                    "maintenance": "utility_tunnels"
-                }
-            }
-            
-            # Check for predefined mapping
-            location_name = source_location.name
-            if location_name in expansion_mapping:
-                return expansion_mapping[location_name].get(direction)
-            
-            # For dynamic locations, generate based on context
-            source_type = source_location.state_flags.get("location_type", "unknown")
-            
-            # Context-aware generation based on source type and direction
-            type_transitions = {
-                "urban_street": {
-                    "north": "urban_street", "south": "urban_street", 
-                    "east": "urban_street", "west": "urban_street",
-                    "inside": "building_interior"
-                },
-                "industrial_district": {
-                    "north": "industrial_zone", "south": "industrial_zone",
-                    "east": "industrial_zone", "west": "industrial_zone",
-                    "inside": "factory_interior", "down": "industrial_sublevel"
-                },
-                "basement_access": {
-                    "north": "basement_corridor", "south": "basement_corridor",
-                    "east": "basement_corridor", "west": "basement_corridor",
-                    "down": "sublevel"
-                },
-                "upper_floor": {
-                    "north": "office_space", "south": "office_space",
-                    "east": "office_space", "west": "office_space",
-                    "up": "executive_floor", "down": "lower_floor"
-                }
-            }
-            
-            transitions = type_transitions.get(source_type, {})
-            return transitions.get(direction, "unknown_area")
-            
-        except Exception as e:
-            logger.error(f"Error determining location type: {e}")
-            return None
-    
-    async def _generate_enhanced_location(
+    async def _can_location_expand(self, location: Location, direction: str) -> bool:\n        \"\"\"\n        Check if a location can expand in the given direction.\n        \n        Args:\n            location: The location to check\n            direction: The direction of expansion\n            \n        Returns:\n            True if expansion is possible, False otherwise\n        \"\"\"\n        try:\n            # Check for predefined expansion opportunities\n            expansion_opportunities = {\n                \"Building Lobby\": [\"outside\", \"north\", \"south\", \"loading\"],\n                \"Emergency Stairwell\": [\"up\", \"north\", \"south\"],\n                \"Underground Parking Garage\": [\"down\", \"east\", \"maintenance\"],\n                \"Office\": [\"east\", \"west\", \"north\", \"south\"],\n                \"Conference Room\": [\"east\", \"west\", \"north\", \"south\"],\n                \"Reception Area\": [\"east\", \"west\", \"north\", \"south\"],\n                \"Break Room\": [\"east\", \"west\", \"north\", \"south\"],\n                \"Storage Room\": [\"east\", \"west\", \"north\", \"south\"]\n            }\n            \n            # Check if this is a predefined boundary location\n            location_name = location.name\n            if location_name in expansion_opportunities:\n                return direction in expansion_opportunities[location_name]\n            \n            # Check if this is a dynamically generated location that can expand\n            # Look for expansion metadata in location state\n            expansion_depth = location.state_flags.get(\"expansion_depth\", 0)\n            max_expansion_depth = 5  # Prevent infinite expansion\n            \n            if expansion_depth < max_expansion_depth:\n                # Check if location has expandable characteristics\n                location_type = location.state_flags.get(\"location_type\", \"unknown\")\n                \n                # Dynamic locations can generally expand in logical directions\n                if location.state_flags.get(\"is_dynamic\", False):\n                    return self._is_logical_direction(location_type, direction)\n            \n            return False\n            \n        except Exception as e:\n            logger.error(f\"Error checking if location can expand: {e}\")\n            return False\n    \n    def _is_logical_direction(self, location_type: str, direction: str) -> bool:\n        \"\"\"\n        Check if a direction makes logical sense for a location type.\n        \n        Args:\n            location_type: The type of location\n            direction: The direction to check\n            \n        Returns:\n            True if the direction is logical, False otherwise\n        \"\"\"\n        logical_directions = {\n            \"urban_street\": [\"north\", \"south\", \"east\", \"west\", \"inside\"],\n            \"industrial_district\": [\"north\", \"south\", \"east\", \"west\", \"inside\", \"down\"],\n            \"basement_access\": [\"north\", \"south\", \"east\", \"west\", \"down\"],\n            \"upper_floor\": [\"north\", \"south\", \"east\", \"west\", \"up\", \"down\"],\n            \"mechanical_room\": [\"north\", \"south\", \"east\", \"west\", \"maintenance\"],\n            \"sublevel\": [\"north\", \"south\", \"east\", \"west\", \"down\", \"maintenance\"],\n            \"industrial_zone\": [\"north\", \"south\", \"east\", \"west\", \"loading\"],\n            \"loading_dock\": [\"north\", \"south\", \"east\", \"west\", \"outside\"],\n            \"utility_tunnels\": [\"north\", \"south\", \"east\", \"west\", \"maintenance\", \"up\"],\n            \"roof_access\": [\"north\", \"south\", \"east\", \"west\", \"down\"]\n        }\n        \n        return direction in logical_directions.get(location_type, [\"north\", \"south\", \"east\", \"west\"])\n    \n    async def _determine_location_type(self, source_location: Location, direction: str) -> str | None:\n        \"\"\"\n        Determine what type of location should be generated.\n        \n        Args:\n            source_location: The location expanding from\n            direction: The direction of expansion\n            \n        Returns:\n            The type of location to generate, or None if no suitable type\n        \"\"\"\n        try:\n            # Predefined expansion mapping\n            expansion_mapping = {\n                \"Building Lobby\": {\n                    \"outside\": \"urban_street\",\n                    \"north\": \"industrial_district\", \n                    \"south\": \"basement_access\",\n                    \"loading\": \"loading_dock\"\n                },\n                \"Emergency Stairwell\": {\n                    \"up\": \"upper_floor\",\n                    \"north\": \"mechanical_room\",\n                    \"south\": \"roof_access\"\n                },\n                \"Underground Parking Garage\": {\n                    \"down\": \"sublevel\",\n                    \"east\": \"industrial_zone\",\n                    \"maintenance\": \"utility_tunnels\"\n                }\n            }\n            \n            # Check for predefined mapping\n            location_name = source_location.name\n            if location_name in expansion_mapping:\n                return expansion_mapping[location_name].get(direction)\n            \n            # For dynamic locations, generate based on context\n            source_type = source_location.state_flags.get(\"location_type\", \"unknown\")\n            \n            # Context-aware generation based on source type and direction\n            type_transitions = {\n                \"urban_street\": {\n                    \"north\": \"urban_street\", \"south\": \"urban_street\", \n                    \"east\": \"urban_street\", \"west\": \"urban_street\",\n                    \"inside\": \"building_interior\"\n                },\n                \"industrial_district\": {\n                    \"north\": \"industrial_zone\", \"south\": \"industrial_zone\",\n                    \"east\": \"industrial_zone\", \"west\": \"industrial_zone\",\n                    \"inside\": \"factory_interior\", \"down\": \"industrial_sublevel\"\n                },\n                \"basement_access\": {\n                    \"north\": \"basement_corridor\", \"south\": \"basement_corridor\",\n                    \"east\": \"basement_corridor\", \"west\": \"basement_corridor\",\n                    \"down\": \"sublevel\"\n                },\n                \"upper_floor\": {\n                    \"north\": \"office_space\", \"south\": \"office_space\",\n                    \"east\": \"office_space\", \"west\": \"office_space\",\n                    \"up\": \"executive_floor\", \"down\": \"lower_floor\"\n                }\n            }\n            \n            transitions = type_transitions.get(source_type, {})\n            return transitions.get(direction, \"unknown_area\")\n            \n        except Exception as e:\n            logger.error(f\"Error determining location type: {e}\")\n            return None\n    \n    async def _generate_enhanced_location(\n        self, source_location: Location, direction: str, location_type: str\n    ) -> UUID | None:\n        \"\"\"\n        Generate an enhanced location with expansion metadata.\n        \n        Args:\n            source_location: The source location\n            direction: Direction of expansion\n            location_type: Type of location to generate\n            \n        Returns:\n            UUID of the new location if successful, None otherwise\n        \"\"\"\n        try:\n            from uuid import uuid4\n            from game_loop.state.models import Location as LocationModel\n            \n            # Enhanced location templates with multiple exit hints\n            location_templates = {\n                \"urban_street\": {\n                    \"name\": \"Abandoned Street\",\n                    \"description\": \"A desolate urban street stretches before you, lined with empty storefronts and broken streetlights. Debris litters the asphalt, and the silence is unsettling. Streets continue in multiple directions, and you can see various building entrances along the sidewalks.\"\n                },\n                \"industrial_district\": {\n                    \"name\": \"Industrial District\",\n                    \"description\": \"You emerge into a sprawling industrial complex filled with massive machinery and conveyor systems. Steam hisses from pipes overhead, and the air thrums with the sound of distant generators. Multiple pathways lead to different sections of the industrial complex.\"\n                },\n                \"basement_access\": {\n                    \"name\": \"Basement Corridor\",\n                    \"description\": \"A narrow concrete corridor extends in multiple directions, lit by flickering fluorescent strips. You can hear the hum of electrical systems and the drip of water from unseen leaks. Several passages branch off, leading deeper into the building's underground network.\"\n                },\n                \"upper_floor\": {\n                    \"name\": \"Upper Office Floor\",\n                    \"description\": \"This higher floor contains executive offices and conference rooms, all abandoned but better preserved than the lower levels. Large windows show the city beyond, while multiple corridors lead to different wings of the floor.\"\n                },\n                \"mechanical_room\": {\n                    \"name\": \"Mechanical Room\",\n                    \"description\": \"A room filled with building systems: massive HVAC units, electrical panels, and cooling systems. The mechanical sounds are louder here, and you can see maintenance walkways leading to other parts of the building's infrastructure.\"\n                },\n                \"sublevel\": {\n                    \"name\": \"Sub-Basement\",\n                    \"description\": \"This lower level contains building utilities and storage areas. The ceiling is lower here, supported by concrete pillars. Multiple tunnels branch off in different directions, possibly connecting to other buildings or the city's utility network.\"\n                },\n                \"industrial_zone\": {\n                    \"name\": \"Industrial Processing Area\",\n                    \"description\": \"A large space filled with industrial equipment and processing machinery. Conveyor belts and assembly stations stretch across the floor. Various exits lead to other processing areas and what appears to be different industrial sectors.\"\n                },\n                \"loading_dock\": {\n                    \"name\": \"Loading Dock\",\n                    \"description\": \"A concrete platform where trucks once loaded and unloaded cargo. Large rolling doors face outward toward what was once a busy industrial area. Multiple truck bays and pathways lead to other logistics areas.\"\n                },\n                \"utility_tunnels\": {\n                    \"name\": \"Utility Tunnels\",\n                    \"description\": \"Underground maintenance tunnels that run beneath the building complex. Pipes and electrical conduits line the walls, and you can hear the echo of your footsteps. The tunnels branch in multiple directions, likely connecting to other buildings.\"\n                },\n                \"roof_access\": {\n                    \"name\": \"Rooftop Access\",\n                    \"description\": \"You emerge onto a rooftop area with HVAC equipment and communication arrays. The view shows the surrounding industrial district and urban landscape. Multiple maintenance walkways connect to other building sections.\"\n                },\n                \"building_interior\": {\n                    \"name\": \"Building Interior\",\n                    \"description\": \"The interior of an abandoned building with multiple rooms and corridors. Dust motes dance in shafts of light from broken windows. You can see doorways leading to different sections of the building.\"\n                },\n                \"factory_interior\": {\n                    \"name\": \"Factory Floor\",\n                    \"description\": \"A vast factory floor with abandoned assembly lines and industrial equipment. The space echoes with your footsteps, and you can see multiple work areas and passages leading to different parts of the facility.\"\n                },\n                \"basement_corridor\": {\n                    \"name\": \"Basement Corridor\",\n                    \"description\": \"A long underground corridor with concrete walls and exposed pipes overhead. Emergency lighting casts eerie shadows, and you can see multiple branching passages leading to different areas of the basement complex.\"\n                },\n                \"office_space\": {\n                    \"name\": \"Office Complex\",\n                    \"description\": \"An abandoned office space with cubicles and workstations covered in dust. Papers are scattered on desks, and you can see hallways leading to different departments and office areas.\"\n                },\n                \"unknown_area\": {\n                    \"name\": \"Mysterious Area\",\n                    \"description\": \"A strange area that defies easy description. The space seems to shift and change as you look at it, with passages leading in directions that shouldn't be possible.\"\n                }\n            }\n            \n            template = location_templates.get(location_type, location_templates[\"unknown_area\"])\n            \n            new_location_id = uuid4()\n            \n            # Calculate expansion depth\n            source_depth = source_location.state_flags.get(\"expansion_depth\", 0)\n            new_depth = source_depth + 1\n            \n            # Add to database with expansion metadata\n            async with self.db_pool.acquire() as conn:\n                await conn.execute(\n                    \"\"\"\n                    INSERT INTO locations (id, name, short_desc, full_desc, location_type, is_dynamic, created_by, state_json)\n                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n                    \"\"\",\n                    new_location_id,\n                    template[\"name\"],\n                    f\"A dynamically generated {location_type.replace('_', ' ')}\",\n                    template[\"description\"],\n                    \"dynamic\",\n                    True,  # is_dynamic\n                    \"dynamic_generation\",\n                    f'{{\"expansion_depth\": {new_depth}, \"location_type\": \"{location_type}\", \"is_dynamic\": true, \"can_expand\": true}}'\n                )\n            \n            # Add to world state\n            world_state = self.state_manager.world_tracker.get_state()\n            if world_state:\n                new_location = LocationModel(\n                    location_id=new_location_id,\n                    name=template[\"name\"],\n                    description=template[\"description\"],\n                    state_flags={\n                        \"expansion_depth\": new_depth,\n                        \"location_type\": location_type,\n                        \"is_dynamic\": True,\n                        \"can_expand\": True\n                    }\n                )\n                world_state.locations[new_location_id] = new_location\n            \n            logger.info(f\"Generated enhanced location: {template['name']} ({new_location_id}) at depth {new_depth}\")\n            return new_location_id\n            \n        except Exception as e:\n            logger.error(f\"Error generating enhanced location: {e}\")\n            return None\n    \n    async def _generate_additional_exits(\n        self, location_id: UUID, source_location: Location, entry_direction: str\n    ) -> None:\n        \"\"\"\n        Generate additional exits for a newly created location.\n        \n        Args:\n            location_id: The new location's ID\n            source_location: The source location it was generated from\n            entry_direction: The direction used to enter this location\n        \"\"\"\n        try:\n            # Get the new location from world state\n            world_state = self.state_manager.world_tracker.get_state()\n            if not world_state or location_id not in world_state.locations:\n                return\n            \n            new_location = world_state.locations[location_id]\n            location_type = new_location.state_flags.get(\"location_type\", \"unknown\")\n            \n            # Direction mapping for reverse connections\n            reverse_directions = {\n                \"north\": \"south\", \"south\": \"north\", \"east\": \"west\", \"west\": \"east\",\n                \"up\": \"down\", \"down\": \"up\", \"outside\": \"inside\", \"inside\": \"outside\",\n                \"loading\": \"return\", \"maintenance\": \"exit\"\n            }\n            \n            # Determine available directions (excluding the entry direction)\n            reverse_entry = reverse_directions.get(entry_direction, \"back\")\n            possible_directions = self._get_possible_directions(location_type)\n            \n            # Remove the reverse entry direction since that's already connected\n            available_directions = [d for d in possible_directions if d != reverse_entry]\n            \n            # Generate 1-3 additional exits randomly\n            import random\n            num_additional_exits = random.randint(1, min(3, len(available_directions)))\n            selected_directions = random.sample(available_directions, num_additional_exits)\n            \n            for direction in selected_directions:\n                # Create a \"placeholder\" connection that will be generated when explored\n                await self._create_placeholder_connection(location_id, direction, location_type)\n            \n            logger.info(f\"Generated {len(selected_directions)} additional exits for {new_location.name}\")\n            \n        except Exception as e:\n            logger.error(f\"Error generating additional exits: {e}\")\n    \n    def _get_possible_directions(self, location_type: str) -> list[str]:\n        \"\"\"\n        Get possible directions for a location type.\n        \n        Args:\n            location_type: The type of location\n            \n        Returns:\n            List of possible directions\n        \"\"\"\n        direction_sets = {\n            \"urban_street\": [\"north\", \"south\", \"east\", \"west\", \"inside\"],\n            \"industrial_district\": [\"north\", \"south\", \"east\", \"west\", \"inside\", \"down\"],\n            \"basement_access\": [\"north\", \"south\", \"east\", \"west\", \"down\"],\n            \"upper_floor\": [\"north\", \"south\", \"east\", \"west\", \"up\", \"down\"],\n            \"mechanical_room\": [\"north\", \"south\", \"east\", \"west\", \"maintenance\"],\n            \"sublevel\": [\"north\", \"south\", \"east\", \"west\", \"down\", \"maintenance\"],\n            \"industrial_zone\": [\"north\", \"south\", \"east\", \"west\", \"loading\"],\n            \"loading_dock\": [\"north\", \"south\", \"east\", \"west\", \"outside\"],\n            \"utility_tunnels\": [\"north\", \"south\", \"east\", \"west\", \"maintenance\", \"up\"],\n            \"roof_access\": [\"north\", \"south\", \"east\", \"west\", \"down\"],\n            \"building_interior\": [\"north\", \"south\", \"east\", \"west\", \"up\", \"down\"],\n            \"factory_interior\": [\"north\", \"south\", \"east\", \"west\", \"up\", \"down\"],\n            \"basement_corridor\": [\"north\", \"south\", \"east\", \"west\", \"down\"],\n            \"office_space\": [\"north\", \"south\", \"east\", \"west\", \"up\", \"down\"]\n        }\n        \n        return direction_sets.get(location_type, [\"north\", \"south\", \"east\", \"west\"])\n    \n    async def _create_placeholder_connection(\n        self, location_id: UUID, direction: str, location_type: str\n    ) -> None:\n        \"\"\"\n        Create a placeholder connection that will trigger generation when explored.\n        \n        Args:\n            location_id: The location to add the connection to\n            direction: The direction of the connection\n            location_type: The type of the source location\n        \"\"\"\n        try:\n            # Add the direction to the location's connections with a special placeholder UUID\n            # This will be detected in _handle_movement and trigger generation\n            world_state = self.state_manager.world_tracker.get_state()\n            if world_state and location_id in world_state.locations:\n                # Use a special UUID that indicates this needs generation\n                from uuid import UUID\n                placeholder_uuid = UUID('00000000-0000-0000-0000-000000000000')\n                \n                world_state.locations[location_id].connections[direction] = placeholder_uuid\n                \n                # Also add to database as a placeholder\n                from uuid import uuid4\n                async with self.db_pool.acquire() as conn:\n                    await conn.execute(\n                        \"\"\"\n                        INSERT INTO location_connections (id, from_location_id, to_location_id, direction, connection_type, requirements_json, is_visible)\n                        VALUES ($1, $2, $3, $4, $5, $6, $7)\n                        \"\"\",\n                        uuid4(), location_id, placeholder_uuid, direction, \"placeholder\", '{}', True\n                    )\n                \n                logger.info(f\"Created placeholder connection: {direction} from {location_id}\")\n                \n        except Exception as e:\n            logger.error(f\"Error creating placeholder connection: {e}\")\n\n    async def _generate_simple_location(
         self, source_location: Location, direction: str, location_type: str
     ) -> UUID | None:
-        """
-        Generate an enhanced location with expansion metadata.
-        
-        Args:
-            source_location: The source location
-            direction: Direction of expansion
-            location_type: Type of location to generate
-            
-        Returns:
-            UUID of the new location if successful, None otherwise
-        """
+        """Generate a simple new location connected to the source."""
         try:
             from uuid import uuid4
             from game_loop.state.models import Location as LocationModel
             
-            # Enhanced location templates with multiple exit hints
+            # Create location based on type
             location_templates = {
                 "urban_street": {
                     "name": "Abandoned Street",
-                    "description": "A desolate urban street stretches before you, lined with empty storefronts and broken streetlights. Debris litters the asphalt, and the silence is unsettling. Streets continue in multiple directions, and you can see various building entrances along the sidewalks."
+                    "description": "A desolate urban street stretches before you, lined with empty storefronts and broken streetlights. Debris litters the asphalt, and the silence is unsettling. You can see more streets branching off in different directions, and in the distance, the hulking shapes of industrial buildings loom against the sky."
                 },
                 "industrial_district": {
                     "name": "Industrial District",
-                    "description": "You emerge into a sprawling industrial complex filled with massive machinery and conveyor systems. Steam hisses from pipes overhead, and the air thrums with the sound of distant generators. Multiple pathways lead to different sections of the industrial complex."
+                    "description": "You emerge into a sprawling industrial complex filled with massive machinery and conveyor systems. Steam hisses from pipes overhead, and the air thrums with the sound of distant generators. Loading bays and factory entrances extend in multiple directions."
                 },
                 "basement_access": {
                     "name": "Basement Corridor",
-                    "description": "A narrow concrete corridor extends in multiple directions, lit by flickering fluorescent strips. You can hear the hum of electrical systems and the drip of water from unseen leaks. Several passages branch off, leading deeper into the building's underground network."
+                    "description": "A narrow concrete corridor extends into darkness, lit by flickering fluorescent strips. You can hear the hum of electrical systems and the drip of water from unseen leaks. Multiple passages branch off, leading deeper into the building's underground network."
                 },
                 "upper_floor": {
                     "name": "Upper Office Floor",
-                    "description": "This higher floor contains executive offices and conference rooms, all abandoned but better preserved than the lower levels. Large windows show the city beyond, while multiple corridors lead to different wings of the floor."
+                    "description": "This higher floor contains executive offices and conference rooms, all abandoned but better preserved than the lower levels. Large windows show the city beyond, while doors lead to more office spaces and what appears to be a mechanical area."
                 },
                 "mechanical_room": {
                     "name": "Mechanical Room",
@@ -1297,15 +1352,15 @@ class GameLoop:
                 },
                 "sublevel": {
                     "name": "Sub-Basement",
-                    "description": "This lower level contains building utilities and storage areas. The ceiling is lower here, supported by concrete pillars. Multiple tunnels branch off in different directions, possibly connecting to other buildings or the city's utility network."
+                    "description": "This lower level contains building utilities and storage areas. The ceiling is lower here, supported by concrete pillars. You can see tunnels leading in various directions, possibly connecting to other buildings or the city's utility network."
                 },
                 "industrial_zone": {
                     "name": "Industrial Processing Area",
-                    "description": "A large space filled with industrial equipment and processing machinery. Conveyor belts and assembly stations stretch across the floor. Various exits lead to other processing areas and what appears to be different industrial sectors."
+                    "description": "A large space filled with industrial equipment and processing machinery. Conveyor belts and assembly stations stretch across the floor. Exits lead to other processing areas and what appears to be a shipping district."
                 },
                 "loading_dock": {
                     "name": "Loading Dock",
-                    "description": "A concrete platform where trucks once loaded and unloaded cargo. Large rolling doors face outward toward what was once a busy industrial area. Multiple truck bays and pathways lead to other logistics areas."
+                    "description": "A concrete platform where trucks once loaded and unloaded cargo. Large rolling doors face outward toward what was once a busy industrial area. You can see truck bays and pathways leading to other logistics areas."
                 },
                 "utility_tunnels": {
                     "name": "Utility Tunnels",
@@ -1313,39 +1368,18 @@ class GameLoop:
                 },
                 "roof_access": {
                     "name": "Rooftop Access",
-                    "description": "You emerge onto a rooftop area with HVAC equipment and communication arrays. The view shows the surrounding industrial district and urban landscape. Multiple maintenance walkways connect to other building sections."
-                },
-                "building_interior": {
-                    "name": "Building Interior",
-                    "description": "The interior of an abandoned building with multiple rooms and corridors. Dust motes dance in shafts of light from broken windows. You can see doorways leading to different sections of the building."
-                },
-                "factory_interior": {
-                    "name": "Factory Floor",
-                    "description": "A vast factory floor with abandoned assembly lines and industrial equipment. The space echoes with your footsteps, and you can see multiple work areas and passages leading to different parts of the facility."
-                },
-                "basement_corridor": {
-                    "name": "Basement Corridor",
-                    "description": "A long underground corridor with concrete walls and exposed pipes overhead. Emergency lighting casts eerie shadows, and you can see multiple branching passages leading to different areas of the basement complex."
-                },
-                "office_space": {
-                    "name": "Office Complex",
-                    "description": "An abandoned office space with cubicles and workstations covered in dust. Papers are scattered on desks, and you can see hallways leading to different departments and office areas."
-                },
-                "unknown_area": {
-                    "name": "Mysterious Area",
-                    "description": "A strange area that defies easy description. The space seems to shift and change as you look at it, with passages leading in directions that shouldn't be possible."
+                    "description": "You emerge onto a rooftop area with HVAC equipment and communication arrays. The view shows the surrounding industrial district and urban landscape. Maintenance walkways connect to other building sections."
                 }
             }
             
-            template = location_templates.get(location_type, location_templates["unknown_area"])
+            template = location_templates.get(location_type, {
+                "name": "Unknown Area",
+                "description": "A mysterious area that defies easy description."
+            })
             
             new_location_id = uuid4()
             
-            # Calculate expansion depth
-            source_depth = source_location.state_flags.get("expansion_depth", 0)
-            new_depth = source_depth + 1
-            
-            # Add to database with expansion metadata
+            # Add to database via connection pool
             async with self.db_pool.acquire() as conn:
                 await conn.execute(
                     """
@@ -1359,7 +1393,7 @@ class GameLoop:
                     "dynamic",
                     True,  # is_dynamic
                     "dynamic_generation",
-                    f'{{"expansion_depth": {new_depth}, "location_type": "{location_type}", "is_dynamic": true, "can_expand": true}}'
+                    "{}"
                 )
             
             # Add to world state
@@ -1368,137 +1402,16 @@ class GameLoop:
                 new_location = LocationModel(
                     location_id=new_location_id,
                     name=template["name"],
-                    description=template["description"],
-                    state_flags={
-                        "expansion_depth": new_depth,
-                        "location_type": location_type,
-                        "is_dynamic": True,
-                        "can_expand": True
-                    }
+                    description=template["description"]
                 )
                 world_state.locations[new_location_id] = new_location
             
-            logger.info(f"Generated enhanced location: {template['name']} ({new_location_id}) at depth {new_depth}")
+            logger.info(f"Generated new location: {template['name']} ({new_location_id})")
             return new_location_id
             
         except Exception as e:
-            logger.error(f"Error generating enhanced location: {e}")
+            logger.error(f"Error generating simple location: {e}")
             return None
-    
-    async def _generate_additional_exits(
-        self, location_id: UUID, source_location: Location, entry_direction: str
-    ) -> None:
-        """
-        Generate additional exits for a newly created location.
-        
-        Args:
-            location_id: The new location's ID
-            source_location: The source location it was generated from
-            entry_direction: The direction used to enter this location
-        """
-        try:
-            # Get the new location from world state
-            world_state = self.state_manager.world_tracker.get_state()
-            if not world_state or location_id not in world_state.locations:
-                return
-            
-            new_location = world_state.locations[location_id]
-            location_type = new_location.state_flags.get("location_type", "unknown")
-            
-            # Direction mapping for reverse connections
-            reverse_directions = {
-                "north": "south", "south": "north", "east": "west", "west": "east",
-                "up": "down", "down": "up", "outside": "inside", "inside": "outside",
-                "loading": "return", "maintenance": "exit"
-            }
-            
-            # Determine available directions (excluding the entry direction)
-            reverse_entry = reverse_directions.get(entry_direction, "back")
-            possible_directions = self._get_possible_directions(location_type)
-            
-            # Remove the reverse entry direction since that's already connected
-            available_directions = [d for d in possible_directions if d != reverse_entry]
-            
-            # Generate 1-3 additional exits randomly
-            import random
-            num_additional_exits = random.randint(1, min(3, len(available_directions)))
-            selected_directions = random.sample(available_directions, num_additional_exits)
-            
-            for direction in selected_directions:
-                # Create a "placeholder" connection that will be generated when explored
-                await self._create_placeholder_connection(location_id, direction, location_type)
-            
-            logger.info(f"Generated {len(selected_directions)} additional exits for {new_location.name}")
-            
-        except Exception as e:
-            logger.error(f"Error generating additional exits: {e}")
-    
-    def _get_possible_directions(self, location_type: str) -> list[str]:
-        """
-        Get possible directions for a location type.
-        
-        Args:
-            location_type: The type of location
-            
-        Returns:
-            List of possible directions
-        """
-        direction_sets = {
-            "urban_street": ["north", "south", "east", "west", "inside"],
-            "industrial_district": ["north", "south", "east", "west", "inside", "down"],
-            "basement_access": ["north", "south", "east", "west", "down"],
-            "upper_floor": ["north", "south", "east", "west", "up", "down"],
-            "mechanical_room": ["north", "south", "east", "west", "maintenance"],
-            "sublevel": ["north", "south", "east", "west", "down", "maintenance"],
-            "industrial_zone": ["north", "south", "east", "west", "loading"],
-            "loading_dock": ["north", "south", "east", "west", "outside"],
-            "utility_tunnels": ["north", "south", "east", "west", "maintenance", "up"],
-            "roof_access": ["north", "south", "east", "west", "down"],
-            "building_interior": ["north", "south", "east", "west", "up", "down"],
-            "factory_interior": ["north", "south", "east", "west", "up", "down"],
-            "basement_corridor": ["north", "south", "east", "west", "down"],
-            "office_space": ["north", "south", "east", "west", "up", "down"]
-        }
-        
-        return direction_sets.get(location_type, ["north", "south", "east", "west"])
-    
-    async def _create_placeholder_connection(
-        self, location_id: UUID, direction: str, location_type: str
-    ) -> None:
-        """
-        Create a placeholder connection that will trigger generation when explored.
-        
-        Args:
-            location_id: The location to add the connection to
-            direction: The direction of the connection
-            location_type: The type of the source location
-        """
-        try:
-            # Add the direction to the location's connections with a special placeholder UUID
-            # This will be detected in _handle_movement and trigger generation
-            world_state = self.state_manager.world_tracker.get_state()
-            if world_state and location_id in world_state.locations:
-                # Use a special UUID that indicates this needs generation
-                from uuid import UUID
-                placeholder_uuid = UUID('00000000-0000-0000-0000-000000000000')
-                
-                world_state.locations[location_id].connections[direction] = placeholder_uuid
-                
-                # Also add to database as a placeholder
-                from uuid import uuid4
-                async with self.db_pool.acquire() as conn:
-                    await conn.execute(
-                        """
-                        INSERT INTO location_connections (id, from_location_id, to_location_id, direction, connection_type, requirements_json, is_visible)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7)
-                        """,
-                        uuid4(), location_id, placeholder_uuid, direction, "placeholder", '{}', True
-                    )
-                
-                logger.info(f"Created placeholder connection: {direction} from {location_id}")
-                
-        except Exception as e:
-            logger.error(f"Error creating placeholder connection: {e}")
 
     async def _add_connection(self, from_location_id: UUID, to_location_id: UUID, direction: str) -> None:
         """Add a bidirectional connection between two locations."""
@@ -1546,3 +1459,13 @@ class GameLoop:
             
         except Exception as e:
             logger.error(f"Error adding connection: {e}")
+
+    async def _auto_save_game(self) -> None:
+        """Auto-save the current game state."""
+        if self.state_manager.get_current_session_id():
+            try:
+                await self.state_manager.save_game()
+                self.console.print("[dim]Game auto-saved.[/dim]")
+            except Exception as e:
+                logger.error(f"Auto-save failed: {e}")
+                # Don't show error to user as this is automatic

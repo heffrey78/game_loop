@@ -272,3 +272,27 @@ class TestInputProcessor:
         help_cmd = ParsedCommand(command_type=CommandType.HELP, action="help")
         general_message = input_processor.format_error_message(help_cmd)
         assert "help" in general_message.lower()
+
+    def test_exit_contextual_parsing(self, input_processor: InputProcessor) -> None:
+        """Test that 'exit' is correctly parsed as movement when valid, quit otherwise."""
+        # Test 'exit' as movement when it's a valid direction
+        game_context_with_exit = {
+            "connections": {"exit": "outside", "north": "hallway"}
+        }
+        exit_movement_cmd = input_processor.process_input("exit", game_context_with_exit)
+        assert exit_movement_cmd.command_type == CommandType.MOVEMENT
+        assert exit_movement_cmd.action == "go"
+        assert exit_movement_cmd.subject == "exit"
+
+        # Test 'exit' as quit when it's NOT a valid direction
+        game_context_no_exit = {
+            "connections": {"north": "hallway", "south": "garden"}
+        }
+        exit_quit_cmd = input_processor.process_input("exit", game_context_no_exit)
+        assert exit_quit_cmd.command_type == CommandType.QUIT
+        assert exit_quit_cmd.action == "quit"
+
+        # Test 'exit' as quit when no context is provided
+        exit_no_context_cmd = input_processor.process_input("exit")
+        assert exit_no_context_cmd.command_type == CommandType.QUIT
+        assert exit_no_context_cmd.action == "quit"
