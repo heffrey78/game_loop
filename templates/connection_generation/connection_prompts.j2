@@ -1,0 +1,75 @@
+{# Connection Generation Prompt Template #}
+Generate a detailed connection between two locations in a fantasy world.
+
+## Connection Details
+**Source Location**: {{ context.source_location.name }}
+**Source Description**: {{ context.source_location.description }}
+**Source Theme**: {{ context.source_location.state_flags.theme }}
+
+**Target Location**: {{ context.target_location.name }}
+**Target Description**: {{ context.target_location.description }}
+**Target Theme**: {{ context.target_location.state_flags.theme }}
+
+## Connection Specifications
+**Connection Type**: {{ connection_type }}
+**Generation Purpose**: {{ context.generation_purpose }}
+**Distance Preference**: {{ context.distance_preference }}
+
+## Context Information
+{% if context.terrain_constraints %}
+**Terrain Constraints**:
+{% for key, value in context.terrain_constraints.items() %}
+- {{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+
+{% if context.narrative_context %}
+**Narrative Context**:
+{% for key, value in context.narrative_context.items() %}
+- {{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+
+{% if context.existing_connections %}
+**Existing Connections**: {{ context.existing_connections | join(', ') }}
+{% endif %}
+
+## Requirements
+Create a connection that:
+- Feels natural and logical for the given locations
+- Matches the specified connection type ({{ connection_type }})
+- Has vivid, immersive description
+- Considers the terrain and environmental factors
+- Fits the narrative purpose ({{ context.generation_purpose }})
+- Respects the distance preference ({{ context.distance_preference }})
+
+## Response Format
+Return a JSON response with the following structure:
+```json
+{
+  "description": "A detailed, atmospheric description of the connection",
+  "travel_time": "Time in seconds to traverse (integer)",
+  "difficulty": "Difficulty rating from 1-10 (integer)", 
+  "requirements": ["list", "of", "any", "special", "requirements"],
+  "special_features": ["notable", "atmospheric", "features"],
+  "atmosphere": "The overall feeling when using this connection",
+  "visibility_notes": "How easily the connection can be discovered"
+}
+```
+
+## Examples by Connection Type
+{% if connection_type == "bridge" %}
+Focus on: Spanning across obstacles, architectural details, views from the bridge, stability and materials.
+{% elif connection_type == "tunnel" %}
+Focus on: Underground atmosphere, lighting conditions, air quality, carved details, echoes and sounds.
+{% elif connection_type == "portal" %}
+Focus on: Magical energy, visual effects, instant travel sensation, mystical requirements.
+{% elif connection_type == "path" %}
+Focus on: Natural terrain, worn surfaces, surrounding vegetation, travel comfort, weather exposure.
+{% elif connection_type == "passage" %}
+Focus on: Enclosed feeling, architectural features, lighting, air circulation, structural details.
+{% else %}
+Focus on: Connection-appropriate sensory details, structural characteristics, travel experience.
+{% endif %}
+
+Generate the connection description now, ensuring it captures the essence of traveling from {{ context.source_location.name }} to {{ context.target_location.name }} via this {{ connection_type }}.

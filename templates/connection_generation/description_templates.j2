@@ -1,0 +1,136 @@
+{# Connection Description Templates for Different Types #}
+
+{# Template for passage connections #}
+{% macro passage_description(source_theme, target_theme, properties) -%}
+{% if source_theme == "Dungeon" or target_theme == "Dungeon" %}
+A narrow stone passage winds through ancient walls, lit by flickering torches that cast dancing shadows on the weathered stones. The air is cool and carries a faint echo of distant footsteps.
+{% elif source_theme == "Cave" or target_theme == "Cave" %}
+A natural passage carved by water and time, with smooth rock walls that glisten with moisture. The air is cool and fresh, carrying the earthy scent of deep stone.
+{% else %}
+A {{ properties.description | default("simple passage") }} that connects the two areas with {{ properties.visibility | default("visible") }} accessibility.
+{% endif %}
+{%- endmacro %}
+
+{# Template for bridge connections #}
+{% macro bridge_description(source_theme, target_theme, properties) -%}
+{% if source_theme == "Mountain" or target_theme == "Mountain" %}
+A sturdy stone bridge arches gracefully across the mountain gap, with ancient carved railings worn smooth by countless hands. Wind whistles through the span, carrying the scent of pine and snow.
+{% elif source_theme == "Forest" or target_theme == "Forest" %}
+A wooden bridge spans across the forest clearing, constructed from massive logs and bound with iron. Moss grows along its edges, and sunlight filters through the canopy above.
+{% elif source_theme == "City" or target_theme == "City" %}
+An elegant stone bridge with ornate lampposts stretches across the urban space, its cobblestone surface worn smooth by countless travelers and merchants.
+{% else %}
+A {{ properties.description | default("well-built bridge") }} that spans between the areas, offering {{ properties.visibility | default("clear") }} passage.
+{% endif %}
+{%- endmacro %}
+
+{# Template for portal connections #}
+{% macro portal_description(source_theme, target_theme, properties) -%}
+{% if source_theme == "Magical" or target_theme == "Magical" %}
+A shimmering portal of pure arcane energy crackles with power, its surface rippling like liquid starlight. Runes of ancient power circle its frame, pulsing with ethereal light.
+{% elif source_theme == "Tower" or target_theme == "Tower" %}
+A mystical gateway stands within an ornate archway, its surface swirling with celestial patterns. The air around it hums with magical energy and possibility.
+{% else %}
+A {{ properties.description | default("magical portal") }} that provides instantaneous travel, radiating {{ properties.visibility | default("visible") }} magical energy.
+{% endif %}
+{%- endmacro %}
+
+{# Template for path connections #}
+{% macro path_description(source_theme, target_theme, properties) -%}
+{% if source_theme == "Forest" or target_theme == "Forest" %}
+A winding forest path meanders between ancient trees, carpeted with fallen leaves that crunch softly underfoot. Dappled sunlight filters through the canopy, creating shifting patterns of light and shadow.
+{% elif source_theme == "Mountain" or target_theme == "Mountain" %}
+A mountain trail carved into the rocky terrain, marked by weathered stone cairns and offering breathtaking views of the valleys below. The path is challenging but well-maintained.
+{% elif source_theme == "Grassland" or target_theme == "Grassland" %}
+A gentle path winds through rolling grasslands, worn smooth by generations of travelers. Wildflowers border the route, and the distant horizon beckons with promise.
+{% else %}
+A {{ properties.description | default("well-worn path") }} that provides {{ properties.visibility | default("clear") }} passage through the terrain.
+{% endif %}
+{%- endmacro %}
+
+{# Template for tunnel connections #}
+{% macro tunnel_description(source_theme, target_theme, properties) -%}
+{% if source_theme == "Underground" or target_theme == "Underground" %}
+A rough-hewn tunnel burrows through solid rock, its walls bearing the marks of pickaxe and chisel. The air is cool and still, carrying the mineral scent of deep earth.
+{% elif source_theme == "Mountain" or target_theme == "Mountain" %}
+A mountain tunnel bored through the living rock, reinforced with timber supports and lit by oil lamps. The sound of dripping water echoes in the distance.
+{% elif source_theme == "Mine" or target_theme == "Mine" %}
+An old mining tunnel with cart tracks still visible in the floor, timber supports creaking occasionally in the depths. The walls glisten with moisture and mineral deposits.
+{% else %}
+A {{ properties.description | default("carved tunnel") }} that burrows through the earth, providing {{ properties.visibility | default("hidden") }} passage.
+{% endif %}
+{%- endmacro %}
+
+{# Template for road connections #}
+{% macro road_description(source_theme, target_theme, properties) -%}
+{% if source_theme == "City" or target_theme == "City" %}
+A broad cobblestone road stretches between the urban areas, lined with lampposts and merchant stalls. The stones are worn smooth by countless carts and carriages.
+{% elif source_theme == "Village" or target_theme == "Village" %}
+A well-maintained country road connects the settlements, its packed earth surface bordered by stone markers and wooden fences. Wildflowers grow along the verges.
+{% else %}
+A {{ properties.description | default("constructed road") }} that provides {{ properties.visibility | default("obvious") }} and efficient travel between the areas.
+{% endif %}
+{%- endmacro %}
+
+{# Main template selector #}
+{% macro generate_description(connection_type, source_theme, target_theme, properties) -%}
+{% if connection_type == "passage" %}
+{{ passage_description(source_theme, target_theme, properties) }}
+{% elif connection_type == "bridge" %}
+{{ bridge_description(source_theme, target_theme, properties) }}
+{% elif connection_type == "portal" %}
+{{ portal_description(source_theme, target_theme, properties) }}
+{% elif connection_type == "path" %}
+{{ path_description(source_theme, target_theme, properties) }}
+{% elif connection_type == "tunnel" %}
+{{ tunnel_description(source_theme, target_theme, properties) }}
+{% elif connection_type == "road" %}
+{{ road_description(source_theme, target_theme, properties) }}
+{% else %}
+A {{ connection_type }} that connects {{ source_theme }} and {{ target_theme }} areas with {{ properties.description | default("standard") }} characteristics.
+{% endif %}
+{%- endmacro %}
+
+{# Atmospheric enhancement templates #}
+{% macro add_atmospheric_details(connection_type, difficulty, visibility) -%}
+{% if difficulty >= 7 %}
+{% if connection_type in ["tunnel", "passage"] %}
+The way is treacherous, with loose stones and uncertain footing.
+{% elif connection_type == "bridge" %}
+The bridge sways ominously in strong winds, testing the courage of travelers.
+{% elif connection_type == "path" %}
+The path is overgrown and barely visible, requiring careful navigation.
+{% endif %}
+{% elif difficulty <= 3 %}
+{% if connection_type in ["road", "path"] %}
+The route is well-maintained and clearly marked, making for easy travel.
+{% elif connection_type == "bridge" %}
+The bridge is solid and safe, with sturdy railings and good visibility.
+{% elif connection_type == "portal" %}
+The portal is stable and reliable, requiring minimal effort to use.
+{% endif %}
+{% endif %}
+
+{% if visibility == "hidden" %}
+The entrance is concealed and difficult to spot without careful searching.
+{% elif visibility == "secret" %}
+This connection is known only to a select few and requires special knowledge to access.
+{% elif visibility == "partially_hidden" %}
+While not immediately obvious, observant travelers can discover this route.
+{% endif %}
+{%- endmacro %}
+
+{# Weather and time-of-day variations #}
+{% macro add_environmental_details(connection_type, source_theme, target_theme) -%}
+{% if source_theme == "Mountain" or target_theme == "Mountain" %}
+Mountain winds carry the scent of snow and pine, creating a crisp, invigorating atmosphere.
+{% elif source_theme == "Forest" or target_theme == "Forest" %}
+The sound of rustling leaves and distant bird calls creates a peaceful, natural ambiance.
+{% elif source_theme == "Cave" or target_theme == "Cave" %}
+The cool, still air carries the deep silence of the underground world.
+{% elif source_theme == "City" or target_theme == "City" %}
+The busy sounds of urban life - cart wheels, voices, and commerce - fill the air.
+{% elif source_theme == "Village" or target_theme == "Village" %}
+The peaceful sounds of rural life - animals, farm work, and gentle conversation - drift on the breeze.
+{% endif %}
+{%- endmacro %}

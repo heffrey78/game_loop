@@ -1,0 +1,167 @@
+{# Connection Validation Prompt Templates #}
+
+{# Main validation prompt template #}
+{% macro validation_prompt(connection, context) -%}
+Validate the following connection between two locations for logical consistency and quality.
+
+## Connection to Validate
+**Connection Type**: {{ connection.properties.connection_type }}
+**Description**: {{ connection.properties.description }}
+**Difficulty**: {{ connection.properties.difficulty }}/10
+**Travel Time**: {{ connection.properties.travel_time }} seconds
+**Visibility**: {{ connection.properties.visibility }}
+**Requirements**: {{ connection.properties.requirements | join(', ') if connection.properties.requirements else 'None' }}
+**Reversible**: {{ 'Yes' if connection.properties.reversible else 'No' }}
+
+## Location Context
+**Source**: {{ context.source_location.name }} ({{ context.source_location.state_flags.theme }})
+**Target**: {{ context.target_location.name }} ({{ context.target_location.state_flags.theme }})
+**Generation Purpose**: {{ context.generation_purpose }}
+
+## Validation Criteria
+Evaluate the connection on the following aspects:
+
+### 1. Logical Consistency
+- Does the connection type make sense for these location themes?
+- Is the difficulty appropriate for the connection type and terrain?
+- Is the travel time realistic for the difficulty and connection type?
+- Are the requirements logical and not contradictory?
+
+### 2. Thematic Appropriateness
+- Does the connection fit the visual and narrative style of both locations?
+- Are the materials and construction methods appropriate for the setting?
+- Does the description enhance the world's atmosphere?
+
+### 3. Gameplay Balance
+- Is the difficulty fair for players at the expected level?
+- Does the connection provide interesting gameplay choices?
+- Are the requirements not overly restrictive?
+
+### 4. Description Quality
+- Is the description vivid and immersive?
+- Does it provide enough detail without being overwhelming?
+- Does it inspire the imagination and enhance the experience?
+
+## Response Format
+Provide your validation in the following JSON format:
+```json
+{
+  "is_valid": true/false,
+  "consistency_score": 0.0-1.0,
+  "theme_appropriateness": 0.0-1.0,
+  "gameplay_balance": 0.0-1.0,
+  "description_quality": 0.0-1.0,
+  "validation_errors": ["list", "of", "serious", "issues"],
+  "warnings": ["list", "of", "minor", "concerns"],
+  "suggestions": ["list", "of", "improvement", "suggestions"],
+  "overall_assessment": "Brief summary of the connection's quality"
+}
+```
+{%- endmacro %}
+
+{# Theme consistency validation #}
+{% macro theme_consistency_prompt(connection_type, source_theme, target_theme) -%}
+Evaluate whether a {{ connection_type }} connection is thematically appropriate between a {{ source_theme }} location and a {{ target_theme }} location.
+
+Consider:
+- Architectural styles and materials typical of each theme
+- Natural barriers or facilitators between these location types
+- Cultural and technological appropriateness
+- Visual and atmospheric consistency
+
+Rate the thematic consistency from 0.0 (completely inappropriate) to 1.0 (perfectly fitting).
+{%- endmacro %}
+
+{# Difficulty assessment validation #}
+{% macro difficulty_assessment_prompt(connection_type, difficulty, travel_time, requirements) -%}
+Assess whether the difficulty rating of {{ difficulty }}/10 is appropriate for this connection:
+
+**Connection Details**:
+- Type: {{ connection_type }}
+- Travel Time: {{ travel_time }} seconds
+- Requirements: {{ requirements | join(', ') if requirements else 'None' }}
+
+**Validation Questions**:
+1. Does the difficulty match the expected physical/mental challenge?
+2. Is the travel time proportional to the difficulty?
+3. Do the requirements justify the difficulty level?
+4. Would players find this difficulty fair and reasonable?
+
+Provide a score from 0.0 (completely inappropriate) to 1.0 (perfectly calibrated).
+{%- endmacro %}
+
+{# Description quality validation #}
+{% macro description_quality_prompt(description, connection_type) -%}
+Evaluate the quality of this {{ connection_type }} description:
+
+"{{ description }}"
+
+**Quality Criteria**:
+1. **Vividness**: Does it paint a clear mental picture?
+2. **Immersion**: Does it draw the reader into the world?
+3. **Specificity**: Are details concrete and meaningful?
+4. **Atmosphere**: Does it convey the right mood and feeling?
+5. **Clarity**: Is it easy to understand and visualize?
+6. **Appropriateness**: Does it fit the connection type and setting?
+
+Rate each criterion from 0.0 to 1.0, then provide an overall quality score.
+{%- endmacro %}
+
+{# Requirements validation #}
+{% macro requirements_validation_prompt(requirements, connection_type, themes) -%}
+Validate these connection requirements: {{ requirements | join(', ') }}
+
+**Context**:
+- Connection Type: {{ connection_type }}
+- Location Themes: {{ themes | join(' to ') }}
+
+**Validation Checks**:
+1. Are the requirements logical for this connection type?
+2. Are they achievable by players at appropriate levels?
+3. Do they enhance gameplay without being overly restrictive?
+4. Are there any contradictory or impossible requirements?
+5. Do they fit the thematic setting?
+
+Identify any problematic requirements and suggest improvements.
+{%- endmacro %}
+
+{# Comprehensive validation prompt #}
+{% macro comprehensive_validation_prompt(connection, context) -%}
+Perform a comprehensive validation of this world connection:
+
+{{ validation_prompt(connection, context) }}
+
+Additionally, consider these advanced factors:
+
+### Environmental Impact
+- How does weather affect this connection?
+- Are there seasonal accessibility changes?
+- What environmental hazards might exist?
+
+### Narrative Potential
+- Does this connection create interesting story opportunities?
+- Could it be used for memorable encounters or events?
+- Does it enhance the world's interconnectedness?
+
+### Player Agency
+- Does the connection provide meaningful choices?
+- Are there alternative routes or methods of traversal?
+- Does it respect different playstyles and preferences?
+
+### Long-term Implications
+- How might this connection evolve over time?
+- Could it be affected by player actions or world events?
+- Does it support future content expansion?
+
+Provide detailed feedback addressing all these aspects.
+{%- endmacro %}
+
+{# Quick validation for batch processing #}
+{% macro quick_validation_prompt(connection_type, difficulty, travel_time, themes) -%}
+Quick validation check for {{ connection_type }} connection:
+- Difficulty: {{ difficulty }}/10
+- Travel Time: {{ travel_time }}s  
+- Themes: {{ themes | join(' ↔ ') }}
+
+Rate overall appropriateness (0.0-1.0) and list any critical issues.
+{%- endmacro %}
