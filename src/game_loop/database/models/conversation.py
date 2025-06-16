@@ -1,7 +1,7 @@
 """SQLAlchemy models for conversation system."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import (
@@ -59,7 +59,7 @@ class NPCPersonality(Base):
         if not self.relationships:
             self.relationships = {}
         self.relationships[str(entity_id)] = new_level
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -131,18 +131,18 @@ class ConversationContext(Base):
     def update_mood(self, new_mood: str) -> None:
         """Update the current mood of the conversation."""
         self.mood = new_mood
-        self.last_updated = datetime.utcnow()
+        self.last_updated = datetime.now(timezone.utc)
 
     def update_relationship(self, change: float) -> None:
         """Update the relationship level."""
         current = float(self.relationship_level)
         self.relationship_level = max(-1.0, min(1.0, current + change))
-        self.last_updated = datetime.utcnow()
+        self.last_updated = datetime.now(timezone.utc)
 
     def end_conversation(self, reason: str = "natural_end") -> None:
         """Mark conversation as ended."""
         self.status = "ended"
-        self.ended_at = datetime.utcnow()
+        self.ended_at = datetime.now(timezone.utc)
         if not self.context_data:
             self.context_data = {}
         self.context_data["end_reason"] = reason

@@ -973,11 +973,12 @@ class GameLoop:
                 )
                 if dialogue_response:
                     return ActionResult(
-                        success=True,
-                        feedback_message=dialogue_response
+                        success=True, feedback_message=dialogue_response
                     )
             except Exception as e:
-                logger.warning(f"LLM dialogue generation failed: {e}, falling back to basic responses")
+                logger.warning(
+                    f"LLM dialogue generation failed: {e}, falling back to basic responses"
+                )
 
         # Fallback to simple response based on NPC state
         dialogue_state = target_npc.dialogue_state
@@ -2245,12 +2246,12 @@ class GameLoop:
     ) -> str | None:
         """
         Generate a dynamic dialogue response for an NPC using LLM.
-        
+
         Args:
             npc: The NPC being talked to
             location: Current location
             player_state: Current player state
-            
+
         Returns:
             Generated dialogue response or None
         """
@@ -2271,27 +2272,27 @@ class GameLoop:
                     "inventory_items": len(player_state.inventory),
                 },
             }
-            
+
             # Render the dialogue prompt
             prompt = await self._render_llm_prompt("npc_dialogue", context)
-            
+
             # Generate dialogue using LLM
             response = await self._call_llm(prompt, temperature=0.85, max_tokens=400)
-            
+
             if response and "response" in response:
                 import json
-                
+
                 try:
                     # Try to parse JSON response
                     dialogue_data = json.loads(response["response"])
-                    
+
                     # Format the dialogue response
                     greeting = dialogue_data.get("greeting", "Hello there.")
                     personality = dialogue_data.get("personality_traits", [])
-                    
+
                     # Build a natural response
                     response_text = f"{npc.name} "
-                    
+
                     # Add personality-based action
                     if "authoritative" in personality:
                         response_text += "stands tall and speaks firmly. "
@@ -2301,62 +2302,66 @@ class GameLoop:
                         response_text += "shifts nervously. "
                     else:
                         response_text += "looks at you. "
-                    
+
                     response_text += f"'{greeting}'"
-                    
+
                     # Add any immediate local knowledge if available
                     local_knowledge = dialogue_data.get("local_knowledge", [])
                     if local_knowledge and len(local_knowledge) > 0:
                         response_text += f"\n\n{npc.name} adds: '{local_knowledge[0]}'"
-                    
+
                     return response_text
-                    
+
                 except json.JSONDecodeError:
                     # If not JSON, use the raw response as dialogue
                     return f"{npc.name} says: '{response['response'][:300]}'"
-            
+
             return None
-            
+
         except Exception as e:
             logger.error(f"Error generating NPC dialogue response: {e}")
             return None
 
-    async def _call_llm(self, prompt: str, temperature: float = 0.8, max_tokens: int = 800, format: str | None = "json") -> dict[str, Any] | None:
+    async def _call_llm(
+        self,
+        prompt: str,
+        temperature: float = 0.8,
+        max_tokens: int = 800,
+        format: str | None = "json",
+    ) -> dict[str, Any] | None:
         """
         Helper method to call LLM with consistent parameters.
-        
+
         Args:
             prompt: The prompt to send
             temperature: Temperature for generation
             max_tokens: Maximum tokens to generate
             format: Format for response ("json" or None)
-            
+
         Returns:
             Response dict or None if failed
         """
         try:
             from game_loop.llm.ollama.client import OllamaModelParameters
-            
+
             params = OllamaModelParameters(
                 model="qwen2.5:3b",
                 temperature=temperature,
                 top_p=0.9,
                 max_tokens=max_tokens,
-                format=format
+                format=format,
             )
-            
+
             response = await self.ollama_client.generate_completion(
-                prompt=prompt,
-                params=params,
-                raw_response=True
+                prompt=prompt, params=params, raw_response=True
             )
-            
+
             return response
-            
+
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
             return None
-    
+
     async def _render_llm_prompt(self, template_name: str, context: dict) -> str:
         """
         Render an LLM prompt template with context.

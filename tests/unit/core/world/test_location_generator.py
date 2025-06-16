@@ -394,7 +394,6 @@ class TestLocationGenerator:
         assert primary_connection.is_bidirectional
 
 
-@pytest.mark.asyncio
 class TestLocationGeneratorIntegration:
     """Integration tests for LocationGenerator with real template system."""
 
