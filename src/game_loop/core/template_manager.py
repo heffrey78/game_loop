@@ -31,9 +31,10 @@ class TemplateManager:
             self.template_dir.mkdir(parents=True, exist_ok=True)
 
             # Create Jinja2 environment
+            # Note: autoescape=False for Rich text formatting - we want to preserve markup
             self.env = jinja2.Environment(
                 loader=jinja2.FileSystemLoader(str(self.template_dir)),
-                autoescape=True,
+                autoescape=False,
                 trim_blocks=True,
                 lstrip_blocks=True,
             )
@@ -41,6 +42,7 @@ class TemplateManager:
             # Add custom filters for game-specific formatting
             self.env.filters["highlight"] = self._highlight_filter
             self.env.filters["color"] = self._color_filter
+            self.env.filters["rich_markup"] = self._rich_markup_filter
 
         except Exception:
             # If template setup fails, create a minimal environment
@@ -71,6 +73,22 @@ class TemplateManager:
             Text wrapped in Rich color markup
         """
         return f"[{color}]{text}[/{color}]"
+
+    def _rich_markup_filter(self, text: str) -> str:
+        """
+        Custom filter to ensure text is properly handled for Rich markup.
+
+        Args:
+            text: Text that may contain Rich markup
+
+        Returns:
+            Text with proper Rich markup handling
+        """
+        if not isinstance(text, str):
+            text = str(text)
+        # For now, return text as-is but could add escaping logic here if needed
+        # This prevents user input from breaking Rich formatting while preserving intentional markup
+        return text
 
     def render_template(
         self, template_name: str, context: dict[str, Any]

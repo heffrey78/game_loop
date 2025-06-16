@@ -8,6 +8,7 @@ from typing import Any
 
 from rich.console import Console
 
+from game_loop.core.conversation.conversation_models import ConversationExchange
 from game_loop.core.response_formatter import ResponseFormatter
 from game_loop.core.streaming_handler import StreamingHandler
 from game_loop.core.template_manager import TemplateManager
@@ -195,7 +196,7 @@ class OutputGenerator:
         self, speaker: str, text: str, npc_data: dict | None = None
     ) -> None:
         """
-        Format and display NPC dialogue.
+        Format and display NPC dialogue using templates.
 
         Args:
             speaker: Name of the speaking character
@@ -203,14 +204,67 @@ class OutputGenerator:
             npc_data: Additional NPC information
         """
         try:
-            # Use response formatter for dialogue
-            dialogue_panel = self.response_formatter.format_dialogue(
-                speaker, text, npc_data
+            # Try template first, fallback to response formatter if template fails
+            template_context = {
+                "text": text,
+                "speaker": speaker,
+                "npc_data": npc_data,
+            }
+
+            rendered = self.template_manager.render_template(
+                "dialogue/speech.j2", template_context
             )
-            self.console.print(dialogue_panel)
+
+            if rendered:
+                # Successfully rendered with template
+                self.console.print(rendered)
+            else:
+                # Fallback to existing hardcoded method
+                dialogue_panel = self.response_formatter.format_dialogue(
+                    speaker, text, npc_data
+                )
+                self.console.print(dialogue_panel)
 
         except Exception as e:
             error_msg = f"Error displaying dialogue: {str(e)}"
+            self.console.print(f"[red]{error_msg}[/red]")
+
+    def format_dialogue_from_exchange(
+        self, exchange: ConversationExchange, npc_data: dict | None = None
+    ) -> None:
+        """
+        Format and display dialogue from a ConversationExchange using templates.
+
+        Args:
+            exchange: ConversationExchange containing dialogue data
+            npc_data: Additional NPC information
+        """
+        try:
+            # Build template context from exchange data
+            template_context = {
+                "text": exchange.message_text,
+                "speaker": exchange.speaker_id,
+                "npc_data": npc_data,
+                "emotion": exchange.emotion,
+                "message_type": exchange.message_type.value,
+                "metadata": exchange.metadata,
+            }
+
+            rendered = self.template_manager.render_template(
+                "dialogue/speech.j2", template_context
+            )
+
+            if rendered:
+                # Successfully rendered with template
+                self.console.print(rendered)
+            else:
+                # Fallback to existing method
+                self.format_dialogue(
+                    exchange.speaker_id, exchange.message_text, npc_data
+                )
+
+        except Exception as e:
+            error_msg = f"Error displaying dialogue from exchange: {str(e)}"
             self.console.print(f"[red]{error_msg}[/red]")
 
     def format_action_feedback(self, action: str, result: str, success: bool) -> None:

@@ -1,0 +1,243 @@
+rules:
+  - name: dynamic_difficulty_adjustment
+    description: Adjust enemy difficulty based on player performance
+    priority: medium
+    enabled: true
+    conditions:
+      - field: player_state.recent_deaths
+        operator: greater_than
+        value: 3
+        description: Player has died multiple times recently
+      - field: session_data.difficulty_adjustments
+        operator: less_than
+        value: 2
+        description: Haven't adjusted difficulty too many times
+    actions:
+      - type: modify_state
+        target: world_state.enemy_difficulty_modifier
+        parameters:
+          operation: multiply
+          value: 0.9
+        description: Reduce enemy difficulty by 10%
+      - type: send_message
+        parameters:
+          message: "The world seems a bit less hostile now..."
+          style: info
+        description: Subtle notification of difficulty adjustment
+      - type: modify_state
+        target: session_data.difficulty_adjustments
+        parameters:
+          operation: add
+          value: 1
+        description: Track difficulty adjustment count
+    tags: [difficulty, adaptive, balance]
+
+  - name: companion_loyalty_system
+    description: Manage companion loyalty based on player actions
+    priority: medium
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: in
+        value: [help_npc, share_item, defend_ally]
+        description: Player performed a helpful action
+      - field: action_parameters.target_type
+        operator: equals
+        value: companion
+    actions:
+      - type: modify_state
+        target: action_parameters.target.loyalty
+        parameters:
+          operation: add
+          value: 5
+          max_value: 100
+        description: Increase companion loyalty
+      - type: trigger_event
+        parameters:
+          event_type: loyalty_milestone_check
+          data:
+            companion_id: "{{ action_parameters.target.id }}"
+        description: Check for loyalty milestones
+    tags: [companion, loyalty, relationship]
+
+  - name: weather_based_mood_effects
+    description: Apply mood effects based on weather conditions
+    priority: low
+    enabled: true
+    conditions:
+      - field: world_state.weather.type
+        operator: equals
+        value: storm
+      - field: location_data.has_shelter
+        operator: equals
+        value: false
+        description: Player is exposed to storm
+    actions:
+      - type: modify_state
+        target: player_state.mood
+        parameters:
+          operation: add
+          value: -10
+        description: Decrease mood due to storm exposure
+      - type: send_message
+        parameters:
+          message: "The storm is making you feel miserable. You should find shelter."
+          style: warning
+        description: Notify player about weather effects
+    tags: [weather, mood, environment]
+
+  - name: learning_from_failure
+    description: Grant small experience when player fails at something
+    priority: low
+    enabled: true
+    conditions:
+      - field: action_parameters.result
+        operator: equals
+        value: failure
+      - field: action_parameters.skill_check
+        operator: exists
+        description: Action involved a skill check
+      - field: action_parameters.learning_opportunity
+        operator: equals
+        value: true
+    actions:
+      - type: grant_reward
+        parameters:
+          experience: 10
+          message: "You learned something from that mistake."
+        description: Grant learning experience
+      - type: modify_state
+        target: player_state.skills.{{ action_parameters.skill_type }}
+        parameters:
+          operation: add
+          value: 1
+          max_value: 100
+        description: Slightly improve the skill that was tested
+    tags: [learning, failure, skills]
+
+  - name: reputation_based_pricing
+    description: Adjust merchant prices based on player reputation
+    priority: medium
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: equals
+        value: trade
+      - field: action_parameters.merchant_type
+        operator: equals
+        value: guild_merchant
+      - field: player_state.guild_reputation
+        operator: greater_than
+        value: 50
+    actions:
+      - type: modify_state
+        target: action_parameters.price_modifier
+        parameters:
+          operation: multiply
+          value: 0.85
+        description: Apply 15% discount for good reputation
+      - type: send_message
+        parameters:
+          message: "Your reputation with the guild earns you a discount!"
+          style: success
+        description: Notify player about reputation discount
+    tags: [reputation, trade, economy]
+
+  - name: environmental_storytelling
+    description: Trigger story elements based on player exploration
+    priority: medium
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: equals
+        value: examine
+      - field: action_parameters.object_type
+        operator: equals
+        value: environmental_clue
+      - field: player_state.discovered_clues
+        operator: not_contains
+        value: "{{ action_parameters.object_id }}"
+    actions:
+      - type: trigger_event
+        parameters:
+          event_type: story_revelation
+          data:
+            clue_id: "{{ action_parameters.object_id }}"
+            location: "{{ current_location }}"
+        description: Trigger story revelation
+      - type: modify_state
+        target: player_state.discovered_clues
+        parameters:
+          operation: append
+          value: "{{ action_parameters.object_id }}"
+        description: Mark clue as discovered
+      - type: grant_reward
+        parameters:
+          experience: 25
+          message: "You piece together more of the mystery..."
+        description: Reward exploration and observation
+    tags: [story, exploration, mystery]
+
+  - name: combat_momentum_system
+    description: Build combat momentum for consecutive successful attacks
+    priority: medium
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: equals
+        value: attack
+      - field: action_parameters.result
+        operator: equals
+        value: hit
+      - field: player_state.combat_momentum
+        operator: less_than
+        value: 5
+    actions:
+      - type: modify_state
+        target: player_state.combat_momentum
+        parameters:
+          operation: add
+          value: 1
+        description: Increase combat momentum
+      - type: modify_state
+        target: player_state.attack_damage_bonus
+        parameters:
+          operation: add
+          value: 2
+        description: Increase damage bonus from momentum
+      - type: send_message
+        parameters:
+          message: "You're gaining momentum in combat!"
+          style: success
+        description: Notify player about momentum gain
+    tags: [combat, momentum, bonus]
+
+  - name: moral_choice_consequences
+    description: Track and apply consequences for moral choices
+    priority: high
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: equals
+        value: moral_choice
+      - field: action_parameters.choice_type
+        operator: in
+        value: [evil, selfish, cruel]
+    actions:
+      - type: modify_state
+        target: player_state.karma
+        parameters:
+          operation: add
+          value: -10
+        description: Decrease karma for negative choices
+      - type: modify_state
+        target: world_state.npc_general_disposition
+        parameters:
+          operation: add
+          value: -2
+        description: NPCs become slightly less friendly
+      - type: trigger_event
+        parameters:
+          event_type: karma_milestone_check
+        description: Check for karma-based story changes
+    tags: [moral, karma, consequences]

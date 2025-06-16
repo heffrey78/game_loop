@@ -1,0 +1,190 @@
+rules:
+  - name: low_health_warning
+    description: Warn player when health is critically low
+    priority: high
+    enabled: true
+    conditions:
+      - field: player_state.health
+        operator: less_than
+        value: 20
+        description: Health below 20 points
+    actions:
+      - type: send_message
+        parameters:
+          message: "Warning: Your health is critically low! Find a place to rest or heal."
+          style: warning
+          urgent: true
+        description: Send urgent health warning
+    tags: [health, warning, critical]
+
+  - name: inventory_full_prevention
+    description: Prevent taking items when inventory is full
+    priority: medium
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: equals
+        value: take
+        description: Player is trying to take an item
+      - field: player_state.inventory_count
+        operator: greater_equal
+        value: 10
+        description: Inventory is at maximum capacity
+    actions:
+      - type: block_action
+        parameters:
+          reason: "Your inventory is full! Drop something first."
+          alternative_suggestions:
+            - "Try 'drop <item>' to make space"
+            - "Use 'inventory' to see what you're carrying"
+        description: Block the take action and suggest alternatives
+    tags: [inventory, blocking, capacity]
+
+  - name: quest_completion_reward
+    description: Grant rewards when a quest is completed
+    priority: high
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: equals
+        value: quest_complete
+      - field: action_parameters.quest_difficulty
+        operator: greater_than
+        value: 1
+        description: Only for non-trivial quests
+    actions:
+      - type: grant_reward
+        parameters:
+          experience: 100
+          gold: 50
+          message: "Quest completed! You gained experience and gold."
+        description: Grant quest completion rewards
+      - type: trigger_event
+        parameters:
+          event_type: achievement_check
+          data:
+            reason: quest_completion
+        description: Trigger achievement system check
+    tags: [quest, reward, experience]
+
+  - name: dangerous_location_warning
+    description: Warn player when entering dangerous areas
+    priority: medium
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: equals
+        value: move
+      - field: location_data.danger_level
+        operator: greater_than
+        value: 7
+        description: Location has high danger level
+      - field: player_state.level
+        operator: less_than
+        value: 10
+        description: Player is low level
+    actions:
+      - type: send_message
+        parameters:
+          message: "This area seems very dangerous for someone of your experience. Proceed with caution!"
+          style: warning
+        description: Warn about dangerous area
+    tags: [location, danger, warning]
+
+  - name: auto_save_on_level_up
+    description: Automatically save game when player levels up
+    priority: low
+    enabled: true
+    conditions:
+      - field: player_state.level_changed
+        operator: equals
+        value: true
+      - field: player_state.level
+        operator: greater_than
+        value: 1
+    actions:
+      - type: trigger_event
+        parameters:
+          event_type: auto_save
+          reason: level_up
+        description: Trigger automatic save
+      - type: send_message
+        parameters:
+          message: "Level up! Game automatically saved."
+          style: success
+        description: Notify player of level up and save
+    tags: [level, save, progression]
+
+  - name: conversation_mood_bonus
+    description: Apply charisma bonus during conversations with friendly NPCs
+    priority: medium
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: equals
+        value: talk
+      - field: action_parameters.npc_relationship
+        operator: greater_than
+        value: 0.5
+        description: NPC has positive relationship with player
+      - field: player_state.charisma
+        operator: greater_than
+        value: 15
+        description: Player has high charisma
+    actions:
+      - type: modify_state
+        target: action_parameters.conversation_bonus
+        parameters:
+          operation: add
+          value: 2
+        description: Add charisma bonus to conversation
+    tags: [conversation, charisma, bonus]
+
+  - name: time_based_healing
+    description: Slowly heal player over time when resting
+    priority: low
+    enabled: true
+    conditions:
+      - field: player_state.is_resting
+        operator: equals
+        value: true
+      - field: game_time.minutes_elapsed
+        operator: greater_equal
+        value: 10
+        description: At least 10 minutes of rest
+      - field: player_state.health
+        operator: less_than
+        value: 100
+        description: Player is not at full health
+    actions:
+      - type: modify_state
+        target: player_state.health
+        parameters:
+          operation: add
+          value: 5
+          max_value: 100
+        description: Heal 5 health points
+      - type: send_message
+        parameters:
+          message: "You feel a bit better after resting."
+          style: info
+        description: Notify player of healing
+    tags: [healing, time, rest]
+
+  - name: critical_item_protection
+    description: Prevent dropping quest-critical items
+    priority: critical
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: equals
+        value: drop
+      - field: action_parameters.item_properties.quest_critical
+        operator: equals
+        value: true
+    actions:
+      - type: block_action
+        parameters:
+          reason: "You cannot drop this item - it's essential for your quest!"
+        description: Prevent dropping critical quest items
+    tags: [quest, items, protection, critical]
