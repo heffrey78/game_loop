@@ -279,15 +279,15 @@ class TestInputProcessor:
         game_context_with_exit = {
             "connections": {"exit": "outside", "north": "hallway"}
         }
-        exit_movement_cmd = input_processor.process_input("exit", game_context_with_exit)
+        exit_movement_cmd = input_processor.process_input(
+            "exit", game_context_with_exit
+        )
         assert exit_movement_cmd.command_type == CommandType.MOVEMENT
         assert exit_movement_cmd.action == "go"
         assert exit_movement_cmd.subject == "exit"
 
         # Test 'exit' as quit when it's NOT a valid direction
-        game_context_no_exit = {
-            "connections": {"north": "hallway", "south": "garden"}
-        }
+        game_context_no_exit = {"connections": {"north": "hallway", "south": "garden"}}
         exit_quit_cmd = input_processor.process_input("exit", game_context_no_exit)
         assert exit_quit_cmd.command_type == CommandType.QUIT
         assert exit_quit_cmd.action == "quit"

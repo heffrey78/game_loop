@@ -364,7 +364,9 @@ class WorldConnectionManager:
                                 parsed_response = json.loads(response_text)
                                 if "description" in parsed_response:
                                     return str(parsed_response["description"])
-                            return str(response_text)[:200]  # Limit length and ensure string
+                            return str(response_text)[
+                                :200
+                            ]  # Limit length and ensure string
                         except json.JSONDecodeError:
                             return str(response_text)[:200]
 

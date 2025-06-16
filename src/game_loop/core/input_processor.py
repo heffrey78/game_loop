@@ -308,7 +308,9 @@ class InputProcessor:
         """
         return " ".join(user_input.lower().strip().split())
 
-    def _match_command_pattern(self, input_text: str, game_context: dict[str, Any] | None = None) -> ParsedCommand:
+    def _match_command_pattern(
+        self, input_text: str, game_context: dict[str, Any] | None = None
+    ) -> ParsedCommand:
         """
         Match the input text against known command patterns.
 
@@ -346,7 +348,7 @@ class InputProcessor:
         complex_command = self._parse_complex_command(input_text)
         if complex_command:
             return complex_command
-            
+
         # Special handling for "exit" - check if it's a movement direction
         if input_text == "exit":
             # Check if "exit" is a valid movement direction in current context
@@ -541,42 +543,45 @@ class InputProcessor:
 
         return None, None
 
-    def _is_exit_a_valid_direction(self, game_context: dict[str, Any] | None = None) -> bool:
+    def _is_exit_a_valid_direction(
+        self, game_context: dict[str, Any] | None = None
+    ) -> bool:
         """
         Check if 'exit' is a valid movement direction in the current context.
-        
+
         Args:
             game_context: Optional game context to check
-        
+
         Returns:
             True if 'exit' is a valid direction, False otherwise
         """
         # If context is provided, use it
         if game_context and "connections" in game_context:
             return "exit" in game_context["connections"]
-            
+
         # If we don't have a game state manager, we can't check context
         if not self.game_state_manager:
             return False
-            
+
         try:
             # Get current game context synchronously
             import asyncio
+
             loop = asyncio.new_event_loop()
             try:
                 context = loop.run_until_complete(self._get_current_context())
             finally:
                 loop.close()
-                
+
             # Check if we have connections in the context
             if "connections" in context and context["connections"]:
                 # Check if "exit" is one of the available directions
                 return "exit" in context["connections"]
-                
+
         except Exception:
             # If we can't get context, assume exit is not a direction
             pass
-            
+
         return False
 
     def generate_command_suggestions(self, partial_input: str) -> list[str]:

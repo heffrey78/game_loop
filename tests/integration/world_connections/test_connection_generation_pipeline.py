@@ -349,7 +349,7 @@ class TestConnectionGenerationPipeline:
 
         # Use valid purposes
         valid_purposes = ["expand_world", "quest_path", "exploration"]
-        
+
         for i, target in enumerate(targets):
             purpose = valid_purposes[i % len(valid_purposes)]
             connection = await components["connection_manager"].generate_connection(
@@ -381,7 +381,7 @@ class TestConnectionGenerationPipeline:
         # for bidirectional connections or different connection types
         # The key is that opportunities should not be empty and should return valid targets
         assert len(opportunities) >= 0  # Should have some opportunities or none
-        
+
         # All opportunity targets should be valid location IDs
         for target_id, score in opportunities:
             assert isinstance(target_id, type(forest.location_id))
@@ -446,7 +446,14 @@ class TestConnectionGenerationPipeline:
 
         assert isinstance(connection, GeneratedConnection)
         # System should handle missing locations gracefully
-        assert connection.properties.connection_type in ["passage", "bridge", "path", "road", "tunnel", "portal"]
+        assert connection.properties.connection_type in [
+            "passage",
+            "bridge",
+            "path",
+            "road",
+            "tunnel",
+            "portal",
+        ]
 
         # Test storage of fallback connection
         storage_result = await components["storage"].store_connection(connection)
@@ -521,8 +528,12 @@ class TestConnectionGenerationPipeline:
         ]
 
         # Should contain at least one cultural indicator or be a reasonable description
-        has_cultural_indicator = any(indicator in description for indicator in cultural_indicators)
-        is_reasonable_description = len(description) > 10 and isinstance(description, str)
+        has_cultural_indicator = any(
+            indicator in description for indicator in cultural_indicators
+        )
+        is_reasonable_description = len(description) > 10 and isinstance(
+            description, str
+        )
         assert has_cultural_indicator or is_reasonable_description
 
         # Connection type should be appropriate for settlements

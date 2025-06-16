@@ -193,7 +193,7 @@ class ActionResult(BaseModel):
 
 class GenerationTrigger(BaseModel):
     """Represents a trigger for dynamic world generation."""
-    
+
     trigger_id: UUID = Field(default_factory=uuid4)
     player_id: UUID
     session_id: UUID
@@ -209,7 +209,7 @@ class GenerationTrigger(BaseModel):
 
 class GenerationOpportunity(BaseModel):
     """Represents an opportunity for content generation."""
-    
+
     opportunity_id: UUID = Field(default_factory=uuid4)
     content_type: str  # "location", "npc", "object", "connection"
     opportunity_score: float
@@ -220,7 +220,7 @@ class GenerationOpportunity(BaseModel):
 
 class GenerationContext(BaseModel):
     """Context information for generation decisions."""
-    
+
     player_state: PlayerState
     current_location: Location | None = None
     recent_actions: list[str] = Field(default_factory=list)
@@ -231,7 +231,7 @@ class GenerationContext(BaseModel):
 
 class WorldGenerationResponse(BaseModel):
     """Response from world generation system."""
-    
+
     has_new_content: bool = False
     generated_content: list[dict[str, Any]] = Field(default_factory=list)
     generation_time: float = 0.0
@@ -241,7 +241,7 @@ class WorldGenerationResponse(BaseModel):
 
 class PlayerPreferences(BaseModel):
     """Learned player preferences for content generation."""
-    
+
     content_type_preferences: dict[str, float] = Field(default_factory=dict)
     theme_preferences: dict[str, float] = Field(default_factory=dict)
     difficulty_preference: float = 0.5
@@ -252,7 +252,7 @@ class PlayerPreferences(BaseModel):
 
 class ExplorationPatterns(BaseModel):
     """Player exploration behavior patterns."""
-    
+
     average_time_per_location: float = 0.0
     preferred_connection_types: list[str] = Field(default_factory=list)
     backtracking_frequency: float = 0.0
@@ -262,7 +262,7 @@ class ExplorationPatterns(BaseModel):
 
 class EngagementMetrics(BaseModel):
     """Player engagement metrics."""
-    
+
     session_duration: float = 0.0
     actions_per_minute: float = 0.0
     content_interaction_rate: float = 0.0
@@ -273,7 +273,7 @@ class EngagementMetrics(BaseModel):
 
 class InterestPrediction(BaseModel):
     """Prediction of player interest in content."""
-    
+
     content_type: str
     interest_score: float
     confidence: float
@@ -282,7 +282,7 @@ class InterestPrediction(BaseModel):
 
 class ContentInteraction(BaseModel):
     """Record of player interaction with content."""
-    
+
     interaction_id: UUID = Field(default_factory=uuid4)
     content_id: UUID
     content_type: str
@@ -295,7 +295,7 @@ class ContentInteraction(BaseModel):
 
 class DiscoveryEvent(BaseModel):
     """Event when player discovers generated content."""
-    
+
     discovery_id: UUID = Field(default_factory=uuid4)
     player_id: UUID
     session_id: UUID
@@ -310,7 +310,7 @@ class DiscoveryEvent(BaseModel):
 
 class InteractionEvent(BaseModel):
     """Event when player interacts with content."""
-    
+
     interaction_id: UUID = Field(default_factory=uuid4)
     player_id: UUID
     content_id: UUID
@@ -324,7 +324,7 @@ class InteractionEvent(BaseModel):
 
 class DiscoveryPatterns(BaseModel):
     """Patterns in how content is discovered."""
-    
+
     average_discovery_time: float = 0.0
     common_discovery_methods: list[tuple[str, float]] = Field(default_factory=list)
     discovery_success_rate: float = 0.0
@@ -333,7 +333,7 @@ class DiscoveryPatterns(BaseModel):
 
 class ContentEffectiveness(BaseModel):
     """Effectiveness metrics for generated content."""
-    
+
     discovery_rate: float = 0.0
     interaction_rate: float = 0.0
     average_satisfaction: float = 0.0
@@ -343,7 +343,7 @@ class ContentEffectiveness(BaseModel):
 
 class UndiscoveredContent(BaseModel):
     """Content that exists but hasn't been discovered."""
-    
+
     content_id: UUID
     content_type: str
     difficulty_to_discover: float
@@ -353,7 +353,7 @@ class UndiscoveredContent(BaseModel):
 
 class DiscoveryAnalytics(BaseModel):
     """Comprehensive analytics on content discovery."""
-    
+
     total_content_generated: int = 0
     total_content_discovered: int = 0
     discovery_rate_by_type: dict[str, float] = Field(default_factory=dict)
@@ -363,7 +363,7 @@ class DiscoveryAnalytics(BaseModel):
 
 class QualityAssessment(BaseModel):
     """Assessment of generated content quality."""
-    
+
     content_id: UUID
     overall_quality_score: float
     dimension_scores: dict[str, float] = Field(default_factory=dict)
@@ -374,7 +374,7 @@ class QualityAssessment(BaseModel):
 
 class SatisfactionData(BaseModel):
     """Player satisfaction data for content."""
-    
+
     rating: int  # 1-5 scale
     feedback_text: str | None = None
     interaction_duration: float = 0.0
@@ -383,7 +383,7 @@ class SatisfactionData(BaseModel):
 
 class QualityIssue(BaseModel):
     """Identified quality issue in generated content."""
-    
+
     issue_id: UUID = Field(default_factory=uuid4)
     content_id: UUID
     issue_type: str  # "consistency", "quality", "performance", "engagement"
@@ -395,7 +395,7 @@ class QualityIssue(BaseModel):
 
 class QualityTrends(BaseModel):
     """Trends in content quality over time."""
-    
+
     quality_scores_over_time: list[tuple[datetime, float]] = Field(default_factory=list)
     improvement_rate: float = 0.0
     trend_direction: str = "stable"  # "improving", "declining", "stable"
@@ -404,7 +404,7 @@ class QualityTrends(BaseModel):
 
 class QualityReport(BaseModel):
     """Comprehensive quality report."""
-    
+
     report_period: tuple[datetime, datetime]
     overall_quality_score: float
     quality_by_content_type: dict[str, float] = Field(default_factory=dict)
@@ -415,10 +415,12 @@ class QualityReport(BaseModel):
 
 class QualityImprovement(BaseModel):
     """Suggested improvement for quality issues."""
-    
+
     improvement_id: UUID = Field(default_factory=uuid4)
     target_issue_types: list[str] = Field(default_factory=list)
-    improvement_type: str  # "parameter_adjustment", "template_update", "algorithm_change"
+    improvement_type: (
+        str  # "parameter_adjustment", "template_update", "algorithm_change"
+    )
     description: str
     expected_impact: float = 0.0
     implementation_difficulty: str = "medium"  # "easy", "medium", "hard"
@@ -426,7 +428,7 @@ class QualityImprovement(BaseModel):
 
 class GenerationPipelineResult(BaseModel):
     """Result from coordinated generation pipeline."""
-    
+
     success: bool = True
     generated_content: list[dict[str, Any]] = Field(default_factory=list)
     pipeline_time: float = 0.0
@@ -437,7 +439,7 @@ class GenerationPipelineResult(BaseModel):
 
 class WorldGenerationStatus(BaseModel):
     """Current status of world generation systems."""
-    
+
     active_generators: list[str] = Field(default_factory=list)
     generation_queue_size: int = 0
     average_generation_time: float = 0.0
@@ -448,7 +450,7 @@ class WorldGenerationStatus(BaseModel):
 
 class ContentGap(BaseModel):
     """Identified gap in world content."""
-    
+
     gap_id: UUID = Field(default_factory=uuid4)
     gap_type: str  # "missing_connection", "empty_location", "no_npcs", "no_objects"
     location_id: UUID | None = None
@@ -459,7 +461,7 @@ class ContentGap(BaseModel):
 
 class GenerationPlan(BaseModel):
     """Plan for coordinated content generation."""
-    
+
     plan_id: UUID = Field(default_factory=uuid4)
     generation_requests: list[dict[str, Any]] = Field(default_factory=list)
     coordination_strategy: str = "sequential"  # "sequential", "parallel", "mixed"
@@ -469,7 +471,7 @@ class GenerationPlan(BaseModel):
 
 class LocationWithContent(BaseModel):
     """Location generated with associated content."""
-    
+
     location: Location
     generated_npcs: list[NonPlayerCharacter] = Field(default_factory=list)
     generated_objects: list[WorldObject] = Field(default_factory=list)
@@ -479,7 +481,7 @@ class LocationWithContent(BaseModel):
 
 class LocationExpansion(BaseModel):
     """Expansion of existing location with new content."""
-    
+
     location_id: UUID
     expansion_type: str  # "npc_addition", "object_addition", "connection_addition"
     added_content: list[dict[str, Any]] = Field(default_factory=list)
@@ -488,7 +490,7 @@ class LocationExpansion(BaseModel):
 
 class ContentCluster(BaseModel):
     """Thematically connected group of content."""
-    
+
     cluster_id: UUID = Field(default_factory=uuid4)
     theme: str
     anchor_location_id: UUID
@@ -498,7 +500,7 @@ class ContentCluster(BaseModel):
 
 class ConsistencyReport(BaseModel):
     """Report on content consistency validation."""
-    
+
     overall_consistency: float = 0.0
     theme_consistency: float = 0.0
     narrative_consistency: float = 0.0
@@ -508,7 +510,7 @@ class ConsistencyReport(BaseModel):
 
 class GenerationRequest(BaseModel):
     """Request for content generation."""
-    
+
     request_id: UUID = Field(default_factory=uuid4)
     content_type: str
     generation_context: dict[str, Any] = Field(default_factory=dict)
@@ -519,7 +521,7 @@ class GenerationRequest(BaseModel):
 
 class GenerationRecovery(BaseModel):
     """Recovery strategy for failed generation."""
-    
+
     recovery_type: str  # "retry", "fallback", "skip", "manual"
     fallback_content: dict[str, Any] | None = None
     retry_parameters: dict[str, Any] = Field(default_factory=dict)
@@ -528,7 +530,7 @@ class GenerationRecovery(BaseModel):
 
 class GeneratedContent(BaseModel):
     """Generic container for any generated content."""
-    
+
     content_id: UUID = Field(default_factory=uuid4)
     content_type: str
     content_data: dict[str, Any] = Field(default_factory=dict)
@@ -539,7 +541,7 @@ class GeneratedContent(BaseModel):
 
 class PlayerFeedback(BaseModel):
     """Player feedback for preference learning."""
-    
+
     feedback_id: UUID = Field(default_factory=uuid4)
     player_id: UUID
     content_id: UUID | None = None
@@ -550,7 +552,7 @@ class PlayerFeedback(BaseModel):
 
 class PerformanceMetrics(BaseModel):
     """Performance metrics for generation systems."""
-    
+
     generation_time: float = 0.0
     memory_usage: float = 0.0
     cpu_usage: float = 0.0
@@ -560,7 +562,7 @@ class PerformanceMetrics(BaseModel):
 
 class QualityFeedback(BaseModel):
     """Quality feedback for content generation systems."""
-    
+
     feedback_id: UUID = Field(default_factory=uuid4)
     player_id: UUID | None = None
     content_id: UUID | None = None

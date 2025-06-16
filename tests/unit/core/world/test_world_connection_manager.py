@@ -38,15 +38,17 @@ class TestWorldConnectionManager:
         mock_client = AsyncMock()
         # Mock response for connection description generation
         mock_client.generate_completion.return_value = {
-            "response": json.dumps({
-                "description": "A well-crafted stone bridge spans gracefully between the forest and village, with moss-covered railings that speak of age and endurance.",
-                "travel_time": 60,
-                "difficulty": 3,
-                "requirements": [],
-                "special_features": ["scenic_view", "weathered_stone"],
-                "atmosphere": "peaceful transition",
-                "visibility_notes": "Clearly visible from both sides",
-            })
+            "response": json.dumps(
+                {
+                    "description": "A well-crafted stone bridge spans gracefully between the forest and village, with moss-covered railings that speak of age and endurance.",
+                    "travel_time": 60,
+                    "difficulty": 3,
+                    "requirements": [],
+                    "special_features": ["scenic_view", "weathered_stone"],
+                    "atmosphere": "peaceful transition",
+                    "visibility_notes": "Clearly visible from both sides",
+                }
+            )
         }
         return mock_client
 
@@ -401,7 +403,14 @@ class TestWorldConnectionManager:
         assert connection.target_location_id == nonexistent_id2
         # System should handle missing locations gracefully by creating a fallback context
         # The connection should still be valid
-        assert connection.properties.connection_type in ["passage", "bridge", "path", "road", "tunnel", "portal"]
+        assert connection.properties.connection_type in [
+            "passage",
+            "bridge",
+            "path",
+            "road",
+            "tunnel",
+            "portal",
+        ]
 
     @pytest.mark.asyncio
     async def test_connection_enhancement_based_on_context(
