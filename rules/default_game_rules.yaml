@@ -1,0 +1,209 @@
+rules:
+  # Core Health Management Rules
+  - name: critical_health_warning
+    description: Emergency warning when health is critically low
+    priority: critical
+    enabled: true
+    conditions:
+      - field: player_state.health
+        operator: less_than
+        value: 15
+    actions:
+      - type: send_message
+        parameters:
+          message: "🚨 CRITICAL: Your health is dangerously low! You need immediate medical attention!"
+          style: critical
+          urgent: true
+    tags: [health, critical, emergency]
+
+  - name: low_health_warning
+    description: Warning when health gets low
+    priority: high
+    enabled: true
+    conditions:
+      - field: player_state.health
+        operator: less_than
+        value: 30
+      - field: player_state.health
+        operator: greater_equal
+        value: 15
+    actions:
+      - type: send_message
+        parameters:
+          message: "⚠️ Your health is getting low. You should find a way to heal soon."
+          style: warning
+    tags: [health, warning]
+
+  # Inventory Management Rules
+  - name: inventory_nearly_full
+    description: Warn when inventory is nearly full
+    priority: medium
+    enabled: true
+    conditions:
+      - field: player_state.inventory_count
+        operator: greater_equal
+        value: 8
+      - field: player_state.max_inventory
+        operator: greater_than
+        value: 0
+    actions:
+      - type: send_message
+        parameters:
+          message: "📦 Your inventory is getting full. Consider dropping or using some items."
+          style: info
+    tags: [inventory, warning]
+
+  - name: inventory_full_blocking
+    description: Prevent taking items when inventory is completely full
+    priority: high
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: in
+        value: [take, get, pick_up]
+      - field: player_state.inventory_count
+        operator: greater_equal
+        value: 10
+    actions:
+      - type: block_action
+        parameters:
+          reason: "Your inventory is full! You cannot carry any more items."
+          suggestions:
+            - "Try 'drop <item>' to make space"
+            - "Use 'inventory' to see what you're carrying"
+            - "Consider using an item to free up space"
+    tags: [inventory, blocking]
+
+  # Movement and Location Rules
+  - name: movement_stamina_check
+    description: Warn about low stamina affecting movement
+    priority: medium
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: in
+        value: [move, go, walk, run]
+      - field: player_state.stamina
+        operator: less_than
+        value: 20
+    actions:
+      - type: send_message
+        parameters:
+          message: "😴 You're feeling tired. Moving might be more difficult."
+          style: info
+      - type: modify_state
+        target: player_state.movement_penalty
+        parameters:
+          value: 0.5
+          duration: temporary
+    tags: [movement, stamina, warning]
+
+  # Basic Game Mechanics
+  - name: first_time_help
+    description: Offer help to new players
+    priority: low
+    enabled: true
+    conditions:
+      - field: player_state.commands_entered
+        operator: less_than
+        value: 3
+      - field: session_data.help_offered
+        operator: not_equals
+        value: true
+    actions:
+      - type: send_message
+        parameters:
+          message: "💡 New to the game? Type 'help' for a list of available commands!"
+          style: hint
+      - type: modify_state
+        target: session_data.help_offered
+        parameters:
+          value: true
+    tags: [tutorial, help, new_player]
+
+  # Survival and Environment Rules
+  - name: darkness_warning
+    description: Warn about moving in darkness
+    priority: medium
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: in
+        value: [move, go, walk]
+      - field: location_data.light_level
+        operator: less_than
+        value: 2
+      - field: player_state.has_light_source
+        operator: equals
+        value: false
+    actions:
+      - type: send_message
+        parameters:
+          message: "🌑 It's very dark here. You might want to find a light source before moving around."
+          style: warning
+    tags: [environment, darkness, safety]
+
+  # Quest and Progression Rules
+  - name: achievement_notification
+    description: Notify about significant achievements
+    priority: medium
+    enabled: true
+    conditions:
+      - field: player_state.experience
+        operator: greater_than
+        value: 100
+      - field: session_data.achievement_100_exp
+        operator: not_equals
+        value: true
+    actions:
+      - type: send_message
+        parameters:
+          message: "🎉 Achievement unlocked: Experienced Explorer! (100+ experience points)"
+          style: success
+      - type: modify_state
+        target: session_data.achievement_100_exp
+        parameters:
+          value: true
+    tags: [achievement, progression, milestone]
+
+  # Safety and Validation Rules
+  - name: dangerous_action_confirmation
+    description: Confirm potentially dangerous actions
+    priority: high
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: in
+        value: [attack, destroy, break]
+      - field: action_parameters.target_type
+        operator: equals
+        value: important_object
+    actions:
+      - type: send_message
+        parameters:
+          message: "⚠️ This action might have serious consequences. Are you sure?"
+          style: warning
+          requires_confirmation: true
+    tags: [safety, confirmation, dangerous]
+
+  # Basic Interaction Rules
+  - name: examine_encouragement
+    description: Encourage examination of interesting objects
+    priority: low
+    enabled: true
+    conditions:
+      - field: current_action
+        operator: equals
+        value: look
+      - field: location_data.has_interesting_objects
+        operator: equals
+        value: true
+      - field: player_state.examination_count
+        operator: less_than
+        value: 3
+    actions:
+      - type: send_message
+        parameters:
+          message: "🔍 There are some interesting things here. Try 'examine <object>' for a closer look!"
+          style: hint
+    tags: [exploration, hint, interaction]

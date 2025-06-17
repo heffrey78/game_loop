@@ -4,7 +4,7 @@ Main orchestrator for rule evaluation, conflict resolution, and execution.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 from uuid import UUID
 
 from .rule_evaluator import RuleEvaluator
@@ -22,7 +22,7 @@ from .rule_models import (
 class RulesEngine:
     """Main rules engine that orchestrates rule evaluation and execution."""
 
-    def __init__(self, config: Optional[RuleEngineConfig] = None):
+    def __init__(self, config: RuleEngineConfig | None = None):
         """
         Initialize the rules engine.
 
@@ -34,12 +34,12 @@ class RulesEngine:
         self.loader = RuleLoader()
 
         # Rule storage
-        self._rules: Dict[UUID, Rule] = {}
-        self._rules_by_name: Dict[str, Rule] = {}
-        self._rules_by_priority: Dict[RulePriority, List[Rule]] = {
+        self._rules: dict[UUID, Rule] = {}
+        self._rules_by_name: dict[str, Rule] = {}
+        self._rules_by_priority: dict[RulePriority, list[Rule]] = {
             priority: [] for priority in RulePriority
         }
-        self._rules_by_tag: Dict[str, List[Rule]] = {}
+        self._rules_by_tag: dict[str, list[Rule]] = {}
 
         # Performance tracking
         self._evaluation_count = 0
@@ -58,7 +58,7 @@ class RulesEngine:
         rules = self.loader.load_from_file(file_path)
         return self.add_rules(rules)
 
-    def load_rules_from_dict(self, rules_data: Dict) -> int:
+    def load_rules_from_dict(self, rules_data: dict) -> int:
         """
         Load rules from a dictionary.
 
@@ -104,7 +104,7 @@ class RulesEngine:
         except Exception:
             return False
 
-    def add_rules(self, rules: List[Rule]) -> int:
+    def add_rules(self, rules: list[Rule]) -> int:
         """
         Add multiple rules to the engine.
 
@@ -148,7 +148,7 @@ class RulesEngine:
 
         return True
 
-    def get_rule(self, rule_id: UUID) -> Optional[Rule]:
+    def get_rule(self, rule_id: UUID) -> Rule | None:
         """
         Get a rule by ID.
 
@@ -160,7 +160,7 @@ class RulesEngine:
         """
         return self._rules.get(rule_id)
 
-    def get_rule_by_name(self, name: str) -> Optional[Rule]:
+    def get_rule_by_name(self, name: str) -> Rule | None:
         """
         Get a rule by name.
 
@@ -172,7 +172,7 @@ class RulesEngine:
         """
         return self._rules_by_name.get(name)
 
-    def get_rules_by_tag(self, tag: str) -> List[Rule]:
+    def get_rules_by_tag(self, tag: str) -> list[Rule]:
         """
         Get all rules with a specific tag.
 
@@ -184,7 +184,7 @@ class RulesEngine:
         """
         return self._rules_by_tag.get(tag, []).copy()
 
-    def get_rules_by_priority(self, priority: RulePriority) -> List[Rule]:
+    def get_rules_by_priority(self, priority: RulePriority) -> list[Rule]:
         """
         Get all rules with a specific priority.
 
@@ -197,8 +197,8 @@ class RulesEngine:
         return self._rules_by_priority[priority].copy()
 
     def evaluate_rules(
-        self, context: RuleEvaluationContext, tags: Optional[List[str]] = None
-    ) -> List[RuleResult]:
+        self, context: RuleEvaluationContext, tags: list[str] | None = None
+    ) -> list[RuleResult]:
         """
         Evaluate all applicable rules against the provided context.
 
@@ -263,7 +263,7 @@ class RulesEngine:
 
         return results
 
-    def _get_applicable_rules(self, tags: Optional[List[str]] = None) -> List[Rule]:
+    def _get_applicable_rules(self, tags: list[str] | None = None) -> list[Rule]:
         """
         Get rules that are applicable for evaluation.
 
@@ -289,7 +289,7 @@ class RulesEngine:
         # Return all applicable rules (enabled and disabled will be handled during evaluation)
         return applicable_rules
 
-    def _detect_conflicts(self, results: List[RuleResult]) -> List[RuleConflict]:
+    def _detect_conflicts(self, results: list[RuleResult]) -> list[RuleConflict]:
         """
         Detect conflicts between triggered rules.
 
@@ -343,8 +343,8 @@ class RulesEngine:
         return rule1_modifies and rule2_modifies
 
     def _resolve_conflicts(
-        self, results: List[RuleResult], conflicts: List[RuleConflict]
-    ) -> List[RuleResult]:
+        self, results: list[RuleResult], conflicts: list[RuleConflict]
+    ) -> list[RuleResult]:
         """
         Resolve conflicts between rules using priority-based resolution.
 
@@ -395,7 +395,7 @@ class RulesEngine:
 
         return resolved_results
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get statistics about the rules engine.
 

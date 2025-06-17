@@ -4,6 +4,7 @@ Handles the main game loop, input processing, and output generation.
 """
 
 import logging
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -19,6 +20,9 @@ from game_loop.core.input_processor import CommandType, InputProcessor, ParsedCo
 from game_loop.core.location import LocationDisplay
 from game_loop.core.navigation.pathfinder import PathfindingService
 from game_loop.core.navigation.validator import NavigationValidator
+from game_loop.core.rules.game_rules_manager import GameRulesManager
+from game_loop.core.rules.rule_triggers import RuleTriggerManager
+from game_loop.core.rules.rules_engine import RulesEngine
 from game_loop.core.world.boundary_manager import WorldBoundaryManager
 from game_loop.core.world.connection_graph import LocationConnectionGraph
 from game_loop.database.session_factory import DatabaseSessionFactory
@@ -69,8 +73,8 @@ class GameLoop:
         # Initialize database session factory
         self.session_factory = DatabaseSessionFactory(config.database)
 
-        # Initialize LLM client
-        self.ollama_client = OllamaClient()
+        # Initialize LLM client with longer timeout for dialogue generation
+        self.ollama_client = OllamaClient(timeout=120.0)
 
         # Initialize action classifier
         self.action_classifier = ActionTypeClassifier(
@@ -116,6 +120,11 @@ class GameLoop:
             None  # Will be initialized when world state is available
         )
 
+        # Initialize rules engine and management
+        self.rules_engine = RulesEngine()
+        self.rules_manager = GameRulesManager(self.rules_engine)
+        self.rule_trigger_manager = RuleTriggerManager(self.rules_engine)
+
     async def initialize(self, session_id: UUID | None = None) -> None:
         """Initialize the game environment, loading or creating game state."""
         self.console.print("[bold green]Initializing Game Loop...[/bold green]")
@@ -123,6 +132,9 @@ class GameLoop:
         try:
             # Initialize database session factory
             await self.session_factory.initialize()
+
+            # Load default game rules
+            await self._load_default_rules()
 
             # Initialize the state manager, attempting to load if session_id provided
             await self.state_manager.initialize(session_id)
@@ -494,6 +506,13 @@ class GameLoop:
                 success=False, feedback_message="Error: World state not initialized."
             )
 
+        # Evaluate rules before command execution
+        pre_execution_result = await self._evaluate_rules_pre_command(
+            command, player_state, current_location, world_state
+        )
+        if pre_execution_result and not pre_execution_result.success:
+            return pre_execution_result
+
         action_result = None
         try:
             if command.command_type == CommandType.MOVEMENT:
@@ -611,6 +630,11 @@ class GameLoop:
             )
         ):
             await self.state_manager.update_after_action(action_result)
+
+            # Evaluate rules after command execution and state changes
+            await self._evaluate_rules_post_command(
+                command, action_result, player_state, current_location, world_state
+            )
 
             # If the location changed, display the new location
             if action_result.location_change:
@@ -977,7 +1001,8 @@ class GameLoop:
                     )
             except Exception as e:
                 logger.warning(
-                    f"LLM dialogue generation failed: {e}, falling back to basic responses"
+                    f"LLM dialogue generation failed: {str(e)}, falling back to basic responses",
+                    exc_info=True,
                 )
 
         # Fallback to simple response based on NPC state
@@ -2246,6 +2271,9 @@ class GameLoop:
     ) -> str | None:
         """
         Generate a dynamic dialogue response for an NPC using LLM.
+        
+        This follows best practices by requesting plain text responses instead of JSON,
+        making the system more reliable and user-friendly.
 
         Args:
             npc: The NPC being talked to
@@ -2256,71 +2284,86 @@ class GameLoop:
             Generated dialogue response or None
         """
         try:
-            # Prepare context for dialogue generation
-            context = {
-                "npc_type": npc.name,
-                "location_name": location.name,
-                "location_type": location.state_flags.get("location_type", "unknown"),
-                "location_description": location.description,
-                "player_context": {
-                    "exploration_style": self._get_player_preferences().get(
-                        "exploration_style", "casual_explorer"
-                    ),
-                    "experience_level": self._get_player_preferences().get(
-                        "experience_level", "intermediate"
-                    ),
-                    "inventory_items": len(player_state.inventory),
-                },
-            }
+            # Create a simple, clear prompt for natural dialogue
+            prompt = self._create_dialogue_prompt(npc, location, player_state)
 
-            # Render the dialogue prompt
-            prompt = await self._render_llm_prompt("npc_dialogue", context)
-
-            # Generate dialogue using LLM
-            response = await self._call_llm(prompt, temperature=0.85, max_tokens=400)
+            # Request plain text response (no JSON parsing needed)
+            response = await self._call_llm(
+                prompt, 
+                temperature=0.8, 
+                max_tokens=150,  # Shorter for focused dialogue
+                format=None
+            )
 
             if response and "response" in response:
-                import json
-
-                try:
-                    # Try to parse JSON response
-                    dialogue_data = json.loads(response["response"])
-
-                    # Format the dialogue response
-                    greeting = dialogue_data.get("greeting", "Hello there.")
-                    personality = dialogue_data.get("personality_traits", [])
-
-                    # Build a natural response
-                    response_text = f"{npc.name} "
-
-                    # Add personality-based action
-                    if "authoritative" in personality:
-                        response_text += "stands tall and speaks firmly. "
-                    elif "wise" in personality:
-                        response_text += "strokes their chin thoughtfully. "
-                    elif "nervous" in personality:
-                        response_text += "shifts nervously. "
-                    else:
-                        response_text += "looks at you. "
-
-                    response_text += f"'{greeting}'"
-
-                    # Add any immediate local knowledge if available
-                    local_knowledge = dialogue_data.get("local_knowledge", [])
-                    if local_knowledge and len(local_knowledge) > 0:
-                        response_text += f"\n\n{npc.name} adds: '{local_knowledge[0]}'"
-
-                    return response_text
-
-                except json.JSONDecodeError:
-                    # If not JSON, use the raw response as dialogue
-                    return f"{npc.name} says: '{response['response'][:300]}'"
+                dialogue_text = response["response"].strip()
+                
+                # Clean up any unwanted formatting
+                dialogue_text = self._clean_dialogue_text(dialogue_text)
+                
+                if dialogue_text:
+                    # Simple, reliable formatting
+                    return f"{npc.name} looks at you. \"{dialogue_text}\""
 
             return None
 
         except Exception as e:
             logger.error(f"Error generating NPC dialogue response: {e}")
             return None
+
+    def _create_dialogue_prompt(self, npc: Any, location: Location, player_state: PlayerState) -> str:
+        """Create a focused prompt for NPC dialogue generation."""
+        
+        # Determine NPC personality based on name/type
+        npc_personality = self._get_npc_personality_hint(npc.name)
+        
+        prompt = f"""You are roleplaying as {npc.name}, a {npc_personality} character in {location.name}.
+
+Setting: {location.description[:200]}...
+
+Guidelines:
+- Respond as {npc.name} would speak
+- Keep response to 1-2 sentences
+- Stay in character
+- Be helpful but realistic for the setting
+- No special formatting or markup
+
+Player approaches you to talk. What do you say?
+
+Response:"""
+        
+        return prompt
+
+    def _get_npc_personality_hint(self, npc_name: str) -> str:
+        """Get a personality hint based on NPC name."""
+        name_lower = npc_name.lower()
+        
+        if "guard" in name_lower or "security" in name_lower:
+            return "professional security guard"
+        elif "merchant" in name_lower or "shop" in name_lower:
+            return "friendly merchant"
+        elif "scholar" in name_lower or "librarian" in name_lower:
+            return "knowledgeable scholar"
+        elif "innkeeper" in name_lower or "bartender" in name_lower:
+            return "welcoming innkeeper"
+        else:
+            return "local resident"
+
+    def _clean_dialogue_text(self, text: str) -> str:
+        """Clean up dialogue text from any unwanted formatting."""
+        # Remove any JSON artifacts
+        text = text.replace("```json", "").replace("```", "")
+        text = text.replace("{", "").replace("}", "")
+        text = text.replace('"greeting":', "").replace('"', "")
+        
+        # Remove extra whitespace
+        text = " ".join(text.split())
+        
+        # Ensure it doesn't start with common JSON keys
+        if text.startswith(("greeting:", "dialogue:", "response:")):
+            text = text.split(":", 1)[1].strip()
+            
+        return text.strip()
 
     async def _call_llm(
         self,
@@ -2359,7 +2402,7 @@ class GameLoop:
             return response
 
         except Exception as e:
-            logger.error(f"LLM call failed: {e}")
+            logger.error(f"LLM call failed: {str(e)}", exc_info=True)
             return None
 
     async def _render_llm_prompt(self, template_name: str, context: dict) -> str:
@@ -2507,8 +2550,11 @@ class GameLoop:
                 return
 
             # Initialize behavior tracking if not present
-            if "behavior_stats" not in player_state.inventory:
-                player_state.inventory["behavior_stats"] = {
+            if (
+                not hasattr(player_state, "behavior_stats")
+                or player_state.behavior_stats is None
+            ):
+                player_state.behavior_stats = {
                     "preferred_directions": {},
                     "preferred_location_types": {},
                     "exploration_depth": 0,
@@ -2516,7 +2562,7 @@ class GameLoop:
                     "session_start": None,
                 }
 
-            stats = player_state.inventory["behavior_stats"]
+            stats = player_state.behavior_stats
 
             # Track direction preferences
             if direction not in stats["preferred_directions"]:
@@ -2554,7 +2600,11 @@ class GameLoop:
         """
         try:
             player_state, _ = self.state_manager.get_current_state()
-            if not player_state or "behavior_stats" not in player_state.inventory:
+            if (
+                not player_state
+                or not hasattr(player_state, "behavior_stats")
+                or player_state.behavior_stats is None
+            ):
                 return {
                     "preferred_directions": [],
                     "preferred_location_types": [],
@@ -2562,7 +2612,7 @@ class GameLoop:
                     "experience_level": "beginner",
                 }
 
-            stats = player_state.inventory["behavior_stats"]
+            stats = player_state.behavior_stats
 
             # Analyze direction preferences
             direction_counts = stats.get("preferred_directions", {})
@@ -3074,23 +3124,8 @@ class GameLoop:
                     direction
                 ] = placeholder_uuid
 
-                # Also add to database as a placeholder
-                from uuid import uuid4
-
-                async with self.db_pool.acquire() as conn:
-                    await conn.execute(
-                        """
-                        INSERT INTO location_connections (id, from_location_id, to_location_id, direction, connection_type, requirements_json, is_visible)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7)
-                        """,
-                        uuid4(),
-                        location_id,
-                        placeholder_uuid,
-                        direction,
-                        "placeholder",
-                        "{}",
-                        True,
-                    )
+                # Don't add placeholder connections to database - they're memory-only until generated
+                # The placeholder UUID will be replaced when the connection is actually explored
 
                 logger.info(
                     f"Created placeholder connection: {direction} from {location_id}"
@@ -3172,3 +3207,385 @@ class GameLoop:
 
         except Exception as e:
             logger.error(f"Error adding connection: {e}")
+
+    async def _load_default_rules(self) -> None:
+        """Load default game rules for new games."""
+        try:
+            from pathlib import Path
+
+            # Try to load default rules file
+            rules_file = Path("rules/default_game_rules.yaml")
+            if rules_file.exists():
+                loaded_count = self.rules_engine.load_rules_from_file(str(rules_file))
+                logger.info(f"Loaded {loaded_count} default rules from {rules_file}")
+                self.console.print(f"[green]Loaded {loaded_count} game rules[/green]")
+            else:
+                # Try alternative path
+                project_root = Path(__file__).parent.parent.parent
+                rules_file = project_root / "rules" / "default_game_rules.yaml"
+                if rules_file.exists():
+                    loaded_count = self.rules_engine.load_rules_from_file(
+                        str(rules_file)
+                    )
+                    logger.info(
+                        f"Loaded {loaded_count} default rules from {rules_file}"
+                    )
+                    self.console.print(
+                        f"[green]Loaded {loaded_count} game rules[/green]"
+                    )
+                else:
+                    logger.warning(
+                        "No default rules file found, rules engine will start empty"
+                    )
+                    self.console.print("[yellow]No default rules file found[/yellow]")
+        except Exception as e:
+            logger.error(f"Error loading default rules: {e}")
+            self.console.print(f"[red]Failed to load default rules: {e}[/red]")
+
+    async def _evaluate_rules_pre_command(
+        self,
+        command: ParsedCommand,
+        player_state: PlayerState,
+        current_location: Location,
+        world_state: WorldState,
+    ) -> ActionResult | None:
+        """Evaluate rules before command execution to check for blocking conditions."""
+        try:
+            from game_loop.core.rules.rule_models import (
+                ActionType,
+                RuleEvaluationContext,
+            )
+
+            # Create evaluation context
+            context = RuleEvaluationContext(
+                player_state=self._convert_player_state_for_rules(player_state),
+                world_state=self._convert_world_state_for_rules(world_state),
+                current_action=(
+                    command.command_type.name if command.command_type else "unknown"
+                ),
+                action_parameters={
+                    "subject": command.subject,
+                    "target": command.target,
+                    "parameters": command.parameters,
+                },
+                current_location=(
+                    str(current_location.location_id) if current_location else None
+                ),
+                location_data=(
+                    self._convert_location_for_rules(current_location)
+                    if current_location
+                    else {}
+                ),
+            )
+
+            # Evaluate rules
+            results = self.rules_engine.evaluate_rules(context)
+
+            # Check for blocking actions
+            for result in results:
+                if result.triggered:
+                    rule = self.rules_engine.get_rule(result.rule_id)
+                    if rule:
+                        for action in rule.actions:
+                            if action.action_type == ActionType.BLOCK_ACTION:
+                                reason = action.parameters.get(
+                                    "reason", "Action blocked by game rules"
+                                )
+                                suggestions = action.parameters.get("suggestions", [])
+
+                                feedback = reason
+                                if suggestions:
+                                    feedback += "\n\nSuggestions:"
+                                    for suggestion in suggestions:
+                                        feedback += f"\n  • {suggestion}"
+
+                                return ActionResult(
+                                    success=False, feedback_message=feedback
+                                )
+
+            return None  # No blocking rules triggered
+
+        except Exception as e:
+            logger.error(f"Error evaluating pre-command rules: {e}")
+            return None
+
+    async def _evaluate_rules_post_command(
+        self,
+        command: ParsedCommand,
+        action_result: ActionResult,
+        player_state: PlayerState,
+        current_location: Location,
+        world_state: WorldState,
+    ) -> None:
+        """Evaluate rules after command execution to trigger notifications and effects."""
+        try:
+            from game_loop.core.rules.rule_models import (
+                RuleEvaluationContext,
+            )
+
+            # Get updated state after command
+            updated_player_state = self.state_manager.player_tracker.get_state()
+            updated_world_state = self.state_manager.world_tracker.get_state()
+
+            # Create evaluation context with updated state
+            context = RuleEvaluationContext(
+                player_state=self._convert_player_state_for_rules(
+                    updated_player_state or player_state
+                ),
+                world_state=self._convert_world_state_for_rules(
+                    updated_world_state or world_state
+                ),
+                current_action=(
+                    command.command_type.name if command.command_type else "unknown"
+                ),
+                action_parameters={
+                    "subject": command.subject,
+                    "target": command.target,
+                    "parameters": command.parameters,
+                    "result": "success" if action_result.success else "failure",
+                },
+                current_location=(
+                    str(current_location.location_id) if current_location else None
+                ),
+                location_data=(
+                    self._convert_location_for_rules(current_location)
+                    if current_location
+                    else {}
+                ),
+            )
+
+            # Evaluate rules
+            results = self.rules_engine.evaluate_rules(context)
+
+            # Process triggered rules
+            for result in results:
+                if result.triggered:
+                    rule = self.rules_engine.get_rule(result.rule_id)
+                    if rule:
+                        await self._apply_rule_actions(
+                            rule.actions, updated_player_state or player_state
+                        )
+
+            # Trigger event-based rules through trigger manager
+            event_data = {
+                "player_state": self._convert_player_state_for_rules(
+                    updated_player_state or player_state
+                ),
+                "world_state": self._convert_world_state_for_rules(
+                    updated_world_state or world_state
+                ),
+                "action": (
+                    command.command_type.name if command.command_type else "unknown"
+                ),
+                "action_parameters": {
+                    "subject": command.subject,
+                    "result": "success" if action_result.success else "failure",
+                },
+                "timestamp": str(datetime.now()),
+            }
+
+            # Process action event
+            self.rule_trigger_manager.process_event("action_performed", event_data)
+
+        except Exception as e:
+            logger.error(f"Error evaluating post-command rules: {e}")
+
+    def _convert_player_state_for_rules(self, player_state: PlayerState) -> dict:
+        """Convert PlayerState to dict format for rule evaluation."""
+        try:
+            state_dict = {
+                "health": (
+                    player_state.health if hasattr(player_state, "health") else 100
+                ),
+                "max_health": (
+                    player_state.max_health
+                    if hasattr(player_state, "max_health")
+                    else 100
+                ),
+                "level": player_state.level if hasattr(player_state, "level") else 1,
+                "experience": (
+                    player_state.experience
+                    if hasattr(player_state, "experience")
+                    else 0
+                ),
+                "inventory_count": (
+                    len(player_state.inventory)
+                    if hasattr(player_state, "inventory")
+                    else 0
+                ),
+                "max_inventory": 10,  # Default max inventory
+                "location_id": (
+                    player_state.current_location_id
+                    if hasattr(player_state, "current_location_id")
+                    else None
+                ),
+            }
+
+            # Add stats if available
+            if hasattr(player_state, "stats") and player_state.stats:
+                state_dict["stats"] = {
+                    "strength": player_state.stats.strength,
+                    "dexterity": player_state.stats.dexterity,
+                    "intelligence": player_state.stats.intelligence,
+                }
+
+            return state_dict
+        except Exception as e:
+            logger.error(f"Error converting player state for rules: {e}")
+            return {
+                "health": 100,
+                "max_health": 100,
+                "level": 1,
+                "experience": 0,
+                "inventory_count": 0,
+                "max_inventory": 10,
+            }
+
+    def _convert_world_state_for_rules(self, world_state: WorldState) -> dict:
+        """Convert WorldState to dict format for rule evaluation."""
+        try:
+            return {
+                "time_of_day": "day",  # Default
+                "weather": "clear",  # Default
+                "danger_level": 1,  # Default
+            }
+        except Exception as e:
+            logger.error(f"Error converting world state for rules: {e}")
+            return {"time_of_day": "day", "weather": "clear", "danger_level": 1}
+
+    def _convert_location_for_rules(self, location: Location) -> dict:
+        """Convert Location to dict format for rule evaluation."""
+        try:
+            return {
+                "id": location.location_id,
+                "name": location.name,
+                "description": location.description,
+                "has_interesting_objects": (
+                    len(location.objects) > 0 if hasattr(location, "objects") else False
+                ),
+                "light_level": 5,  # Default bright
+                "has_shelter": True,  # Default assumption
+            }
+        except Exception as e:
+            logger.error(f"Error converting location for rules: {e}")
+            return {
+                "id": "unknown",
+                "name": "Unknown",
+                "light_level": 5,
+                "has_shelter": True,
+            }
+
+    async def trigger_rules_for_state_change(
+        self, change_type: str, old_state: dict = None, new_state: dict = None
+    ) -> None:
+        """Trigger rule evaluation for specific state changes."""
+        try:
+            # Get current game state
+            player_state = self.state_manager.player_tracker.get_state()
+            world_state = self.state_manager.world_tracker.get_state()
+            current_location = await self.state_manager.get_current_location_details()
+
+            if not player_state:
+                return
+
+            # Create event data for trigger
+            event_data = {
+                "player_state": self._convert_player_state_for_rules(player_state),
+                "world_state": (
+                    self._convert_world_state_for_rules(world_state)
+                    if world_state
+                    else {}
+                ),
+                "change_type": change_type,
+                "old_state": old_state or {},
+                "new_state": new_state or {},
+                "timestamp": str(datetime.now()),
+            }
+
+            # Map change types to trigger events
+            event_mapping = {
+                "health_change": "health_changed",
+                "inventory_change": "inventory_changed",
+                "location_change": "location_changed",
+                "level_change": "state_changed",
+                "experience_change": "state_changed",
+            }
+
+            event_type = event_mapping.get(change_type, "state_changed")
+
+            # Process through trigger manager
+            self.rule_trigger_manager.process_event(event_type, event_data)
+
+        except Exception as e:
+            logger.error(f"Error triggering rules for state change {change_type}: {e}")
+
+    async def _apply_rule_actions(
+        self, actions: list, player_state: PlayerState
+    ) -> None:
+        """Apply rule actions to the game state."""
+        try:
+            from game_loop.core.rules.rule_models import ActionType
+
+            for action in actions:
+                if action.action_type == ActionType.SEND_MESSAGE:
+                    message = action.parameters.get("message", "")
+                    style = action.parameters.get("style", "info")
+
+                    # Apply style formatting
+                    if style == "critical":
+                        self.console.print(f"[bold red]{message}[/bold red]")
+                    elif style == "warning":
+                        self.console.print(f"[yellow]{message}[/yellow]")
+                    elif style == "success":
+                        self.console.print(f"[green]{message}[/green]")
+                    elif style == "hint":
+                        self.console.print(f"[cyan]{message}[/cyan]")
+                    else:
+                        self.console.print(f"[blue]{message}[/blue]")
+
+                elif action.action_type == ActionType.MODIFY_STATE:
+                    # Apply state modifications (placeholder implementation)
+                    target_path = action.target_path
+                    parameters = action.parameters
+
+                    if target_path and "value" in parameters:
+                        # For now, just log state modifications
+                        # In a full implementation, this would update the actual game state
+                        logger.info(
+                            f"Rule triggered state modification: {target_path} = {parameters.get('value')}"
+                        )
+                        self.console.print(f"[dim]State modified: {target_path}[/dim]")
+
+                elif action.action_type == ActionType.GRANT_REWARD:
+                    # Apply rewards (placeholder implementation)
+                    parameters = action.parameters
+                    experience = parameters.get("experience", 0)
+                    gold = parameters.get("gold", 0)
+                    message = parameters.get("message", "")
+
+                    if experience > 0:
+                        logger.info(f"Rule granted {experience} experience")
+                        self.console.print(f"[green]+{experience} experience![/green]")
+
+                    if gold > 0:
+                        logger.info(f"Rule granted {gold} gold")
+                        self.console.print(f"[yellow]+{gold} gold![/yellow]")
+
+                    if message:
+                        self.console.print(f"[green]{message}[/green]")
+
+                elif action.action_type == ActionType.TRIGGER_EVENT:
+                    # Trigger other game events (placeholder implementation)
+                    parameters = action.parameters
+                    event_type = parameters.get("event_type", "")
+                    event_data = parameters.get("data", {})
+
+                    logger.info(f"Rule triggered event: {event_type}")
+                    self.console.print(f"[cyan]Event triggered: {event_type}[/cyan]")
+
+                    # Could trigger additional rule evaluations here
+                    if event_type and hasattr(self, "rule_trigger_manager"):
+                        self.rule_trigger_manager.process_event(event_type, event_data)
+
+        except Exception as e:
+            logger.error(f"Error applying rule actions: {e}")

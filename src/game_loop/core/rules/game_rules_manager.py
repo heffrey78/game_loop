@@ -4,16 +4,15 @@ Integrates the rules engine with the game loop and provides game-specific functi
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from game_loop.state.models import ActionResult
-from .rules_engine import RulesEngine
-from .rule_triggers import RuleTriggerManager
 from .rule_models import (
-    RuleEvaluationContext,
     RuleEngineConfig,
+    RuleEvaluationContext,
     RuleResult,
 )
+from .rule_triggers import RuleTriggerManager
+from .rules_engine import RulesEngine
 
 
 class GameRulesManager:
@@ -21,8 +20,8 @@ class GameRulesManager:
 
     def __init__(
         self,
-        config: Optional[RuleEngineConfig] = None,
-        rules_directory: Optional[str] = None,
+        config: RuleEngineConfig | None = None,
+        rules_directory: str | None = None,
     ):
         """
         Initialize the game rules manager.
@@ -85,11 +84,11 @@ class GameRulesManager:
     def evaluate_action_rules(
         self,
         action: str,
-        action_parameters: Dict[str, Any],
-        player_state: Dict[str, Any],
-        world_state: Dict[str, Any],
-        location_data: Dict[str, Any],
-    ) -> List[RuleResult]:
+        action_parameters: dict[str, Any],
+        player_state: dict[str, Any],
+        world_state: dict[str, Any],
+        location_data: dict[str, Any],
+    ) -> list[RuleResult]:
         """
         Evaluate rules for a player action.
 
@@ -119,10 +118,10 @@ class GameRulesManager:
 
     def evaluate_state_change_rules(
         self,
-        player_state: Dict[str, Any],
-        world_state: Dict[str, Any],
-        changes: Dict[str, Any],
-    ) -> List[RuleResult]:
+        player_state: dict[str, Any],
+        world_state: dict[str, Any],
+        changes: dict[str, Any],
+    ) -> list[RuleResult]:
         """
         Evaluate rules for state changes.
 
@@ -152,8 +151,8 @@ class GameRulesManager:
         return self.rules_engine.evaluate_rules(context, tags=tags)
 
     def process_game_event(
-        self, event_type: str, event_data: Dict[str, Any]
-    ) -> List[RuleResult]:
+        self, event_type: str, event_data: dict[str, Any]
+    ) -> list[RuleResult]:
         """
         Process a game event through the trigger system.
 
@@ -169,11 +168,11 @@ class GameRulesManager:
     def check_action_allowed(
         self,
         action: str,
-        action_parameters: Dict[str, Any],
-        player_state: Dict[str, Any],
-        world_state: Dict[str, Any],
-        location_data: Dict[str, Any],
-    ) -> tuple[bool, Optional[str]]:
+        action_parameters: dict[str, Any],
+        player_state: dict[str, Any],
+        world_state: dict[str, Any],
+        location_data: dict[str, Any],
+    ) -> tuple[bool, str | None]:
         """
         Check if an action is allowed based on rules.
 
@@ -205,7 +204,7 @@ class GameRulesManager:
 
         return True, None
 
-    def apply_rule_results(self, results: List[RuleResult]) -> None:
+    def apply_rule_results(self, results: list[RuleResult]) -> None:
         """
         Apply the effects of triggered rules.
 
@@ -272,7 +271,7 @@ class GameRulesManager:
 
         # Other action types would be implemented based on game needs
 
-    def add_custom_rule_from_dict(self, rule_data: Dict[str, Any]) -> bool:
+    def add_custom_rule_from_dict(self, rule_data: dict[str, Any]) -> bool:
         """
         Add a custom rule from dictionary data.
 
@@ -288,7 +287,7 @@ class GameRulesManager:
         except Exception:
             return False
 
-    def get_rules_by_tag(self, tag: str) -> List[Dict[str, Any]]:
+    def get_rules_by_tag(self, tag: str) -> list[dict[str, Any]]:
         """
         Get rules with a specific tag as dictionaries.
 
@@ -333,7 +332,7 @@ class GameRulesManager:
             return True
         return False
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get comprehensive statistics about the rules system.
 

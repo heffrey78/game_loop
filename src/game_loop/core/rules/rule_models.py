@@ -4,7 +4,7 @@ Defines data structures for rules, conditions, actions, and results.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -60,7 +60,7 @@ class RuleCondition(BaseModel):
     field_path: str = Field(..., description="Dot-notation path to the field to check")
     operator: ConditionOperator = Field(..., description="Comparison operator")
     expected_value: Any = Field(..., description="Expected value for comparison")
-    description: Optional[str] = Field(None, description="Human-readable description")
+    description: str | None = Field(None, description="Human-readable description")
 
     pass
 
@@ -70,13 +70,13 @@ class RuleAction(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     action_type: ActionType = Field(..., description="Type of action to perform")
-    target_path: Optional[str] = Field(
+    target_path: str | None = Field(
         None, description="Dot-notation path to target field"
     )
-    parameters: Dict[str, Any] = Field(
+    parameters: dict[str, Any] = Field(
         default_factory=dict, description="Action parameters"
     )
-    description: Optional[str] = Field(None, description="Human-readable description")
+    description: str | None = Field(None, description="Human-readable description")
 
     pass
 
@@ -86,24 +86,24 @@ class Rule(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     name: str = Field(..., description="Unique name for the rule")
-    description: Optional[str] = Field(None, description="Human-readable description")
+    description: str | None = Field(None, description="Human-readable description")
     priority: RulePriority = Field(
         default=RulePriority.MEDIUM, description="Rule priority"
     )
     enabled: bool = Field(default=True, description="Whether the rule is active")
 
     # Conditions (ALL must be true for rule to trigger)
-    conditions: List[RuleCondition] = Field(
+    conditions: list[RuleCondition] = Field(
         default_factory=list, description="Rule conditions"
     )
 
     # Actions (ALL will be executed if rule triggers)
-    actions: List[RuleAction] = Field(default_factory=list, description="Rule actions")
+    actions: list[RuleAction] = Field(default_factory=list, description="Rule actions")
 
     # Metadata
-    tags: List[str] = Field(default_factory=list, description="Tags for categorization")
-    created_at: Optional[str] = Field(None, description="Creation timestamp")
-    modified_at: Optional[str] = Field(None, description="Last modification timestamp")
+    tags: list[str] = Field(default_factory=list, description="Tags for categorization")
+    created_at: str | None = Field(None, description="Creation timestamp")
+    modified_at: str | None = Field(None, description="Last modification timestamp")
 
     class Config:
         pass
@@ -121,13 +121,13 @@ class RuleResult(BaseModel):
     conditions_met: bool = Field(
         ..., description="Whether all conditions were satisfied"
     )
-    actions_executed: List[UUID] = Field(
+    actions_executed: list[UUID] = Field(
         default_factory=list, description="IDs of actions that were executed"
     )
-    error_message: Optional[str] = Field(
+    error_message: str | None = Field(
         None, description="Error message if execution failed"
     )
-    execution_time_ms: Optional[float] = Field(
+    execution_time_ms: float | None = Field(
         None, description="Execution time in milliseconds"
     )
 
@@ -140,36 +140,34 @@ class RuleEvaluationContext(BaseModel):
     """Context data provided for rule evaluation."""
 
     # Game state data
-    player_state: Optional[Dict[str, Any]] = Field(
+    player_state: dict[str, Any] | None = Field(
         None, description="Current player state"
     )
-    world_state: Optional[Dict[str, Any]] = Field(
-        None, description="Current world state"
-    )
-    session_data: Optional[Dict[str, Any]] = Field(
+    world_state: dict[str, Any] | None = Field(None, description="Current world state")
+    session_data: dict[str, Any] | None = Field(
         None, description="Current session data"
     )
 
     # Action context
-    current_action: Optional[str] = Field(
+    current_action: str | None = Field(
         None, description="Current action being performed"
     )
-    action_parameters: Dict[str, Any] = Field(
+    action_parameters: dict[str, Any] = Field(
         default_factory=dict, description="Parameters of current action"
     )
 
     # Location context
-    current_location: Optional[str] = Field(None, description="Current location ID")
-    location_data: Optional[Dict[str, Any]] = Field(
+    current_location: str | None = Field(None, description="Current location ID")
+    location_data: dict[str, Any] | None = Field(
         None, description="Current location data"
     )
 
     # Timing context
-    game_time: Optional[Dict[str, Any]] = Field(None, description="Game world time")
-    real_time: Optional[str] = Field(None, description="Real world timestamp")
+    game_time: dict[str, Any] | None = Field(None, description="Game world time")
+    real_time: str | None = Field(None, description="Real world timestamp")
 
     # Custom context
-    custom_data: Dict[str, Any] = Field(
+    custom_data: dict[str, Any] = Field(
         default_factory=dict, description="Additional context data"
     )
 
@@ -206,13 +204,13 @@ class RuleEvaluationContext(BaseModel):
 class RuleConflict(BaseModel):
     """Represents a conflict between two or more rules."""
 
-    conflicting_rules: List[UUID] = Field(..., description="IDs of conflicting rules")
+    conflicting_rules: list[UUID] = Field(..., description="IDs of conflicting rules")
     conflict_type: str = Field(..., description="Type of conflict")
     description: str = Field(..., description="Description of the conflict")
-    resolution_strategy: Optional[str] = Field(
+    resolution_strategy: str | None = Field(
         None, description="How the conflict was resolved"
     )
-    resolved_rule_id: Optional[UUID] = Field(
+    resolved_rule_id: UUID | None = Field(
         None, description="ID of the rule that was chosen"
     )
 

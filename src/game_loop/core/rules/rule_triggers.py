@@ -3,8 +3,9 @@ Rule Triggers for Game Loop Rules Engine.
 Handles automatic rule evaluation based on game events and state changes.
 """
 
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any
 from uuid import UUID, uuid4
 
 from .rule_models import RuleEvaluationContext
@@ -31,9 +32,9 @@ class RuleTrigger:
     def __init__(
         self,
         trigger_type: TriggerType,
-        rule_tags: Optional[List[str]] = None,
-        condition: Optional[Callable[[Dict[str, Any]], bool]] = None,
-        description: Optional[str] = None,
+        rule_tags: list[str] | None = None,
+        condition: Callable[[dict[str, Any]], bool] | None = None,
+        description: str | None = None,
     ):
         """
         Initialize a rule trigger.
@@ -52,7 +53,7 @@ class RuleTrigger:
         self.enabled = True
         self.trigger_count = 0
 
-    def should_trigger(self, event_data: Dict[str, Any]) -> bool:
+    def should_trigger(self, event_data: dict[str, Any]) -> bool:
         """
         Check if this trigger should activate for the given event.
 
@@ -88,13 +89,13 @@ class RuleTriggerManager:
             rules_engine: The rules engine to use for evaluation
         """
         self.rules_engine = rules_engine
-        self._triggers: Dict[UUID, RuleTrigger] = {}
-        self._triggers_by_type: Dict[TriggerType, List[RuleTrigger]] = {
+        self._triggers: dict[UUID, RuleTrigger] = {}
+        self._triggers_by_type: dict[TriggerType, list[RuleTrigger]] = {
             trigger_type: [] for trigger_type in TriggerType
         }
 
         # Event listeners
-        self._event_listeners: Dict[str, List[Callable]] = {}
+        self._event_listeners: dict[str, list[Callable]] = {}
 
         # Setup default triggers
         self._setup_default_triggers()
@@ -134,7 +135,7 @@ class RuleTriggerManager:
         self._triggers_by_type[trigger.trigger_type].remove(trigger)
         return True
 
-    def get_trigger(self, trigger_id: UUID) -> Optional[RuleTrigger]:
+    def get_trigger(self, trigger_id: UUID) -> RuleTrigger | None:
         """
         Get a trigger by ID.
 
@@ -146,7 +147,7 @@ class RuleTriggerManager:
         """
         return self._triggers.get(trigger_id)
 
-    def get_triggers_by_type(self, trigger_type: TriggerType) -> List[RuleTrigger]:
+    def get_triggers_by_type(self, trigger_type: TriggerType) -> list[RuleTrigger]:
         """
         Get all triggers of a specific type.
 
@@ -158,7 +159,7 @@ class RuleTriggerManager:
         """
         return self._triggers_by_type[trigger_type].copy()
 
-    def process_event(self, event_type: str, event_data: Dict[str, Any]) -> List[Any]:
+    def process_event(self, event_type: str, event_data: dict[str, Any]) -> list[Any]:
         """
         Process a game event and trigger appropriate rule evaluations.
 
@@ -196,7 +197,7 @@ class RuleTriggerManager:
 
         return results
 
-    def _map_event_to_trigger_type(self, event_type: str) -> Optional[TriggerType]:
+    def _map_event_to_trigger_type(self, event_type: str) -> TriggerType | None:
         """
         Map an event type string to a TriggerType enum.
 
@@ -227,7 +228,7 @@ class RuleTriggerManager:
         return event_mapping.get(event_type.lower())
 
     def _create_evaluation_context(
-        self, event_data: Dict[str, Any]
+        self, event_data: dict[str, Any]
     ) -> RuleEvaluationContext:
         """
         Create a rule evaluation context from event data.
@@ -325,7 +326,7 @@ class RuleTriggerManager:
                 pass
         return False
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get statistics about the trigger manager.
 

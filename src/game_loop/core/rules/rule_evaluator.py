@@ -4,7 +4,7 @@ Handles evaluation of rule conditions and execution of rule actions.
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from .rule_models import (
@@ -114,7 +114,7 @@ class RuleEvaluator:
             )
 
     def _evaluate_conditions(
-        self, conditions: List[RuleCondition], context: RuleEvaluationContext
+        self, conditions: list[RuleCondition], context: RuleEvaluationContext
     ) -> bool:
         """
         Evaluate all conditions for a rule (ALL must be true).
@@ -146,7 +146,7 @@ class RuleEvaluator:
         """
         try:
             actual_value = context.get_value(condition.field_path)
-            
+
             # Handle both enum and string operator values
             operator = condition.operator
             if isinstance(operator, str):
@@ -155,7 +155,7 @@ class RuleEvaluator:
                     if enum_op.value == operator:
                         operator = enum_op
                         break
-            
+
             evaluator = self._condition_evaluators.get(operator)
 
             if not evaluator:
@@ -167,8 +167,8 @@ class RuleEvaluator:
             return False
 
     def _execute_actions(
-        self, actions: List[RuleAction], context: RuleEvaluationContext
-    ) -> List[UUID]:
+        self, actions: list[RuleAction], context: RuleEvaluationContext
+    ) -> list[UUID]:
         """
         Execute all actions for a rule.
 
@@ -211,7 +211,7 @@ class RuleEvaluator:
                 if enum_type.value == action_type:
                     action_type = enum_type
                     break
-        
+
         executor = self._action_executors.get(action_type)
         if not executor:
             return False

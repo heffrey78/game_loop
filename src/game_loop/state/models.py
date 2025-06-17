@@ -63,6 +63,9 @@ class PlayerState(BaseModel):
     stats: PlayerStats = Field(default_factory=PlayerStats)
     progress: PlayerProgress = Field(default_factory=PlayerProgress)
     visited_locations: list[UUID] = Field(default_factory=list)
+    behavior_stats: dict[str, Any] | None = Field(
+        default=None, description="Player exploration and behavior tracking"
+    )
     state_data_json: str | None = None
 
 

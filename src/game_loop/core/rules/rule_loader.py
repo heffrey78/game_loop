@@ -4,17 +4,17 @@ Handles loading rules from various sources (YAML, JSON, database).
 """
 
 import json
-import yaml
 from pathlib import Path
-from typing import Dict, List, Optional, Union
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
+
+import yaml
 
 from .rule_models import (
+    ActionType,
+    ConditionOperator,
     Rule,
     RuleAction,
     RuleCondition,
-    ActionType,
-    ConditionOperator,
     RulePriority,
 )
 
@@ -26,7 +26,7 @@ class RuleLoader:
         """Initialize the rule loader."""
         pass
 
-    def load_from_file(self, file_path: Union[str, Path]) -> List[Rule]:
+    def load_from_file(self, file_path: str | Path) -> list[Rule]:
         """
         Load rules from a file (YAML or JSON).
 
@@ -60,7 +60,7 @@ class RuleLoader:
         except Exception as e:
             raise ValueError(f"Error loading rules from {file_path}: {str(e)}")
 
-    def load_from_dict(self, rules_data: Dict) -> List[Rule]:
+    def load_from_dict(self, rules_data: dict) -> list[Rule]:
         """
         Load rules from a dictionary.
 
@@ -74,7 +74,7 @@ class RuleLoader:
 
     def load_from_string(
         self, rules_string: str, format_type: str = "yaml"
-    ) -> List[Rule]:
+    ) -> list[Rule]:
         """
         Load rules from a string.
 
@@ -98,7 +98,7 @@ class RuleLoader:
         except Exception as e:
             raise ValueError(f"Error loading rules from string: {str(e)}")
 
-    def _parse_rules_data(self, data: Dict) -> List[Rule]:
+    def _parse_rules_data(self, data: dict) -> list[Rule]:
         """
         Parse rules data from a dictionary structure.
 
@@ -132,7 +132,7 @@ class RuleLoader:
 
         return rules
 
-    def _parse_single_rule(self, rule_data: Dict) -> Rule:
+    def _parse_single_rule(self, rule_data: dict) -> Rule:
         """
         Parse a single rule from dictionary data.
 
@@ -144,7 +144,7 @@ class RuleLoader:
         """
         # Parse basic rule properties
         rule_id_raw = rule_data.get("id", str(uuid4()))
-        
+
         # Convert string ID to UUID if needed
         if isinstance(rule_id_raw, str):
             try:
@@ -154,7 +154,7 @@ class RuleLoader:
                 rule_id = uuid4()
         else:
             rule_id = rule_id_raw
-            
+
         name = rule_data.get("name", f"rule_{str(rule_id)[:8]}")
         description = rule_data.get("description")
         enabled = rule_data.get("enabled", True)
@@ -200,7 +200,7 @@ class RuleLoader:
             modified_at=rule_data.get("modified_at"),
         )
 
-    def _parse_condition(self, condition_data: Dict) -> RuleCondition:
+    def _parse_condition(self, condition_data: dict) -> RuleCondition:
         """
         Parse a rule condition from dictionary data.
 
@@ -256,7 +256,7 @@ class RuleLoader:
             description=description,
         )
 
-    def _parse_action(self, action_data: Dict) -> RuleAction:
+    def _parse_action(self, action_data: dict) -> RuleAction:
         """
         Parse a rule action from dictionary data.
 
@@ -314,7 +314,7 @@ class RuleLoader:
             description=description,
         )
 
-    def create_sample_rules_file(self, file_path: Union[str, Path]) -> None:
+    def create_sample_rules_file(self, file_path: str | Path) -> None:
         """
         Create a sample rules file for reference.
 
