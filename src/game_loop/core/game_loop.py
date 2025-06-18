@@ -2271,7 +2271,7 @@ class GameLoop:
     ) -> str | None:
         """
         Generate a dynamic dialogue response for an NPC using LLM.
-        
+
         This follows best practices by requesting plain text responses instead of JSON,
         making the system more reliable and user-friendly.
 
@@ -2289,21 +2289,21 @@ class GameLoop:
 
             # Request plain text response (no JSON parsing needed)
             response = await self._call_llm(
-                prompt, 
-                temperature=0.8, 
+                prompt,
+                temperature=0.8,
                 max_tokens=150,  # Shorter for focused dialogue
-                format=None
+                format=None,
             )
 
             if response and "response" in response:
                 dialogue_text = response["response"].strip()
-                
+
                 # Clean up any unwanted formatting
                 dialogue_text = self._clean_dialogue_text(dialogue_text)
-                
+
                 if dialogue_text:
                     # Simple, reliable formatting
-                    return f"{npc.name} looks at you. \"{dialogue_text}\""
+                    return f'{npc.name} looks at you. "{dialogue_text}"'
 
             return None
 
@@ -2311,12 +2311,14 @@ class GameLoop:
             logger.error(f"Error generating NPC dialogue response: {e}")
             return None
 
-    def _create_dialogue_prompt(self, npc: Any, location: Location, player_state: PlayerState) -> str:
+    def _create_dialogue_prompt(
+        self, npc: Any, location: Location, player_state: PlayerState
+    ) -> str:
         """Create a focused prompt for NPC dialogue generation."""
-        
+
         # Determine NPC personality based on name/type
         npc_personality = self._get_npc_personality_hint(npc.name)
-        
+
         prompt = f"""You are roleplaying as {npc.name}, a {npc_personality} character in {location.name}.
 
 Setting: {location.description[:200]}...
@@ -2331,13 +2333,13 @@ Guidelines:
 Player approaches you to talk. What do you say?
 
 Response:"""
-        
+
         return prompt
 
     def _get_npc_personality_hint(self, npc_name: str) -> str:
         """Get a personality hint based on NPC name."""
         name_lower = npc_name.lower()
-        
+
         if "guard" in name_lower or "security" in name_lower:
             return "professional security guard"
         elif "merchant" in name_lower or "shop" in name_lower:
@@ -2355,14 +2357,14 @@ Response:"""
         text = text.replace("```json", "").replace("```", "")
         text = text.replace("{", "").replace("}", "")
         text = text.replace('"greeting":', "").replace('"', "")
-        
+
         # Remove extra whitespace
         text = " ".join(text.split())
-        
+
         # Ensure it doesn't start with common JSON keys
         if text.startswith(("greeting:", "dialogue:", "response:")):
             text = text.split(":", 1)[1].strip()
-            
+
         return text.strip()
 
     async def _call_llm(

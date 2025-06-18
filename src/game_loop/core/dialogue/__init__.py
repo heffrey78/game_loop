@@ -1,5 +1,14 @@
-"""Dialogue system for NPC interactions."""
+"""
+NPC Dialogue Enhancement System.
 
-from .npc_dialogue_manager import NPCDialogueManager
+This package provides enhanced dialogue capabilities for NPCs including:
+- Personality-driven responses based on NPC archetypes
+- Conversation memory and relationship tracking
+- Contextual knowledge based on NPC roles and locations
+"""
 
-__all__ = ["NPCDialogueManager"]
+from .knowledge_engine import NPCKnowledgeEngine
+from .memory_manager import ConversationMemoryManager
+from .personality_engine import NPCPersonalityEngine
+
+__all__ = ["NPCPersonalityEngine", "ConversationMemoryManager", "NPCKnowledgeEngine"]

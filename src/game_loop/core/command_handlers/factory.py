@@ -9,6 +9,19 @@ from rich.console import Console
 
 from game_loop.config.manager import ConfigManager
 from game_loop.core.command_handlers.base_handler import CommandHandler
+from game_loop.core.command_handlers.enhanced_conversation_handler import (
+    EnhancedConversationCommandHandler,
+)
+from game_loop.core.command_handlers.enhanced_movement_handler import (
+    EnhancedMovementCommandHandler,
+)
+from game_loop.core.command_handlers.inventory_handler import InventoryCommandHandler
+from game_loop.core.command_handlers.object_modification_handler import (
+    ObjectModificationHandler,
+)
+from game_loop.core.command_handlers.observation_handler import (
+    ObservationCommandHandler,
+)
 from game_loop.core.command_handlers.system_command_processor import (
     SystemCommandProcessor,
 )
@@ -77,13 +90,20 @@ class CommandHandlerFactory:
 
     def _register_handlers(self) -> None:
         """Register all available command handlers."""
-        # TODO: Add more handlers as they are implemented
+        # Core command handlers
+        self._handlers[CommandType.MOVEMENT] = self._create_movement_handler
+        self._handlers[CommandType.LOOK] = self._create_observation_handler
+        self._handlers[CommandType.EXAMINE] = self._create_observation_handler
+        self._handlers[CommandType.INVENTORY] = self._create_inventory_handler
+        self._handlers[CommandType.TAKE] = self._create_inventory_handler
+        self._handlers[CommandType.DROP] = self._create_inventory_handler
+        self._handlers[CommandType.TALK] = self._create_conversation_handler
         self._handlers[CommandType.USE] = self._create_use_handler
 
-        # Additional handlers would be registered here:
-        # self._handlers[CommandType.EXAMINE] = self._create_examine_handler
-        # self._handlers[CommandType.TAKE] = self._create_take_handler
-        # etc.
+        # Object modification handlers
+        self._handlers[CommandType.UNKNOWN] = (
+            self._create_smart_handler
+        )  # Will route to appropriate handler
 
     def get_handler(self, command_type: CommandType) -> CommandHandler:
         """
@@ -100,13 +120,37 @@ class CommandHandlerFactory:
         if handler_factory:
             return handler_factory()
 
-        # If no specific handler is registered, return a default handler
-        # In a full implementation, create a DefaultHandler class
-        return self._create_use_handler()  # Temporary fallback
+        # If no specific handler is registered, return use handler as fallback
+        # This maintains backward compatibility for unhandled command types
+        return self._create_use_handler()
 
     def _create_use_handler(self) -> CommandHandler:
         """Create and return a new use handler instance."""
         return UseHandler(self.console, self.state_manager)
+
+    def _create_movement_handler(self) -> CommandHandler:
+        """Create and return a new enhanced movement handler instance."""
+        return EnhancedMovementCommandHandler(self.console, self.state_manager)
+
+    def _create_observation_handler(self) -> CommandHandler:
+        """Create and return a new observation handler instance."""
+        return ObservationCommandHandler(self.console, self.state_manager)
+
+    def _create_inventory_handler(self) -> CommandHandler:
+        """Create and return a new inventory handler instance."""
+        return InventoryCommandHandler(self.console, self.state_manager)
+
+    def _create_conversation_handler(self) -> CommandHandler:
+        """Create and return a new enhanced conversation handler instance."""
+        return EnhancedConversationCommandHandler(self.console, self.state_manager)
+
+    def _create_object_modification_handler(self) -> CommandHandler:
+        """Create and return a new object modification handler instance."""
+        return ObjectModificationHandler(self.console, self.state_manager)
+
+    def _create_smart_handler(self) -> CommandHandler:
+        """Create smart handler that can route to appropriate specialized handlers."""
+        return ObjectModificationHandler(self.console, self.state_manager)
 
     async def route_system_command(
         self, text: str, context: dict[str, Any]
