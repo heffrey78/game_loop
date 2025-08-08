@@ -16,6 +16,7 @@ from ..models.conversation import (
     NPCPersonality,
 )
 from .base import BaseRepository
+from .semantic_memory import SemanticMemoryRepository
 
 
 class NPCPersonalityRepository(BaseRepository[NPCPersonality]):
@@ -330,6 +331,7 @@ class ConversationRepositoryManager:
         self.contexts = ConversationContextRepository(session)
         self.exchanges = ConversationExchangeRepository(session)
         self.knowledge = ConversationKnowledgeRepository(session)
+        self.semantic_memory = SemanticMemoryRepository(session)
 
     async def get_full_conversation(self, conversation_id: uuid.UUID) -> tuple[
         ConversationContext | None,
