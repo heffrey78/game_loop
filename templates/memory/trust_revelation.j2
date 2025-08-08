@@ -1,0 +1,280 @@
+{# Trust-Based Memory Revelation Templates #}
+{#
+This template handles graduated memory disclosure based on relationship trust levels.
+Implements the requirement for trust-based revelation mechanics.
+#}
+
+{# TRUST LEVEL DEFINITIONS #}
+{# Stranger: 0.0-0.3 - Very limited, surface-level information #}
+{# Acquaintance: 0.3-0.6 - Basic personal info, some experiences #}
+{# Friend: 0.6-0.8 - Deeper sharing, more personal memories #}
+{# Confidant: 0.8-1.0 - Intimate secrets, vulnerable memories #}
+
+{# STRANGER LEVEL (0.0-0.3) - Surface-level, public information only #}
+{% set stranger_revelation_patterns = [
+    "I don't usually share personal details, but {memory_content}",
+    "This is common knowledge - {memory_content}",
+    "Most people around here know that {memory_content}",
+    "It's no secret that {memory_content}",
+    "Anyone could tell you {memory_content}",
+    "I suppose there's no harm in mentioning {memory_content}",
+    "Well, I can at least say {memory_content}",
+    "I don't mind sharing that {memory_content}"
+] %}
+
+{% set stranger_memory_filters = [
+    "work_related", "public_events", "general_knowledge", "local_news", 
+    "professional_skills", "obvious_traits", "public_achievements"
+] %}
+
+{# ACQUAINTANCE LEVEL (0.3-0.6) - Personal but not intimate sharing #}
+{% set acquaintance_revelation_patterns = [
+    "Since we're getting to know each other, {memory_content}",
+    "I feel comfortable telling you that {memory_content}",
+    "Between us, {memory_content}",
+    "I don't mind sharing that {memory_content}",
+    "You seem trustworthy enough - {memory_content}",
+    "I'll let you know that {memory_content}",
+    "Since you asked, {memory_content}",
+    "I suppose I can tell you {memory_content}"
+] %}
+
+{% set acquaintance_memory_filters = [
+    "work_experiences", "mild_embarrassments", "personal_preferences", 
+    "family_basics", "past_travels", "hobbies", "minor_fears", "general_opinions"
+] %}
+
+{# FRIEND LEVEL (0.6-0.8) - Deeper personal sharing #}
+{% set friend_revelation_patterns = [
+    "Since we're friends, I can tell you {memory_content}",
+    "I trust you enough to share that {memory_content}",
+    "Between friends, {memory_content}",
+    "You should know that {memory_content}",
+    "I feel close enough to you to say {memory_content}",
+    "As my friend, you deserve to know {memory_content}",
+    "I'm comfortable sharing with you that {memory_content}",
+    "Since I consider you a friend, {memory_content}"
+] %}
+
+{% set friend_memory_filters = [
+    "personal_struggles", "meaningful_relationships", "deeper_fears", 
+    "significant_failures", "emotional_memories", "family_conflicts", 
+    "personal_dreams", "past_mistakes", "vulnerable_moments"
+] %}
+
+{# CONFIDANT LEVEL (0.8-1.0) - Intimate secrets and deepest trust #}
+{% set confidant_revelation_patterns = [
+    "I've never told anyone else this, but {memory_content}",
+    "You're the only person I trust with this - {memory_content}",
+    "In complete confidence, {memory_content}",
+    "I need to tell someone I trust deeply - {memory_content}",
+    "This stays between us, but {memory_content}",
+    "I've been carrying this secret - {memory_content}",
+    "You're like family to me, so {memory_content}",
+    "I trust you with my deepest secret - {memory_content}",
+    "Please don't judge me, but {memory_content}",
+    "I need to unburden myself - {memory_content}"
+] %}
+
+{% set confidant_memory_filters = [
+    "shameful_secrets", "intimate_relationships", "deepest_fears", "trauma", 
+    "hidden_motivations", "guilty_secrets", "profound_regrets", 
+    "dangerous_knowledge", "forbidden_love", "family_secrets"
+] %}
+
+{# REVELATION HESITATION PATTERNS - When approaching trust boundaries #}
+{% set hesitation_patterns = {
+    "approaching_acquaintance": [
+        "I'm not sure I should tell you this, but...",
+        "This might be too personal, but...",
+        "I hope you won't think less of me if I say...",
+        "I'm probably oversharing, but..."
+    ],
+    "approaching_friend": [
+        "I don't usually open up like this, but...",
+        "This is hard for me to talk about, but...",
+        "I hope I can trust you with this...",
+        "I've never told many people this, but..."
+    ],
+    "approaching_confidant": [
+        "I've never told this to anyone before...",
+        "This is my deepest secret...",
+        "Promise me you'll never repeat this...",
+        "I need someone I can trust completely..."
+    ]
+} %}
+
+{# TRUST BOUNDARY REJECTION PATTERNS - When memory is too sensitive for current trust level #}
+{% set boundary_rejection_patterns = {
+    "stranger_boundary": [
+        "I'm not comfortable sharing that with someone I barely know.",
+        "That's rather personal. Perhaps another time.",
+        "I prefer to keep some things private, you understand.",
+        "We don't know each other well enough for that conversation."
+    ],
+    "acquaintance_boundary": [
+        "That's... that's quite personal. Maybe when we know each other better.",
+        "I'm not ready to talk about that just yet.",
+        "Some memories are still too painful to share.",
+        "That's something I only discuss with close friends."
+    ],
+    "friend_boundary": [
+        "Even among friends, some things are hard to talk about.",
+        "I'm not sure I'm ready to open up about that.",
+        "That's... that's something I've never told anyone.",
+        "Perhaps someday I'll feel comfortable sharing that."
+    ]
+} %}
+
+{# MACRO TO DETERMINE APPROPRIATE TRUST LEVEL CATEGORY #}
+{% macro get_trust_category(trust_level) %}
+    {%- if trust_level < 0.3 -%}
+        stranger
+    {%- elif trust_level < 0.6 -%}
+        acquaintance
+    {%- elif trust_level < 0.8 -%}
+        friend
+    {%- else -%}
+        confidant
+    {%- endif -%}
+{% endmacro %}
+
+{# MACRO TO CHECK IF MEMORY IS APPROPRIATE FOR TRUST LEVEL #}
+{% macro is_memory_appropriate(memory_sensitivity, trust_level) %}
+    {%- set trust_category = get_trust_category(trust_level) -%}
+    {%- set allowed_filters = [] -%}
+    
+    {%- if trust_category == "stranger" -%}
+        {%- set allowed_filters = stranger_memory_filters -%}
+    {%- elif trust_category == "acquaintance" -%}
+        {%- set allowed_filters = stranger_memory_filters + acquaintance_memory_filters -%}
+    {%- elif trust_category == "friend" -%}
+        {%- set allowed_filters = stranger_memory_filters + acquaintance_memory_filters + friend_memory_filters -%}
+    {%- else -%}
+        {%- set allowed_filters = stranger_memory_filters + acquaintance_memory_filters + friend_memory_filters + confidant_memory_filters -%}
+    {%- endif -%}
+    
+    {{- memory_sensitivity in allowed_filters -}}
+{% endmacro %}
+
+{# MACRO TO GET TRUST-APPROPRIATE REVELATION PATTERN #}
+{% macro get_revelation_pattern(trust_level, memory_sensitivity="general", include_hesitation=false) %}
+    {%- set trust_category = get_trust_category(trust_level) -%}
+    {%- set patterns = [] -%}
+    
+    {# Select appropriate patterns based on trust level #}
+    {%- if trust_category == "stranger" -%}
+        {%- set patterns = stranger_revelation_patterns -%}
+    {%- elif trust_category == "acquaintance" -%}
+        {%- set patterns = acquaintance_revelation_patterns -%}
+    {%- elif trust_category == "friend" -%}
+        {%- set patterns = friend_revelation_patterns -%}
+    {%- else -%}
+        {%- set patterns = confidant_revelation_patterns -%}
+    {%- endif -%}
+    
+    {# Add hesitation if requested and approaching boundary #}
+    {%- if include_hesitation -%}
+        {%- if trust_category == "acquaintance" and trust_level > 0.5 -%}
+            {{- hesitation_patterns["approaching_friend"] | random }} {{ patterns | random -}}
+        {%- elif trust_category == "friend" and trust_level > 0.7 -%}
+            {{- hesitation_patterns["approaching_confidant"] | random }} {{ patterns | random -}}
+        {%- elif trust_category == "stranger" and trust_level > 0.25 -%}
+            {{- hesitation_patterns["approaching_acquaintance"] | random }} {{ patterns | random -}}
+        {%- else -%}
+            {{- patterns | random -}}
+        {%- endif -%}
+    {%- else -%}
+        {{- patterns | random -}}
+    {%- endif -%}
+{% endmacro %}
+
+{# MACRO TO GENERATE BOUNDARY REJECTION #}
+{% macro generate_boundary_rejection(trust_level, memory_sensitivity) %}
+    {%- set trust_category = get_trust_category(trust_level) -%}
+    
+    {%- if memory_sensitivity in confidant_memory_filters -%}
+        {%- if trust_category in ["stranger", "acquaintance"] -%}
+            {{- boundary_rejection_patterns["stranger_boundary"] | random -}}
+        {%- elif trust_category == "friend" -%}
+            {{- boundary_rejection_patterns["friend_boundary"] | random -}}
+        {%- endif -%}
+    {%- elif memory_sensitivity in friend_memory_filters -%}
+        {%- if trust_category in ["stranger", "acquaintance"] -%}
+            {{- boundary_rejection_patterns["acquaintance_boundary"] | random -}}
+        {%- endif -%}
+    {%- elif memory_sensitivity in acquaintance_memory_filters -%}
+        {%- if trust_category == "stranger" -%}
+            {{- boundary_rejection_patterns["stranger_boundary"] | random -}}
+        {%- endif -%}
+    {%- endif -%}
+{% endmacro %}
+
+{# MAIN TRUST-BASED MEMORY REVELATION FUNCTION #}
+{% macro reveal_memory_by_trust(
+    memory_content, 
+    trust_level, 
+    memory_sensitivity="general", 
+    confidence=0.7,
+    allow_boundary_push=false
+) %}
+    {# Check if memory is appropriate for current trust level #}
+    {%- if is_memory_appropriate(memory_sensitivity, trust_level) -%}
+        {# Memory is appropriate - generate revelation #}
+        {%- set pattern = get_revelation_pattern(trust_level, memory_sensitivity, allow_boundary_push) -%}
+        {{- pattern.format(memory_content=memory_content) -}}
+        
+    {%- elif allow_boundary_push and trust_level > 0.2 -%}
+        {# Memory crosses boundary but we allow boundary pushing #}
+        {%- set hesitation_type = "approaching_" + get_trust_category(trust_level + 0.1) -%}
+        {%- if hesitation_type in hesitation_patterns -%}
+            {%- set hesitation = hesitation_patterns[hesitation_type] | random -%}
+            {%- set pattern = get_revelation_pattern(trust_level + 0.1, memory_sensitivity) -%}
+            {{- hesitation }} {{ pattern.format(memory_content=memory_content) -}}
+        {%- else -%}
+            {{- generate_boundary_rejection(trust_level, memory_sensitivity) -}}
+        {%- endif -%}
+        
+    {%- else -%}
+        {# Memory is too sensitive for current trust level #}
+        {{- generate_boundary_rejection(trust_level, memory_sensitivity) -}}
+    {%- endif -%}
+{% endmacro %}
+
+{# MACRO FOR PROGRESSIVE DISCLOSURE - Reveals appropriate level of detail #}
+{% macro progressive_disclosure(
+    memory_layers, 
+    trust_level, 
+    current_topic="general"
+) %}
+    {# memory_layers should be a dict with keys: surface, personal, intimate, secret #}
+    {%- set trust_category = get_trust_category(trust_level) -%}
+    
+    {%- if trust_category == "confidant" and "secret" in memory_layers -%}
+        {{- reveal_memory_by_trust(memory_layers["secret"], trust_level, "shameful_secrets") -}}
+    {%- elif trust_category == "friend" and "intimate" in memory_layers -%}
+        {{- reveal_memory_by_trust(memory_layers["intimate"], trust_level, "personal_struggles") -}}
+    {%- elif trust_category == "acquaintance" and "personal" in memory_layers -%}
+        {{- reveal_memory_by_trust(memory_layers["personal"], trust_level, "personal_preferences") -}}
+    {%- elif "surface" in memory_layers -%}
+        {{- reveal_memory_by_trust(memory_layers["surface"], trust_level, "general_knowledge") -}}
+    {%- else -%}
+        {# No appropriate layer found #}
+        {{- generate_boundary_rejection(trust_level, "personal_struggles") -}}
+    {%- endif -%}
+{% endmacro %}
+
+{# MACRO TO GET TRUST LEVEL ASSESSMENT DIALOGUE #}
+{% macro assess_trust_relationship(trust_level, relationship_history=[]) %}
+    {%- set trust_category = get_trust_category(trust_level) -%}
+    
+    {%- if trust_category == "confidant" -%}
+        "You're someone I trust completely. We've been through so much together."
+    {%- elif trust_category == "friend" -%}
+        "I consider you a good friend. I feel comfortable opening up to you."
+    {%- elif trust_category == "acquaintance" -%}
+        "We're getting to know each other. I'm starting to feel comfortable around you."
+    {%- else -%}
+        "We don't know each other very well yet. I prefer to keep some things private."
+    {%- endif -%}
+{% endmacro %}

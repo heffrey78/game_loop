@@ -1,0 +1,328 @@
+{# Personality-Specific Memory Reference Styles #}
+{#
+This template provides memory integration patterns tailored to different
+NPC personality archetypes and traits.
+#}
+
+{# MERCHANT PERSONALITY - Business-focused, practical memory references #}
+{% set merchant_patterns = {
+    "high_confidence": [
+        "I remember that deal clearly - {memory_content}",
+        "That transaction sticks in my mind - {memory_content}",
+        "I never forget a good business opportunity - {memory_content}",
+        "My ledger shows that {memory_content}",
+        "That was profitable information - {memory_content}"
+    ],
+    "medium_confidence": [
+        "From my business experience, {memory_content}",
+        "If I recall the negotiation correctly, {memory_content}",
+        "My trading records suggest {memory_content}",
+        "From what I've learned in commerce, {memory_content}"
+    ],
+    "low_confidence": [
+        "I think there was a deal where {memory_content}",
+        "My business instincts tell me {memory_content}",
+        "There might have been a trade involving {memory_content}"
+    ]
+} %}
+
+{# GUARD PERSONALITY - Duty-focused, security-minded references #}
+{% set guard_patterns = {
+    "high_confidence": [
+        "I'm certain of what I observed - {memory_content}",
+        "My duty requires me to remember that {memory_content}",
+        "I witnessed firsthand that {memory_content}",
+        "The incident report clearly states {memory_content}",
+        "I can testify that {memory_content}"
+    ],
+    "medium_confidence": [
+        "According to protocol, {memory_content}",
+        "From my patrol observations, {memory_content}",
+        "My training tells me that {memory_content}",
+        "Based on security procedures, {memory_content}"
+    ],
+    "low_confidence": [
+        "I should investigate further, but {memory_content}",
+        "There might have been a security issue where {memory_content}",
+        "My instincts suggest {memory_content}"
+    ]
+} %}
+
+{# SCHOLAR PERSONALITY - Knowledge-focused, detailed references #}
+{% set scholar_patterns = {
+    "high_confidence": [
+        "My research conclusively shows that {memory_content}",
+        "I have documented evidence that {memory_content}",
+        "My studies have proven that {memory_content}",
+        "The historical record clearly indicates {memory_content}",
+        "I can cite specific sources confirming {memory_content}"
+    ],
+    "medium_confidence": [
+        "My academic background suggests {memory_content}",
+        "Based on my scholarly research, {memory_content}",
+        "The literature indicates that {memory_content}",
+        "From my studies, I believe {memory_content}"
+    ],
+    "low_confidence": [
+        "I need to research this further, but {memory_content}",
+        "There's some scholarly debate about {memory_content}",
+        "I recall reading something about {memory_content}"
+    ]
+} %}
+
+{# HERMIT PERSONALITY - Wisdom-focused, cryptic references #}
+{% set hermit_patterns = {
+    "high_confidence": [
+        "The wisdom of ages tells me {memory_content}",
+        "I have seen in my solitude that {memory_content}",
+        "The spirits whisper truth - {memory_content}",
+        "In my long contemplation, {memory_content}",
+        "The old ways confirm that {memory_content}"
+    ],
+    "medium_confidence": [
+        "My inner vision suggests {memory_content}",
+        "The signs point to {memory_content}",
+        "In my meditations, {memory_content}",
+        "The patterns reveal that {memory_content}"
+    ],
+    "low_confidence": [
+        "There are whispers in the wind about {memory_content}",
+        "The mists of time obscure it, but {memory_content}",
+        "Something stirs in the depths of memory - {memory_content}"
+    ]
+} %}
+
+{# INNKEEPER PERSONALITY - Hospitality-focused, social references #}
+{% set innkeeper_patterns = {
+    "high_confidence": [
+        "I never forget a guest - {memory_content}",
+        "In all my years of hospitality, {memory_content}",
+        "Every traveler has a story, and {memory_content}",
+        "My inn has seen many tales, including {memory_content}",
+        "A good host remembers that {memory_content}"
+    ],
+    "medium_confidence": [
+        "From serving so many travelers, {memory_content}",
+        "In my experience with guests, {memory_content}",
+        "The common room stories suggest {memory_content}",
+        "From what I've heard from patrons, {memory_content}"
+    ],
+    "low_confidence": [
+        "Some traveler mentioned {memory_content}",
+        "I overhear so many conversations, but {memory_content}",
+        "There was talk in the common room about {memory_content}"
+    ]
+} %}
+
+{# ARTISAN PERSONALITY - Craft-focused, detail-oriented references #}
+{% set artisan_patterns = {
+    "high_confidence": [
+        "My craftsman's eye knows that {memory_content}",
+        "I can tell by the workmanship that {memory_content}",
+        "Years of practice have taught me that {memory_content}",
+        "My hands remember the feeling when {memory_content}",
+        "The quality speaks for itself - {memory_content}"
+    ],
+    "medium_confidence": [
+        "From my artisan training, {memory_content}",
+        "My craft experience suggests {memory_content}",
+        "Based on the techniques I know, {memory_content}",
+        "From working with materials, {memory_content}"
+    ],
+    "low_confidence": [
+        "There's something about the craftsmanship that {memory_content}",
+        "My artistic instincts tell me {memory_content}",
+        "I sense in the work that {memory_content}"
+    ]
+} %}
+
+{# WANDERER PERSONALITY - Travel-focused, storytelling references #}
+{% set wanderer_patterns = {
+    "high_confidence": [
+        "In all my travels, I know that {memory_content}",
+        "The road has taught me that {memory_content}",
+        "I've seen it with my own eyes - {memory_content}",
+        "Many miles have confirmed that {memory_content}",
+        "From every path I've walked, {memory_content}"
+    ],
+    "medium_confidence": [
+        "From my wandering days, {memory_content}",
+        "The stories I've collected suggest {memory_content}",
+        "In my experience on the road, {memory_content}",
+        "From the places I've been, {memory_content}"
+    ],
+    "low_confidence": [
+        "There's a tale from distant lands that {memory_content}",
+        "Some fellow traveler once said {memory_content}",
+        "I heard tell along the way that {memory_content}"
+    ]
+} %}
+
+{# TRAIT-BASED MODIFIERS - Additional flavor based on personality traits #}
+{% set trait_modifiers = {
+    "authoritative": {
+        "prefix": ["I can state with authority that", "Let me be clear -", "I assure you that"],
+        "confidence_boost": 0.1
+    },
+    "helpful": {
+        "prefix": ["I'm happy to share that", "I hope this helps -", "Let me tell you -"],
+        "suffix": ["- I hope that's useful", "- does that help?"]
+    },
+    "serious": {
+        "prefix": ["I must tell you that", "It's important to know that", "You should understand that"],
+        "tone": "formal"
+    },
+    "talkative": {
+        "prefix": ["Oh, that reminds me -", "Speaking of which,", "Now that you mention it,"],
+        "expansion": true
+    },
+    "cryptic": {
+        "prefix": ["As the old saying goes,", "There's more than meets the eye -", "Consider this carefully -"],
+        "suffix": ["- make of that what you will", "- if you understand my meaning"]
+    },
+    "friendly": {
+        "prefix": ["My friend,", "Between you and me,", "I'll tell you what -"],
+        "suffix": ["- that's the truth of it", "- take my word for it"]
+    },
+    "cautious": {
+        "prefix": ["I should mention carefully that", "With due caution,", "I hesitate to say, but"],
+        "confidence_reduction": 0.1
+    },
+    "wise": {
+        "prefix": ["In my wisdom,", "Experience has taught me that", "Age brings understanding that"],
+        "suffix": ["- remember that well", "- learn from this"]
+    }
+} %}
+
+{# MACRO TO GET PERSONALITY-APPROPRIATE PATTERNS #}
+{% macro get_personality_patterns(archetype, confidence_level) %}
+    {%- if archetype == "merchant" -%}
+        {{- merchant_patterns[confidence_level] -}}
+    {%- elif archetype == "guard" -%}
+        {{- guard_patterns[confidence_level] -}}
+    {%- elif archetype == "scholar" -%}
+        {{- scholar_patterns[confidence_level] -}}
+    {%- elif archetype == "hermit" -%}
+        {{- hermit_patterns[confidence_level] -}}
+    {%- elif archetype == "innkeeper" -%}
+        {{- innkeeper_patterns[confidence_level] -}}
+    {%- elif archetype == "artisan" -%}
+        {{- artisan_patterns[confidence_level] -}}
+    {%- elif archetype == "wanderer" -%}
+        {{- wanderer_patterns[confidence_level] -}}
+    {%- else -%}
+        {# Default patterns if archetype not found #}
+        {%- if confidence_level == "high_confidence" -%}
+            ["I clearly remember that {memory_content}", "I'm certain that {memory_content}"]
+        {%- elif confidence_level == "medium_confidence" -%}
+            ["I believe that {memory_content}", "From what I recall, {memory_content}"]
+        {%- else -%}
+            ["I think {memory_content}", "There's something about {memory_content}"]
+        {%- endif -%}
+    {%- endif -%}
+{% endmacro %}
+
+{# MACRO TO APPLY TRAIT MODIFIERS #}
+{% macro apply_trait_modifiers(base_text, traits, confidence) %}
+    {%- set modified_text = base_text -%}
+    {%- set final_confidence = confidence -%}
+    {%- set prefix_parts = [] -%}
+    {%- set suffix_parts = [] -%}
+    
+    {# Apply trait-based modifications #}
+    {%- for trait, strength in traits.items() -%}
+        {%- if trait in trait_modifiers and strength > 0.6 -%}
+            {%- set modifier = trait_modifiers[trait] -%}
+            
+            {# Adjust confidence if trait affects it #}
+            {%- if "confidence_boost" in modifier -%}
+                {%- set final_confidence = final_confidence + (modifier.confidence_boost * strength) -%}
+            {%- elif "confidence_reduction" in modifier -%}
+                {%- set final_confidence = final_confidence - (modifier.confidence_reduction * strength) -%}
+            {%- endif -%}
+            
+            {# Collect prefixes and suffixes #}
+            {%- if "prefix" in modifier and (prefix_parts | length) < 2 -%}
+                {%- set _ = prefix_parts.append((modifier.prefix | random, strength)) -%}
+            {%- endif -%}
+            {%- if "suffix" in modifier and (suffix_parts | length) < 1 -%}
+                {%- set _ = suffix_parts.append((modifier.suffix | random, strength)) -%}
+            {%- endif -%}
+        {%- endif -%}
+    {%- endfor -%}
+    
+    {# Build final text with strongest modifiers #}
+    {%- if prefix_parts -%}
+        {%- set strongest_prefix = (prefix_parts | sort(attribute='1', reverse=true) | first)[0] -%}
+        {%- set modified_text = strongest_prefix + " " + modified_text -%}
+    {%- endif -%}
+    
+    {%- if suffix_parts -%}
+        {%- set strongest_suffix = (suffix_parts | sort(attribute='1', reverse=true) | first)[0] -%}
+        {%- set modified_text = modified_text + " " + strongest_suffix -%}
+    {%- endif -%}
+    
+    {{- modified_text -}}
+{% endmacro %}
+
+{# MAIN PERSONALITY-AWARE MEMORY REFERENCE GENERATOR #}
+{% macro generate_personality_memory_reference(
+    memory_content,
+    confidence,
+    npc_archetype="generic",
+    personality_traits={},
+    emotional_weight=0.0,
+    trust_level="stranger"
+) %}
+    {# Determine confidence category #}
+    {%- if confidence >= 0.7 -%}
+        {%- set confidence_category = "high_confidence" -%}
+    {%- elif confidence >= 0.5 -%}
+        {%- set confidence_category = "medium_confidence" -%}
+    {%- else -%}
+        {%- set confidence_category = "low_confidence" -%}
+    {%- endif -%}
+    
+    {# Get personality-appropriate patterns #}
+    {%- set patterns = get_personality_patterns(npc_archetype, confidence_category) -%}
+    {%- set selected_pattern = patterns | random -%}
+    
+    {# Format the base memory reference #}
+    {%- set base_reference = selected_pattern.format(memory_content=memory_content) -%}
+    
+    {# Apply personality trait modifiers #}
+    {%- set final_reference = apply_trait_modifiers(base_reference, personality_traits, confidence) -%}
+    
+    {{- final_reference -}}
+{% endmacro %}
+
+{# MACRO FOR CONTEXTUAL MEMORY INTEGRATION #}
+{% macro integrate_memory_in_conversation(
+    memory_content,
+    confidence,
+    current_topic,
+    npc_archetype="generic",
+    personality_traits={},
+    transition_style="natural"
+) %}
+    {# Generate appropriate transition phrases #}
+    {%- set transitions = {
+        "natural": ["That reminds me,", "Speaking of that,", "Now that you mention it,", "Oh, that brings back"],
+        "direct": ["I should mention that", "You should know that", "Let me tell you -", "Here's what I know -"],
+        "thoughtful": ["It occurs to me that", "I'm reminded that", "Come to think of it,", "Reflecting on this,"],
+        "casual": ["By the way,", "Oh, and", "Also,", "Plus,"]
+    } -%}
+    
+    {%- if transition_style in transitions -%}
+        {%- set transition = transitions[transition_style] | random -%}
+    {%- else -%}
+        {%- set transition = transitions["natural"] | random -%}
+    {%- endif -%}
+    
+    {# Generate the memory reference #}
+    {%- set memory_ref = generate_personality_memory_reference(
+        memory_content, confidence, npc_archetype, personality_traits
+    ) -%}
+    
+    {{- transition }} {{ memory_ref | lower -}}
+{% endmacro %}

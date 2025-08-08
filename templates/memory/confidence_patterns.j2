@@ -1,0 +1,219 @@
+{# Memory Reference Patterns by Confidence Level #}
+{# 
+This template provides natural language patterns for referencing memories
+based on confidence scores and trust levels. 
+#}
+
+{# HIGH CONFIDENCE MEMORIES (0.7-1.0) - Clear, detailed references #}
+{% set high_confidence_patterns = [
+    "I clearly remember when {memory_content}",
+    "I recall exactly that {memory_content}", 
+    "I'll never forget {memory_content}",
+    "I remember distinctly {memory_content}",
+    "I have a vivid memory of {memory_content}",
+    "I can picture it clearly - {memory_content}",
+    "I remember it like it was yesterday - {memory_content}",
+    "It's crystal clear in my mind that {memory_content}",
+    "I have no doubt that {memory_content}",
+    "I'm absolutely certain that {memory_content}"
+] %}
+
+{# MEDIUM CONFIDENCE MEMORIES (0.5-0.7) - Confident but less absolute #}
+{% set medium_confidence_patterns = [
+    "I remember {memory_content}",
+    "From what I recall, {memory_content}",
+    "I believe {memory_content}",
+    "As I remember it, {memory_content}",
+    "If memory serves, {memory_content}",
+    "I'm pretty sure {memory_content}",
+    "I have a good memory of {memory_content}",
+    "I'm fairly certain that {memory_content}",
+    "From my recollection, {memory_content}",
+    "I recall that {memory_content}"
+] %}
+
+{# LOW CONFIDENCE MEMORIES (0.3-0.5) - Uncertain, tentative references #}
+{% set low_confidence_patterns = [
+    "That rings a bell... {memory_content}",
+    "I think I remember something about {memory_content}",
+    "If I'm not mistaken, {memory_content}",
+    "I have a vague memory of {memory_content}",
+    "Didn't {memory_content}?",
+    "I seem to recall {memory_content}",
+    "There's something familiar about {memory_content}",
+    "I might be wrong, but {memory_content}",
+    "Correct me if I'm wrong, but {memory_content}",
+    "I have a fuzzy memory of {memory_content}"
+] %}
+
+{# VERY LOW CONFIDENCE MEMORIES (0.1-0.3) - Highly uncertain, questioning #}
+{% set very_low_confidence_patterns = [
+    "I might be imagining this, but {memory_content}?",
+    "This might sound strange, but {memory_content}?",
+    "I could be completely wrong, but {memory_content}?",
+    "There's something nagging at me about {memory_content}",
+    "I have the strangest feeling that {memory_content}",
+    "Something tells me {memory_content}, though I can't be sure",
+    "I can't quite place it, but {memory_content}?",
+    "There's a shadow of a memory about {memory_content}",
+    "I might have dreamed this, but {memory_content}?",
+    "Call it intuition, but {memory_content}?"
+] %}
+
+{# EMOTIONAL MEMORY VARIATIONS - For memories with high emotional weight #}
+{% set emotional_high_confidence = [
+    "I'll never forget how {memory_content}",
+    "It still gives me chills thinking about {memory_content}",
+    "I can still feel the emotion when {memory_content}",
+    "That moment is burned into my memory - {memory_content}",
+    "I remember every detail of {memory_content}",
+    "The memory of {memory_content} is as fresh as ever"
+] %}
+
+{% set emotional_medium_confidence = [
+    "I have strong feelings about {memory_content}",
+    "Something about {memory_content} really stuck with me",
+    "I remember being moved when {memory_content}",
+    "That left quite an impression - {memory_content}",
+    "I recall feeling deeply that {memory_content}"
+] %}
+
+{% set emotional_low_confidence = [
+    "There's an emotional echo of {memory_content}",
+    "I have mixed feelings about {memory_content}",
+    "Something stirs in me when I think of {memory_content}",
+    "I get a strange feeling about {memory_content}",
+    "There's an emotional weight to {memory_content}"
+] %}
+
+{# TEMPORAL REFERENCE VARIATIONS - Adding time context #}
+{% set recent_memory_modifiers = [
+    "Just recently",
+    "Not long ago",
+    "The other day",
+    "Recently",
+    "A short while back"
+] %}
+
+{% set distant_memory_modifiers = [
+    "Long ago",
+    "Years back",
+    "Way back when",
+    "In the distant past",
+    "Ages ago"
+] %}
+
+{% set vague_temporal_modifiers = [
+    "At some point",
+    "Once upon a time",
+    "Back then",
+    "In the past",
+    "Some time ago"
+] %}
+
+{# RELATIONSHIP CONTEXT MODIFIERS - Based on trust level with speaker #}
+{% set stranger_modifiers = [
+    "I don't usually share this, but",
+    "I'm not sure why I'm telling you this, but",
+    "This might sound odd coming from me, but"
+] %}
+
+{% set acquaintance_modifiers = [
+    "Since we're getting to know each other,",
+    "I feel comfortable mentioning that",
+    "Between us,"
+] %}
+
+{% set friend_modifiers = [
+    "I can tell you that",
+    "Since we're friends,",
+    "You should know that",
+    "I trust you enough to say that"
+] %}
+
+{% set confidant_modifiers = [
+    "I'll let you in on something -",
+    "Since you're someone I trust deeply,",
+    "I've never told anyone else this, but",
+    "In confidence,"
+] %}
+
+{# MACRO TO SELECT APPROPRIATE PATTERN #}
+{% macro get_memory_pattern(confidence, emotional_weight=0.0, trust_level="stranger", is_recent=true) %}
+    {%- set patterns = [] -%}
+    
+    {# Select base patterns based on confidence and emotional weight #}
+    {%- if confidence >= 0.7 -%}
+        {%- if emotional_weight > 0.7 -%}
+            {%- set patterns = emotional_high_confidence -%}
+        {%- else -%}
+            {%- set patterns = high_confidence_patterns -%}
+        {%- endif -%}
+    {%- elif confidence >= 0.5 -%}
+        {%- if emotional_weight > 0.7 -%}
+            {%- set patterns = emotional_medium_confidence -%}
+        {%- else -%}
+            {%- set patterns = medium_confidence_patterns -%}
+        {%- endif -%}
+    {%- elif confidence >= 0.3 -%}
+        {%- if emotional_weight > 0.7 -%}
+            {%- set patterns = emotional_low_confidence -%}
+        {%- else -%}
+            {%- set patterns = low_confidence_patterns -%}
+        {%- endif -%}
+    {%- else -%}
+        {%- set patterns = very_low_confidence_patterns -%}
+    {%- endif -%}
+    
+    {# Return a random pattern from the selected set #}
+    {{- patterns | random -}}
+{% endmacro %}
+
+{# MACRO TO GET TRUST-APPROPRIATE MODIFIER #}
+{% macro get_trust_modifier(trust_level, confidence) %}
+    {%- if confidence < 0.4 or trust_level in ["stranger", "acquaintance"] -%}
+        {%- if trust_level == "stranger" -%}
+            {{- stranger_modifiers | random -}}
+        {%- elif trust_level == "acquaintance" -%}
+            {{- acquaintance_modifiers | random -}}
+        {%- elif trust_level == "friend" -%}
+            {{- friend_modifiers | random -}}
+        {%- else -%}
+            {{- confidant_modifiers | random -}}
+        {%- endif -%}
+    {%- endif -%}
+{% endmacro %}
+
+{# MACRO TO GET TEMPORAL MODIFIER #}
+{% macro get_temporal_modifier(memory_age_days, confidence) %}
+    {%- if confidence < 0.4 -%}
+        {{- vague_temporal_modifiers | random -}}
+    {%- elif memory_age_days < 7 -%}
+        {{- recent_memory_modifiers | random -}}
+    {%- elif memory_age_days > 365 -%}
+        {{- distant_memory_modifiers | random -}}
+    {%- endif -%}
+{% endmacro %}
+
+{# MAIN TEMPLATE FUNCTION - Generates complete memory reference #}
+{% macro generate_memory_reference(
+    memory_content, 
+    confidence, 
+    emotional_weight=0.0, 
+    trust_level="stranger", 
+    memory_age_days=30,
+    include_temporal=true,
+    include_trust_context=true
+) %}
+    {%- set trust_modifier = get_trust_modifier(trust_level, confidence) if include_trust_context else "" -%}
+    {%- set temporal_modifier = get_temporal_modifier(memory_age_days, confidence) if include_temporal else "" -%}
+    {%- set memory_pattern = get_memory_pattern(confidence, emotional_weight, trust_level, memory_age_days < 7) -%}
+    
+    {%- if trust_modifier -%}
+        {{- trust_modifier }} {% if temporal_modifier %}{{ temporal_modifier | lower }}, {% endif %}{{ memory_pattern.format(memory_content=memory_content) -}}
+    {%- elif temporal_modifier -%}
+        {{- temporal_modifier }}, {{ memory_pattern.format(memory_content=memory_content) -}}
+    {%- else -%}
+        {{- memory_pattern.format(memory_content=memory_content) -}}
+    {%- endif -%}
+{% endmacro %}

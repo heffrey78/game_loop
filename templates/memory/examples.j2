@@ -1,0 +1,143 @@
+{# Memory Template Usage Examples #}
+{#
+This file provides examples of how to use the memory-aware templates
+for natural language memory integration in conversations.
+#}
+
+{# Import the memory template macros #}
+{% from 'memory/confidence_patterns.j2' import generate_memory_reference %}
+{% from 'memory/personality_styles.j2' import generate_personality_memory_reference, integrate_memory_in_conversation %}
+{% from 'memory/trust_revelation.j2' import reveal_memory_by_trust, progressive_disclosure %}
+
+{# EXAMPLE 1: Basic confidence-based memory reference #}
+{# Context: NPC remembers player helped with a merchant dispute #}
+{% set example1_memory = "you helped me resolve that dispute with the traveling merchant" %}
+{% set example1_confidence = 0.8 %}
+
+Example 1 - High Confidence Memory:
+{{ generate_memory_reference(example1_memory, example1_confidence, emotional_weight=0.3, trust_level="friend") }}
+
+{# EXAMPLE 2: Personality-specific memory reference #}
+{# Context: Guard NPC with authoritative personality remembers security incident #}
+{% set example2_memory = "there was suspicious activity near the gate last night" %}
+{% set example2_traits = {"authoritative": 0.9, "protective": 0.8, "serious": 0.7} %}
+
+Example 2 - Guard Personality Memory:
+{{ generate_personality_memory_reference(example2_memory, 0.9, "guard", example2_traits, 0.6, "acquaintance") }}
+
+{# EXAMPLE 3: Trust-based revelation with boundary testing #}
+{# Context: NPC has a shameful secret they might share with trusted friend #}
+{% set example3_secret = "I once abandoned my post when I was scared during an attack" %}
+
+Example 3a - Stranger Level (should reject):
+{% set stranger_result = reveal_memory_by_trust(example3_secret, 0.2, "shameful_secrets", 0.8) %}
+{% if stranger_result %}
+{{ stranger_result }}
+{% else %}
+[Memory too sensitive for current trust level - boundary rejection]
+{% endif %}
+
+Example 3b - Confidant Level (should reveal):
+{{ reveal_memory_by_trust(example3_secret, 0.9, "shameful_secrets", 0.8) }}
+
+{# EXAMPLE 4: Conversation integration with topic transitions #}
+{# Context: Player mentions magic, NPC remembers related experience #}
+{% set example4_memory = "you were curious about the old wizard's tower" %}
+
+Example 4 - Natural Topic Transition:
+Player: "I've been thinking about learning magic..."
+NPC: "{{ integrate_memory_in_conversation(example4_memory, 0.7, "magic", "scholar", {"wise": 0.8, "helpful": 0.7}, "natural") }}"
+
+{# EXAMPLE 5: Progressive disclosure based on trust evolution #}
+{# Context: NPC has layered information about a local mystery #}
+{% set example5_layers = {
+    "surface": "there have been strange sounds coming from the old mill at night",
+    "personal": "I've been too afraid to investigate those sounds myself", 
+    "intimate": "my brother disappeared near that mill years ago",
+    "secret": "I think something evil lives in that mill and took my brother"
+} %}
+
+Example 5a - Stranger Level:
+{{ progressive_disclosure(example5_layers, 0.2) }}
+
+Example 5b - Friend Level:
+{{ progressive_disclosure(example5_layers, 0.7) }}
+
+Example 5c - Confidant Level:  
+{{ progressive_disclosure(example5_layers, 0.9) }}
+
+{# EXAMPLE 6: Emotional memory with high emotional weight #}
+{# Context: NPC recalls a traumatic but important memory #}
+{% set example6_emotional = "my mentor died protecting the village from raiders" %}
+
+Example 6 - High Emotional Weight Memory:
+{{ generate_memory_reference(example6_emotional, 0.9, emotional_weight=0.9, trust_level="friend", memory_age_days=1095) }}
+
+{# EXAMPLE 7: Merchant personality with business-focused language #}
+{% set example7_business = "you negotiated a fair price for those rare gems" %}
+{% set example7_merchant_traits = {"business_minded": 0.9, "practical": 0.8, "friendly": 0.6} %}
+
+Example 7 - Merchant Memory Style:
+{{ generate_personality_memory_reference(example7_business, 0.8, "merchant", example7_merchant_traits, 0.4, "acquaintance") }}
+
+{# EXAMPLE 8: Low confidence, uncertain memory #}
+{% set example8_uncertain = "there might have been a hooded figure watching us" %}
+
+Example 8 - Uncertain Memory:
+{{ generate_memory_reference(example8_uncertain, 0.2, emotional_weight=0.5, trust_level="stranger") }}
+
+{# EXAMPLE 9: Hermit personality with cryptic language #}
+{% set example9_cryptic = "the old ways spoke of a darkness stirring in the deep places" %}
+{% set example9_hermit_traits = {"wise": 0.9, "cryptic": 0.8, "solitary": 0.7} %}
+
+Example 9 - Hermit Cryptic Memory:
+{{ generate_personality_memory_reference(example9_cryptic, 0.6, "hermit", example9_hermit_traits, 0.7, "stranger") }}
+
+{# EXAMPLE 10: Recent vs. distant memory comparison #}
+{% set example10_memory = "we shared a drink at the tavern" %}
+
+Example 10a - Recent Memory (2 days ago):
+{{ generate_memory_reference(example10_memory, 0.8, memory_age_days=2, include_temporal=true) }}
+
+Example 10b - Distant Memory (2 years ago):  
+{{ generate_memory_reference(example10_memory, 0.6, memory_age_days=730, include_temporal=true) }}
+
+{# Template Usage Guidelines #}
+{# 
+USAGE GUIDELINES:
+
+1. CONFIDENCE LEVELS:
+   - 0.8-1.0: "I clearly remember", "I'm certain", "I'll never forget"
+   - 0.5-0.7: "I believe", "From what I recall", "I'm pretty sure"  
+   - 0.3-0.5: "I think", "That rings a bell", "I seem to recall"
+   - 0.0-0.3: "I might be wrong", "There's something familiar", "Call it intuition"
+
+2. TRUST LEVELS:
+   - Stranger (0.0-0.3): Public info only, cautious sharing
+   - Acquaintance (0.3-0.6): Personal but not intimate details
+   - Friend (0.6-0.8): Deeper sharing, emotional memories
+   - Confidant (0.8-1.0): Secrets, shameful memories, intimate details
+
+3. PERSONALITY ARCHETYPES:
+   - Merchant: Business-focused, practical language
+   - Guard: Duty-bound, authoritative, protocol-oriented
+   - Scholar: Knowledge-focused, detailed, academic
+   - Hermit: Cryptic, wise, philosophical
+   - Innkeeper: Hospitable, story-focused, social
+   - Artisan: Craft-focused, quality-oriented, detailed
+   - Wanderer: Travel-focused, storytelling, experienced
+
+4. EMOTIONAL WEIGHT:
+   - 0.8-1.0: Deeply emotional, life-changing memories
+   - 0.5-0.7: Moderately emotional, meaningful experiences  
+   - 0.3-0.5: Mildly emotional, pleasant/unpleasant memories
+   - 0.0-0.3: Neutral, factual memories
+
+5. MEMORY SENSITIVITY LEVELS:
+   - general_knowledge: Public information
+   - personal_preferences: Likes, dislikes, opinions
+   - personal_struggles: Challenges, fears, mistakes
+   - shameful_secrets: Deep shame, guilt, trauma
+   - intimate_relationships: Love, family secrets
+   - dangerous_knowledge: Information that could cause harm
+#}
