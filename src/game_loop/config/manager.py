@@ -164,7 +164,7 @@ class ConfigManager:
 
         For example:
         GAMELOOP_DATABASE_HOST=localhost
-        GAMELOOP_LLM_DEFAULT_MODEL=qwen2.5:3b
+        GAMELOOP_LLM_DEFAULT_MODEL=qwen3:1.7b
         """
         env_vars = {
             k: v for k, v in os.environ.items() if k.startswith(self.ENV_PREFIX)
@@ -247,7 +247,7 @@ class ConfigManager:
 
         For example:
         --database.host=localhost
-        --llm.default-model=qwen2.5:3b
+        --llm.default-model=qwen3:1.7b
         """
         if not self.cli_args:
             return

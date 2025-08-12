@@ -18,6 +18,8 @@ from .conversation_models import (
     NPCPersonality,
 )
 from .knowledge_extractor import KnowledgeExtractor
+from .memory_integration import MemoryIntegrationInterface
+from .flow_manager import EnhancedConversationFlowManager
 
 
 class ConversationManager:
@@ -29,6 +31,7 @@ class ConversationManager:
         game_state_manager: GameStateManager,
         semantic_search: SemanticSearchService,
         session_factory: DatabaseSessionFactory,
+        enable_memory_integration: bool = True,
     ):
         self.llm_client = llm_client
         self.game_state_manager = game_state_manager
@@ -38,6 +41,23 @@ class ConversationManager:
 
         # Cache for frequently accessed personalities
         self._personality_cache: dict[uuid.UUID, NPCPersonality] = {}
+
+        # Initialize memory integration system
+        if enable_memory_integration:
+            self.memory_integration = MemoryIntegrationInterface(
+                session_factory=session_factory,
+                llm_client=llm_client,
+                enable_memory_enhancement=True,
+            )
+            self.enhanced_flow_manager = EnhancedConversationFlowManager(
+                memory_integration=self.memory_integration,
+                session_factory=session_factory,
+                enable_conversation_threading=True,
+                enable_dialogue_integration=True,
+            )
+        else:
+            self.memory_integration = None
+            self.enhanced_flow_manager = None
 
     async def _ensure_default_personalities(self) -> None:
         """Ensure default NPC personalities exist in database."""
@@ -359,7 +379,7 @@ class ConversationManager:
 
         try:
             response = await self.llm_client.generate_response(
-                greeting_prompt, model="qwen2.5:3b"
+                greeting_prompt, model="qwen3:1.7b"
             )
             return response.strip()
         except Exception:
@@ -372,7 +392,45 @@ class ConversationManager:
         player_message: str,
         context: dict[str, Any],
     ) -> str:
-        """Generate contextual NPC response using LLM."""
+        """Generate contextual NPC response using LLM with optional memory enhancement."""
+        # Generate base response using traditional method
+        base_response = await self._generate_base_npc_response(
+            conversation, personality, player_message, context
+        )
+
+        # If memory integration is enabled, enhance the response
+        if self.enhanced_flow_manager:
+            try:
+                enhanced_response, metadata = (
+                    await self.enhanced_flow_manager.enhance_response_with_advanced_memory_integration(
+                        conversation=conversation,
+                        personality=personality,
+                        base_response=base_response,
+                        player_message=player_message,
+                        npc_id=uuid.UUID(conversation.npc_id),
+                    )
+                )
+
+                # Use enhanced response if integration was successful
+                if metadata.get("dialogue_integration_applied") or metadata.get(
+                    "memory_enhanced"
+                ):
+                    return enhanced_response
+
+            except Exception as e:
+                # Log but don't fail - fall back to base response
+                pass
+
+        return base_response
+
+    async def _generate_base_npc_response(
+        self,
+        conversation: ConversationContext,
+        personality: NPCPersonality,
+        player_message: str,
+        context: dict[str, Any],
+    ) -> str:
+        """Generate base NPC response using traditional LLM approach."""
         # Format conversation history for context
         history_text = ""
         recent_exchanges = conversation.get_recent_exchanges(5)
@@ -413,7 +471,7 @@ class ConversationManager:
 
         try:
             response = await self.llm_client.generate_response(
-                response_prompt, model="qwen2.5:3b"
+                response_prompt, model="qwen3:1.7b"
             )
             return response.strip()
         except Exception:

@@ -144,7 +144,7 @@ class KnowledgeExtractor:
 
         try:
             response = await self.llm_client.generate_response(
-                analysis_prompt, model="qwen2.5:3b"
+                analysis_prompt, model="qwen3:1.7b"
             )
 
             # Try to parse JSON response

@@ -98,7 +98,7 @@ class QueryProcessor:
 
         try:
             response = await self.llm_client.generate_response(
-                classification_prompt, model="qwen2.5:3b"
+                classification_prompt, model="qwen3:1.7b"
             )
 
             # Extract category from response
@@ -175,7 +175,7 @@ class QueryProcessor:
 
         try:
             response = await self.llm_client.generate_response(
-                prompt, model="qwen2.5:3b"
+                prompt, model="qwen3:1.7b"
             )
             return response.strip()
 

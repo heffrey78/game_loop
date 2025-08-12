@@ -84,7 +84,7 @@ async def demo_dialogue():
     console.print("• Can provide hints about keycards, restricted areas, etc.")
 
     console.print(
-        "\n[bold yellow]Note:[/bold yellow] LLM generation requires Ollama to be running with a compatible model (qwen2.5:3b)"
+        "\n[bold yellow]Note:[/bold yellow] LLM generation requires Ollama to be running with a compatible model (qwen3:1.7b)"
     )
 
 

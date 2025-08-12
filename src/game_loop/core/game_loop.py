@@ -2390,7 +2390,7 @@ Response:"""
             from game_loop.llm.ollama.client import OllamaModelParameters
 
             params = OllamaModelParameters(
-                model="qwen2.5:3b",
+                model="qwen3:1.7b",
                 temperature=temperature,
                 top_p=0.9,
                 max_tokens=max_tokens,

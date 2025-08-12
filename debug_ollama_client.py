@@ -36,7 +36,7 @@ async def test_ollama_client():
 
         system_prompt = "You must respond with valid JSON only, with no explanations or additional text."
         prompt = "Test prompt: analyze the input 'look around'"
-        model = "qwen2.5:3b"
+        model = "qwen3:1.7b"
 
         console.print(f"  Model: {model}")
         console.print(f"  Prompt: {prompt[:50]}...")

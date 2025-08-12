@@ -5,6 +5,7 @@ Provides communication with the Ollama API for text generation and embeddings.
 
 import json
 import logging
+import re
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -18,7 +19,7 @@ class OllamaModelParameters(BaseModel):
     """Configuration parameters for Ollama API calls."""
 
     model: str = Field(
-        default="qwen2.5:3b", description="The model to use for generation"
+        default="qwen3:1.7b", description="The model to use for generation"
     )
     temperature: float = Field(
         default=0.7, description="Sampling temperature between 0 and 1"
@@ -43,6 +44,10 @@ class OllamaModelParameters(BaseModel):
         default=None,
         description="Can be a string like 'json' or a "
         "JSON schema from model_class.model_json_schema()",
+    )
+    think: bool = Field(
+        default=False,
+        description="Whether to enable thinking mode for reasoning models",
     )
 
 
@@ -90,6 +95,24 @@ class OllamaClient:
     async def close(self) -> None:
         """Close the HTTP client."""
         await self.client.aclose()
+
+    @staticmethod
+    def _strip_thinking_tags(text: str) -> str:
+        """
+        Remove thinking tags and their content from text.
+
+        Args:
+            text: Input text that may contain <think>...</think> tags
+
+        Returns:
+            Text with thinking tags and their content removed
+        """
+        # Use regex to remove <think>...</think> blocks (including multiline)
+        pattern = r"<think>.*?</think>"
+        cleaned_text = re.sub(pattern, "", text, flags=re.DOTALL)
+        # Clean up extra whitespace that might be left behind
+        cleaned_text = re.sub(r"\n\s*\n", "\n", cleaned_text)
+        return cleaned_text.strip()
 
     async def list_models(self) -> list[dict[str, Any]]:
         """
@@ -151,6 +174,7 @@ class OllamaClient:
             "model": params.model,
             "prompt": prompt,
             "stream": False,
+            "think": params.think,
             "options": {
                 "temperature": params.temperature,
                 "top_p": params.top_p,
@@ -178,8 +202,12 @@ class OllamaClient:
                 # Ensure we return a dict[str, Any] even for raw responses
                 return dict(result)
 
+            # Strip thinking tags from the response text
+            response_text = result.get("response", "")
+            cleaned_text = self._strip_thinking_tags(response_text)
+
             return {
-                "text": result.get("response", ""),
+                "text": cleaned_text,
                 "model": result.get("model", params.model),
                 "total_duration": result.get("total_duration", 0),
                 "load_duration": result.get("load_duration", 0),
@@ -212,6 +240,7 @@ class OllamaClient:
             "model": params.model,
             "prompt": prompt,
             "stream": True,
+            "think": params.think,
             "options": {
                 "temperature": params.temperature,
                 "top_p": params.top_p,
@@ -233,6 +262,13 @@ class OllamaClient:
                     if line.strip():
                         try:
                             chunk = json.loads(line)
+
+                            # Clean thinking tags from response chunks
+                            if "response" in chunk and chunk["response"]:
+                                chunk["response"] = self._strip_thinking_tags(
+                                    chunk["response"]
+                                )
+
                             yield chunk
                         except json.JSONDecodeError:
                             logger.error(f"Failed to parse streaming response: {line}")
@@ -285,6 +321,41 @@ class OllamaClient:
                 return []
         except httpx.HTTPError as e:
             logger.error(f"Failed to generate embeddings: {e}")
+            raise
+
+    async def generate_response(
+        self,
+        prompt: str,
+        model: str | None = None,
+        system_prompt: str | None = None,
+        temperature: float = 0.7,
+        think: bool = False,
+    ) -> str:
+        """
+        Generate a response for the given prompt (high-level wrapper).
+
+        Args:
+            prompt: The prompt to generate from
+            model: Model name to use (defaults to qwen3:1.7b)
+            system_prompt: Optional system prompt
+            temperature: Sampling temperature
+            think: Whether to enable thinking mode
+
+        Returns:
+            Generated text response
+        """
+        params = OllamaModelParameters(
+            model=model or "qwen3:1.7b",
+            system_prompt=system_prompt,
+            temperature=temperature,
+            think=think,
+        )
+
+        try:
+            response = await self.generate_completion(prompt, params)
+            return response.get("text", "")
+        except Exception as e:
+            logger.error(f"Failed to generate response: {e}")
             raise
 
     async def health_check(self) -> bool:

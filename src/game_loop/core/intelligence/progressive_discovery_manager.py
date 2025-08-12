@@ -286,9 +286,7 @@ class ProgressiveDiscoveryManager:
 
         return "\n".join(formatted_hints)
 
-    async def unlock_discovery(
-        self, player_id: str, discovery_type: str
-    ) -> str | None:
+    async def unlock_discovery(self, player_id: str, discovery_type: str) -> str | None:
         """Manually unlock a discovery and return achievement message."""
         try:
             if player_id not in self.discovered_interactions:

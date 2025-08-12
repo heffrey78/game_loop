@@ -9,15 +9,15 @@ This module provides the core algorithms for:
 """
 
 from .algorithms import MemoryAlgorithmService
-from .confidence import MemoryConfidenceCalculator
-from .emotional_analysis import EmotionalWeightingAnalyzer
 from .clustering import MemoryClusteringEngine
+from .confidence import MemoryConfidenceCalculator
 from .config import MemoryAlgorithmConfig
+from .emotional_analysis import EmotionalWeightingAnalyzer
 from .validators import MemoryPerformanceValidator
 
 __all__ = [
     "MemoryAlgorithmService",
-    "MemoryConfidenceCalculator", 
+    "MemoryConfidenceCalculator",
     "EmotionalWeightingAnalyzer",
     "MemoryClusteringEngine",
     "MemoryAlgorithmConfig",

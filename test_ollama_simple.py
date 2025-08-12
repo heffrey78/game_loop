@@ -34,7 +34,7 @@ async def test_direct_ollama():
     try:
         # This is how the NLPProcessor calls it
         response = ollama.generate(
-            model="qwen2.5:3b",
+            model="qwen3:1.7b",
             prompt=prompt,
             options={"temperature": 0.7, "top_p": 0.9, "top_k": 40, "num_predict": 100},
         )

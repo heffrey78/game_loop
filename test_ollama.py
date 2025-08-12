@@ -42,7 +42,7 @@ async def test_ollama_connection():
 
     test_prompt = "Complete this sentence: The quick brown fox"
 
-    for model_name in ["qwen2.5:3b", "qwen3:4b", "deepseek-r1:1.5b"]:
+    for model_name in ["qwen3:1.7b", "qwen3:4b", "deepseek-r1:1.5b"]:
         console.print(f"\n  Testing model: [cyan]{model_name}[/cyan]")
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -175,7 +175,7 @@ async def main():
 
     console.print("\n[bold]Debugging Summary:[/bold]")
     console.print("1. If Ollama is not running: [yellow]ollama serve[/yellow]")
-    console.print("2. If models are missing: [yellow]ollama pull qwen2.5:3b[/yellow]")
+    console.print("2. If models are missing: [yellow]ollama pull qwen3:1.7b[/yellow]")
     console.print(
         "3. Check logs for more details: [yellow]journalctl -u ollama -f[/yellow]"
     )

@@ -8,6 +8,17 @@ from .base import (
     UUIDMixin,
     ValidationError,
 )
+from .conversation import (
+    ConversationContext,
+    ConversationExchange,
+    ConversationKnowledge,
+    EmotionalContext,
+    MemoryAccessLog,
+    MemoryCluster,
+    MemoryEmbedding,
+    MemoryPersonalityConfig,
+    NPCPersonality,
+)
 from .game_state import EvolutionEvent, GameSession, WorldRule
 from .player import Player, PlayerHistory, PlayerInventory, PlayerKnowledge, PlayerSkill
 from .world import NPC, Location, LocationConnection, Object, Quest, Region
@@ -20,6 +31,16 @@ __all__ = [
     "DatabaseError",
     "EntityNotFoundError",
     "ValidationError",
+    # Conversation models
+    "NPCPersonality",
+    "ConversationContext",
+    "ConversationExchange",
+    "ConversationKnowledge",
+    "MemoryEmbedding",
+    "MemoryAccessLog",
+    "MemoryPersonalityConfig",
+    "EmotionalContext",
+    "MemoryCluster",
     # Player models
     "Player",
     "PlayerInventory",

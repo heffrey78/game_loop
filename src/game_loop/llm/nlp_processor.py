@@ -31,6 +31,24 @@ class NLPProcessor:
     Works alongside InputProcessor to handle complex language structures.
     """
 
+    @staticmethod
+    def _strip_thinking_tags(text: str) -> str:
+        """
+        Remove thinking tags and their content from text.
+
+        Args:
+            text: Input text that may contain <think>...</think> tags
+
+        Returns:
+            Text with thinking tags and their content removed
+        """
+        # Use regex to remove <think>...</think> blocks (including multiline)
+        pattern = r"<think>.*?</think>"
+        cleaned_text = re.sub(pattern, "", text, flags=re.DOTALL)
+        # Clean up extra whitespace that might be left behind
+        cleaned_text = re.sub(r"\n\s*\n", "\n", cleaned_text)
+        return cleaned_text.strip()
+
     def __init__(
         self, config_manager: ConfigManager | None = None, ollama_client: Any = None
     ):
@@ -1021,6 +1039,9 @@ class NLPProcessor:
                         response_text = ollama_response.get("response", "")
                     else:
                         response_text = str(ollama_response)
+
+                    # Strip thinking tags before parsing JSON
+                    response_text = self._strip_thinking_tags(response_text)
 
                     try:
                         response_json = json.loads(response_text)

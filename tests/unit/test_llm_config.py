@@ -20,7 +20,7 @@ class TestConfigManager:
         """Test default configuration."""
         config = ConfigManager()
         assert config.llm_config.provider == "ollama"
-        assert config.llm_config.default_model == "qwen2.5:3b"
+        assert config.llm_config.default_model == "qwen3:1.7b"
         assert config.ollama_config.completion_params["temperature"] == 0.7
 
     def test_load_config_from_yaml(self):

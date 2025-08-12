@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import select
 
+from game_loop.core.utils import UUIDSecurityError, sanitize_uuid_parameter
+
 from ..models.conversation import (
     ConversationContext,
     ConversationExchange,
@@ -27,7 +29,12 @@ class NPCPersonalityRepository(BaseRepository[NPCPersonality]):
 
     async def get_by_npc_id(self, npc_id: uuid.UUID) -> NPCPersonality | None:
         """Get NPC personality by NPC ID."""
-        stmt = select(NPCPersonality).where(NPCPersonality.npc_id == npc_id)
+        # Sanitize UUID parameter for security
+        safe_npc_id = sanitize_uuid_parameter(npc_id)
+        if safe_npc_id is None:
+            raise UUIDSecurityError("NPC ID cannot be None")
+
+        stmt = select(NPCPersonality).where(NPCPersonality.npc_id == safe_npc_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -106,9 +113,13 @@ class ConversationContextRepository(BaseRepository[ConversationContext]):
         return result.scalar_one_or_none()
 
     async def get_player_conversations(
-        self, player_id: uuid.UUID, status: str | None = None, limit: int = 50
+        self,
+        player_id: uuid.UUID,
+        status: str | None = None,
+        limit: int = 50,
+        npc_id: uuid.UUID | None = None,
     ) -> list[ConversationContext]:
-        """Get conversations for a player, optionally filtered by status."""
+        """Get conversations for a player, optionally filtered by status and NPC ID."""
         stmt = select(ConversationContext).where(
             ConversationContext.player_id == player_id
         )
@@ -116,10 +127,36 @@ class ConversationContextRepository(BaseRepository[ConversationContext]):
         if status:
             stmt = stmt.where(ConversationContext.status == status)
 
+        if npc_id:
+            stmt = stmt.where(ConversationContext.npc_id == npc_id)
+
         stmt = stmt.order_by(desc(ConversationContext.last_updated)).limit(limit)
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_conversation_count_for_npc_player_pair(
+        self, player_id: uuid.UUID, npc_id: uuid.UUID, status: str | None = None
+    ) -> int:
+        """Get count of conversations for a specific NPC-Player pair efficiently."""
+        from sqlalchemy import func
+
+        # Sanitize UUID parameters for security
+        safe_player_id = sanitize_uuid_parameter(player_id)
+        safe_npc_id = sanitize_uuid_parameter(npc_id)
+
+        if safe_player_id is None or safe_npc_id is None:
+            raise UUIDSecurityError("Player ID and NPC ID cannot be None")
+
+        stmt = select(func.count(ConversationContext.conversation_id)).where(
+            ConversationContext.player_id == safe_player_id,
+            ConversationContext.npc_id == safe_npc_id,
+        )
+        if status:
+            stmt = stmt.where(ConversationContext.status == status)
+
+        result = await self.session.execute(stmt)
+        return result.scalar() or 0
 
     async def create_conversation(
         self,

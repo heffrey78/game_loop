@@ -348,7 +348,7 @@ class WorldConnectionManager:
             try:
                 response = await self.llm_client.generate_completion(
                     prompt=prompt,
-                    model="qwen2.5:3b",
+                    model="qwen3:1.7b",
                     temperature=0.7,
                     max_tokens=200,
                 )

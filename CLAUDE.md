@@ -5,24 +5,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Core Commands
-- **Start game**: `make run` or `poetry run python -m game_loop.main`
+- **Start game**: `make run` or `poetry run python -m game_loop.main` or `poetry run game_loop`
 - **Run tests**: `make test` or `poetry run pytest tests/`
 - **Lint code**: `make lint` (runs black, ruff, mypy)
 - **Format code**: `make format` (auto-fixes with black/ruff)
 - **Type check**: `poetry run mypy src tests`
 - **Install dependencies**: `make install` or `poetry install`
+- **Clean cache**: `make clean` (removes Python cache files, coverage, mypy cache)
 
 ### Database Management
 - **Start database**: `make docker-check` (auto-starts if not running)
 - **Initialize database**: `make docker-init` or `./scripts/manage_docker.py init`
 - **Reset database**: `make db-reset` (drops and recreates from migrations)
 - **Verify database**: `./scripts/manage_docker.py verify`
+- **Complete setup**: `./scripts/manage_docker.py setup` (start, init, verify all in one)
+- **Docker management**: Use `./scripts/manage_docker.py start|stop|init|verify|setup`
 
 ### Testing Commands
 - **Run all tests**: `poetry run pytest tests/`
 - **Run with coverage**: `make coverage`
 - **Run integration tests**: `poetry run pytest tests/integration/`
 - **Run unit tests**: `poetry run pytest tests/unit/`
+- **Run specific test file**: `poetry run pytest tests/path/to/test_file.py`
+- **Run tests with markers**: `poetry run pytest -m integration` or `poetry run pytest -m asyncio`
 
 ## Architecture Overview
 
@@ -53,6 +58,8 @@ Game Loop is a text adventure game with natural language processing that uses a 
 - **LLM config**: `src/game_loop/llm/config.py`
 - **Database connection**: Environment variables (POSTGRES_HOST, POSTGRES_DB, etc.)
 - **Ollama**: Configured in LLM config, uses local models
+- **Python version**: Requires Python 3.11+ (configured in pyproject.toml)
+- **Container runtime**: Uses podman-compose (fallback: docker-compose)
 
 ## Important File Patterns
 

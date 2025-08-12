@@ -20,7 +20,7 @@ class LLMConfig(BaseModel):
     )
     timeout: float = Field(default=60.0, description="API timeout in seconds")
     default_model: str = Field(
-        default="qwen2.5:3b", description="Default model for completions"
+        default="qwen3:1.7b", description="Default model for completions"
     )
     embedding_model: str = Field(
         default="nomic-embed-text", description="Default model for embeddings"

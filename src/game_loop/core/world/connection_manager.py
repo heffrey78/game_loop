@@ -230,9 +230,7 @@ class WorldConnectionManager:
             "errors": errors,
         }
 
-    async def _find_nearest_connected_location(
-        self, isolated_id: UUID
-    ) -> UUID | None:
+    async def _find_nearest_connected_location(self, isolated_id: UUID) -> UUID | None:
         """Find the nearest location that is connected to the main graph."""
         try:
             # Get starting location as reference point for "connected"
