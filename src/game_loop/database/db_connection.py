@@ -214,3 +214,14 @@ async def fetch_val(query: str, *args: Any) -> Any:
     """
     async with get_connection() as conn:
         return await conn.fetchval(query, *args)
+
+
+
+
+
+
+
+
+
+
+

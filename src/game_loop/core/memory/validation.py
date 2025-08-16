@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from .constants import EmotionalThresholds
-from .emotional_context import EmotionalMemoryType, MoodState, MemoryProtectionLevel
 from .exceptions import ValidationError, SecurityError
 
 
@@ -108,8 +107,10 @@ def validate_relationship_impact(
     return float_value
 
 
-def validate_mood_state(value: Any, field_name: str = "mood_state") -> MoodState:
+def validate_mood_state(value: Any, field_name: str = "mood_state"):
     """Validate mood state values."""
+    from .emotional_context import MoodState
+    
     if value is None:
         raise ValidationError(f"{field_name} cannot be None", field_name=field_name)
 
@@ -137,8 +138,10 @@ def validate_mood_state(value: Any, field_name: str = "mood_state") -> MoodState
 
 def validate_emotional_memory_type(
     value: Any, field_name: str = "emotional_type"
-) -> EmotionalMemoryType:
+):
     """Validate emotional memory type values."""
+    from .emotional_context import EmotionalMemoryType
+    
     if value is None:
         raise ValidationError(f"{field_name} cannot be None", field_name=field_name)
 
@@ -166,8 +169,10 @@ def validate_emotional_memory_type(
 
 def validate_protection_level(
     value: Any, field_name: str = "protection_level"
-) -> MemoryProtectionLevel:
+):
     """Validate memory protection level values."""
+    from .emotional_context import MemoryProtectionLevel
+    
     if value is None:
         raise ValidationError(f"{field_name} cannot be None", field_name=field_name)
 
@@ -425,8 +430,10 @@ def validate_personality_traits(
 
 def validate_mood_accessibility(
     accessibility: Any, field_name: str = "mood_accessibility"
-) -> Dict[MoodState, float]:
+):
     """Validate mood accessibility dictionary."""
+    from .emotional_context import MoodState
+    
     if accessibility is None:
         return {}
 

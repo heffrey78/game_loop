@@ -59,7 +59,7 @@ Game Loop is a text adventure game with natural language processing that uses a 
 - **Database connection**: Environment variables (POSTGRES_HOST, POSTGRES_DB, etc.)
 - **Ollama**: Configured in LLM config, uses local models
 - **Python version**: Requires Python 3.11+ (configured in pyproject.toml)
-- **Container runtime**: Uses podman-compose (fallback: docker-compose)
+- **Container runtime**: Uses docker-compose
 
 ## Important File Patterns
 

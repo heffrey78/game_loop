@@ -206,31 +206,42 @@ class EmotionalMemoryClusteringEngine:
         
         start_time = time.perf_counter()
         
-        try:\n            # Check cache first\n            cache_key = f\"{npc_id_str}_{len(memories)}\"\n            if not recalculate and cache_key in self._clustering_cache:\n                self._performance_stats[\"cache_hits\"] += 1\n                return self._clustering_cache[cache_key]\n            \n            if len(memories) < self.min_cluster_size:\n                logger.debug(f\"Not enough memories to cluster for NPC {npc_id}: {len(memories)}\")\n                return []\n            \n            # Extract features for clustering
-        features = self._extract_clustering_features(memories, personality)
+        try:
+            # Check cache first
+            cache_key = f"{npc_id_str}_{len(memories)}"
+            if not recalculate and cache_key in self._clustering_cache:
+                self._performance_stats["cache_hits"] += 1
+                return self._clustering_cache[cache_key]
+            
+            if len(memories) < self.min_cluster_size:
+                logger.debug(f"Not enough memories to cluster for NPC {npc_id}: {len(memories)}")
+                return []
+            
+            # Extract features for clustering
+            features = self._extract_clustering_features(memories, personality)
         
-        # Perform clustering based on method
-        cluster_assignments = await self._perform_clustering(
-            features, memories, self.clustering_method
-        )
+            # Perform clustering based on method
+            cluster_assignments = await self._perform_clustering(
+                features, memories, self.clustering_method
+            )
+            
+            # Build cluster objects
+            clusters = await self._build_clusters_from_assignments(
+                cluster_assignments, memories, npc_id_str
+            )
+            
+            # Calculate cluster properties
+            for cluster in clusters:
+                await self._calculate_cluster_properties(cluster, memories, personality)
         
-        # Build cluster objects
-        clusters = await self._build_clusters_from_assignments(
-            cluster_assignments, memories, npc_id_str
-        )
-        
-        # Calculate cluster properties
-        for cluster in clusters:
-            await self._calculate_cluster_properties(cluster, memories, personality)
-        
-        # Cache results
-        self._clustering_cache[cache_key] = clusters
-        
-        # Update performance stats
-        processing_time_ms = (time.perf_counter() - start_time) * 1000
-        self._performance_stats["clustering_operations"] += 1
-        self._update_avg_clustering_time(processing_time_ms)
-        
+            # Cache results
+            self._clustering_cache[cache_key] = clusters
+            
+            # Update performance stats
+            processing_time_ms = (time.perf_counter() - start_time) * 1000
+            self._performance_stats["clustering_operations"] += 1
+            self._update_avg_clustering_time(processing_time_ms)
+            
             logger.debug(f"Created {len(clusters)} clusters for NPC {npc_id}")
             return clusters
             

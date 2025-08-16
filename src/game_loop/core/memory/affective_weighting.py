@@ -16,10 +16,10 @@ from .exceptions import (
     EmotionalAnalysisError, InvalidEmotionalDataError, PerformanceError, 
     handle_emotional_memory_error
 )
-from .validation import (
-    validate_probability, validate_positive_number, validate_mood_state,
-    validate_uuid, default_validator
-)
+# from .validation import (
+#     validate_probability, validate_positive_number, validate_mood_state,
+#     validate_uuid, default_validator
+# )
 from .emotional_context import (
     EmotionalMemoryContextEngine,
     EmotionalMemoryType,
@@ -179,13 +179,17 @@ class AffectiveMemoryWeightingEngine:
             if not npc_personality:
                 raise InvalidEmotionalDataError("NPC personality is required")
             
-            # Validate numerical inputs
-            relationship_level = validate_probability(relationship_level, "relationship_level")
-            memory_age_hours = validate_positive_number(memory_age_hours, "memory_age_hours", allow_zero=True)
-            trust_level = validate_probability(trust_level, "trust_level")
+            # Validate numerical inputs (basic validation without imports)
+            if not (0.0 <= relationship_level <= 1.0):
+                raise InvalidEmotionalDataError("relationship_level must be between 0.0 and 1.0")
+            if memory_age_hours < 0:
+                raise InvalidEmotionalDataError("memory_age_hours cannot be negative")
+            if not (0.0 <= trust_level <= 1.0):
+                raise InvalidEmotionalDataError("trust_level must be between 0.0 and 1.0")
             
-            # Validate mood state
-            current_mood = validate_mood_state(current_mood, "current_mood")
+            # Validate mood state (basic validation)
+            if not isinstance(current_mood, MoodState):
+                raise InvalidEmotionalDataError("current_mood must be a MoodState enum")
             
             # Check for reasonable memory age limits
             if memory_age_hours > EmotionalThresholds.VERY_OLD_MEMORY_HOURS * 24:  # Over 2 years
@@ -206,9 +210,8 @@ class AffectiveMemoryWeightingEngine:
             emotional_significance, npc_personality.npc_id, current_mood, strategy
         )
         
-        try:
-            # Check cache
-            if cache_key in self._weight_cache:
+        # Check cache
+        if cache_key in self._weight_cache:
             cached_weight = self._weight_cache[cache_key]
             # Update context-dependent values
             cached_weight.relationship_amplifier = self._calculate_relationship_amplifier(
@@ -291,12 +294,7 @@ class AffectiveMemoryWeightingEngine:
             + processing_time_ms
         ) / total_calculations
         
-            return affective_weight
-            
-        except Exception as e:
-            raise handle_emotional_memory_error(
-                e, "Failed to calculate affective weight"
-            )
+        return affective_weight
 
     def _calculate_base_affective_weight(
         self,

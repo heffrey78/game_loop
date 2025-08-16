@@ -27,14 +27,15 @@ from .exceptions import (
     InvalidEmotionalDataError,
     handle_emotional_memory_error,
 )
-from .validation import (
-    validate_uuid,
-    validate_probability,
-    validate_string_content,
-    validate_mood_state,
-    validate_emotional_memory_type,
-    default_validator,
-)
+# Circular import issue - using basic validation for now
+# from .validation import (
+#     validate_uuid,
+#     validate_probability,
+#     validate_string_content,
+#     validate_mood_state,
+#     validate_emotional_memory_type,
+#     default_validator,
+# )
 
 logger = logging.getLogger(__name__)
 
@@ -194,12 +195,9 @@ class EmotionalMemoryContextEngine:
             if not exchange.message_text or not exchange.message_text.strip():
                 raise InvalidEmotionalDataError("Exchange message text cannot be empty")
 
-            validate_string_content(
-                exchange.message_text,
-                "exchange.message_text",
-                min_length=1,
-                max_length=10000,
-            )
+            # Basic validation without importing validation module
+            if len(exchange.message_text) > 10000:
+                raise InvalidEmotionalDataError("Exchange message text too long (max 10000 chars)")
 
         except Exception as e:
             raise handle_emotional_memory_error(

@@ -48,13 +48,13 @@ logger = logging.getLogger(__name__)
 class EmotionalMemoryRecord:
     """Complete emotional memory record with context and preservation metadata."""
 
-    # Core identifiers
+    # Core identifiers (required fields first)
     exchange_id: str
-    emotional_context_id: Optional[str] = None
-
-    # Emotional analysis
     emotional_significance: EmotionalSignificance
     affective_weight: AffectiveWeight
+    
+    # Optional fields with defaults
+    emotional_context_id: Optional[str] = None
     mood_accessibility: Dict[MoodState, float] = field(default_factory=dict)
 
     # Preservation metadata
@@ -146,11 +146,11 @@ class EmotionalRetrievalQuery:
 class EmotionalRetrievalResult:
     """Result of emotional memory retrieval with context and metadata."""
 
-    # Retrieved records
-    emotional_records: List[EmotionalMemoryRecord] = field(default_factory=list)
-
-    # Query metadata
+    # Required fields first
     query_processed: EmotionalRetrievalQuery
+    
+    # Optional fields with defaults
+    emotional_records: List[EmotionalMemoryRecord] = field(default_factory=list)
     total_available: int = 0
     filtered_count: int = 0
     retrieval_confidence: float = 0.0

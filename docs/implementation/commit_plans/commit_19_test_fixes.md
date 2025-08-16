@@ -54,7 +54,7 @@ Create clear instructions for database setup in the test environment.
    ```bash
    make docker-check
    # or
-   podman-compose up -d
+   docker-compose up -d
    ```
 
 2. Initialize the database:
